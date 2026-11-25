@@ -41,6 +41,9 @@ fn invalid(message: &str) -> StatsError {
 fn failed(message: &str) -> StatsError {
   StatsError::EstimationFailed(format!("count probabilities: {message}"))
 }
+fn failed_for(quantity: &str, message: &str) -> StatsError {
+  StatsError::EstimationFailed(format!("count probabilities: {quantity} {message}"))
+}
 fn validate(
   law: CountProbabilityLaw,
   tail_from: usize,
@@ -352,6 +355,200 @@ fn count_log_point_probability(
   Ok(Some(log_p))
 }
 
+fn count_delta_standard_error(
+  covariance: &[Vec<f64>],
+  log_gradient_magnitudes: &[Option<f64>],
+  gradient_signs: &[f64],
+  quantity: &str,
+) -> Result<f64, StatsError> {
+  let parameter_count = covariance.len();
+  if log_gradient_magnitudes.len() != parameter_count
+    || gradient_signs.len() != parameter_count
+    || covariance.iter().any(|row| row.len() != parameter_count)
+  {
+    return Err(StatsError::DimensionMismatch(format!(
+      "count {quantity} covariance and gradient dimensions must match"
+    )));
+  }
+  if covariance.iter().flatten().any(|value| !value.is_finite())
+    || log_gradient_magnitudes
+      .iter()
+      .flatten()
+      .any(|value| !value.is_finite())
+    || gradient_signs.iter().any(|value| !value.is_finite())
+  {
+    return Err(failed_for(
+      quantity,
+      "gradient and covariance must be finite",
+    ));
+  }
+  let Some(max_log_gradient) = log_gradient_magnitudes
+    .iter()
+    .flatten()
+    .copied()
+    .reduce(f64::max)
+  else {
+    return Ok(0.0);
+  };
+
+  // Scaling preserves a representable delta SE even when its probability
+  // underflows, and bounds intermediate products for large finite inputs.
+  let max_covariance = covariance
+    .iter()
+    .flatten()
+    .fold(0.0_f64, |maximum, value| maximum.max(value.abs()));
+  if max_covariance == 0.0 {
+    return Ok(0.0);
+  }
+  let log_max_covariance = max_covariance.ln();
+  let scaled_gradient: Vec<_> = log_gradient_magnitudes
+    .iter()
+    .zip(gradient_signs)
+    .map(|(value, sign)| {
+      value.map_or(0.0, |log_magnitude| {
+        sign * (log_magnitude - max_log_gradient).exp()
+      })
+    })
+    .collect();
+
+  let (mut variance, mut variance_correction) = (0.0, 0.0);
+  let (mut magnitude, mut magnitude_correction) = (0.0, 0.0);
+  for i in 0..parameter_count {
+    for j in 0..parameter_count {
+      let term = scaled_gradient[i] * (covariance[i][j] / max_covariance) * scaled_gradient[j];
+      if !term.is_finite() {
+        return Err(failed_for(quantity, "delta variance is not finite"));
+      }
+      add_compensated(&mut variance, &mut variance_correction, term);
+      add_compensated(&mut magnitude, &mut magnitude_correction, term.abs());
+    }
+  }
+  if variance < 0.0 {
+    let roundoff_bound = 64.0 * f64::EPSILON * magnitude;
+    if variance >= -roundoff_bound {
+      variance = 0.0;
+    } else {
+      return Err(failed_for(quantity, "delta variance is negative"));
+    }
+  }
+  let log_standard_error = max_log_gradient + 0.5 * log_max_covariance + 0.5 * variance.ln();
+  let standard_error = log_standard_error.exp();
+  if !standard_error.is_finite() {
+    return Err(failed_for(quantity, "delta standard error is not finite"));
+  }
+  Ok(standard_error)
+}
+
+fn add_log_signed_compensated(
+  log_magnitude: f64,
+  sign: f64,
+  scale: &mut f64,
+  sum: &mut f64,
+  correction: &mut f64,
+) -> Result<(), StatsError> {
+  if !log_magnitude.is_finite() || !sign.is_finite() {
+    return Err(failed("NB2 CDF score term is not finite"));
+  }
+  if !scale.is_finite() || log_magnitude > *scale {
+    if scale.is_finite() {
+      let rescale = (*scale - log_magnitude).exp();
+      *sum *= rescale;
+      *correction *= rescale;
+    }
+    *scale = log_magnitude;
+    add_compensated(sum, correction, sign);
+  } else {
+    add_compensated(sum, correction, sign * (log_magnitude - *scale).exp());
+  }
+  Ok(())
+}
+
+fn count_nb2_cdf_log_alpha_gradient(
+  mean: f64,
+  count: usize,
+  alpha: f64,
+) -> Result<Option<(f64, f64)>, StatsError> {
+  let shape = 1.0 / alpha;
+  let tail = nb2_tail(mean, shape, count + 1)?;
+  if !tail.is_finite() || !(0.0..=1.0).contains(&tail) {
+    return Err(failed("NB2 CDF survival probability is invalid"));
+  }
+  if tail == 0.0 {
+    return Ok(None);
+  }
+  if tail < 0.5 {
+    // Prefix score terms nearly cancel when the CDF is close to one. Differentiate
+    // log survival instead; this uses the directly evaluated small tail.
+    let step = 1e-5_f64;
+    let tail_plus = nb2_tail(mean, shape * (-step).exp(), count + 1)?;
+    let tail_minus = nb2_tail(mean, shape * step.exp(), count + 1)?;
+    if !tail_plus.is_finite() || !tail_minus.is_finite() || tail_plus <= 0.0 || tail_minus <= 0.0 {
+      return Err(failed("NB2 CDF survival derivative is not representable"));
+    }
+    let log_survival_slope = (tail_plus.ln() - tail_minus.ln()) / (2.0 * step);
+    if !log_survival_slope.is_finite() {
+      return Err(failed("NB2 CDF alpha gradient is not finite"));
+    }
+    if log_survival_slope == 0.0 {
+      return Ok(None);
+    }
+    let log_gradient_magnitude = tail.ln() + log_survival_slope.abs().ln();
+    if !log_gradient_magnitude.is_finite() {
+      return Err(failed("NB2 CDF alpha gradient is not finite"));
+    }
+    return Ok(Some((log_gradient_magnitude, -log_survival_slope.signum())));
+  }
+
+  let log_shape = shape.ln();
+  let log_mean = mean.ln();
+  let log_ratio = log_mean - log_shape;
+  let mean_fraction = (-softplus(-log_ratio)).exp();
+  let shape_fraction = (-softplus(log_ratio)).exp();
+  let zero_score = if log_ratio < 0.01_f64.ln() {
+    let ratio = log_ratio.exp();
+    shape * (log1pmx(ratio) + ratio * ratio / (1.0 + ratio))
+  } else {
+    shape * (softplus(log_ratio) - mean_fraction)
+  };
+  let log_mu_fraction = -softplus(-log_ratio);
+  let (mut log_probability, mut log_probability_correction) = (-shape * softplus(log_ratio), 0.0);
+  let (mut score, mut score_correction) = (zero_score, 0.0);
+  let (mut scale, mut sum, mut sum_correction) = (f64::NEG_INFINITY, 0.0, 0.0);
+  for j in 0..=count {
+    if score != 0.0 {
+      add_log_signed_compensated(
+        log_probability + score.abs().ln(),
+        score.signum(),
+        &mut scale,
+        &mut sum,
+        &mut sum_correction,
+      )?;
+    }
+    if j < count {
+      let next = (j + 1) as f64;
+      let relative_count_step = (shape - 1.0) / next;
+      add_compensated(
+        &mut log_probability,
+        &mut log_probability_correction,
+        relative_count_step.ln_1p() + log_mu_fraction,
+      );
+      let score_step = shape_fraction - shape / (shape + j as f64);
+      add_compensated(&mut score, &mut score_correction, score_step);
+    }
+  }
+  if !sum.is_finite() {
+    return Err(failed("NB2 CDF alpha gradient is not finite"));
+  }
+  if scale == f64::NEG_INFINITY || sum == 0.0 {
+    return Ok(None);
+  }
+  let log_gradient_magnitude = scale + sum.abs().ln();
+  if !log_gradient_magnitude.is_finite() {
+    return Err(failed("NB2 CDF alpha gradient is not finite"));
+  }
+  Ok(Some((log_gradient_magnitude, sum.signum())))
+}
+
 /// Pointwise delta-method SE for a current-row PMF, conditional on its design
 /// and fixed offset/exposure. `design` and the square `covariance` use fitted
 /// beta order, including an intercept when fitted; NB2 appends lnalpha. A zero
@@ -442,69 +639,90 @@ pub fn count_point_pmf_standard_error(
     });
     gradient_signs.push(score.signum());
   }
-  if log_gradient_magnitudes
-    .iter()
-    .flatten()
-    .any(|value| !value.is_finite())
-  {
-    return Err(failed("PMF parameter gradient is not finite"));
+  count_delta_standard_error(covariance, &log_gradient_magnitudes, &gradient_signs, "PMF")
+}
+
+/// Pointwise delta-method SE for a current-row CDF, conditional on its design
+/// and fixed offset/exposure. `design` and covariance use beta order, including
+/// an intercept when fitted; NB2 appends lnalpha. A zero mean uses the installed
+/// point-mass limit and returns zero. Invalid laws, means, counts, covariance
+/// dimensions, nonfinite inputs, unrepresentable gradients or a materially
+/// negative delta variance return an error.
+pub fn count_point_cdf_standard_error(
+  law: CountProbabilityLaw,
+  mean: f64,
+  count: usize,
+  design: &[f64],
+  covariance: &[Vec<f64>],
+) -> Result<f64, StatsError> {
+  if design.is_empty() {
+    return Err(invalid(
+      "CDF design must contain at least one fitted coefficient",
+    ));
   }
-  let Some(max_log_gradient) = log_gradient_magnitudes
-    .iter()
-    .flatten()
-    .copied()
-    .reduce(f64::max)
-  else {
+  let nuisance = usize::from(matches!(law, CountProbabilityLaw::Nb2 { .. }));
+  let parameter_count = design
+    .len()
+    .checked_add(nuisance)
+    .ok_or_else(|| StatsError::DimensionMismatch("count CDF parameter count overflow".into()))?;
+  if covariance.len() != parameter_count
+    || covariance.iter().any(|row| row.len() != parameter_count)
+  {
+    return Err(StatsError::DimensionMismatch(format!(
+      "count CDF covariance must be {parameter_count} by {parameter_count}"
+    )));
+  }
+  if design.iter().any(|value| !value.is_finite())
+    || covariance.iter().flatten().any(|value| !value.is_finite())
+  {
+    return Err(StatsError::IncompatibleHypothesis(
+      "count CDF design and covariance must be finite".into(),
+    ));
+  }
+
+  let Some(log_probability) = count_log_point_probability(law, mean, count)? else {
     return Ok(0.0);
   };
-
-  // Scale before the quadratic form so an underflowed PMF can still have a
-  // representable SE, while large finite design/covariance values do not
-  // overflow intermediate products.
-  let max_covariance = covariance
-    .iter()
-    .flatten()
-    .fold(0.0_f64, |maximum, value| maximum.max(value.abs()));
-  if max_covariance == 0.0 {
-    return Ok(0.0);
-  }
-  let log_max_covariance = max_covariance.ln();
-  let scaled_gradient: Vec<_> = log_gradient_magnitudes
-    .iter()
-    .zip(&gradient_signs)
-    .map(|(value, sign)| {
-      value.map_or(0.0, |log_magnitude| {
-        sign * (log_magnitude - max_log_gradient).exp()
-      })
-    })
-    .collect();
-
-  let (mut variance, mut variance_correction) = (0.0, 0.0);
-  let (mut magnitude, mut magnitude_correction) = (0.0, 0.0);
-  for i in 0..parameter_count {
-    for j in 0..parameter_count {
-      let term = scaled_gradient[i] * (covariance[i][j] / max_covariance) * scaled_gradient[j];
-      if !term.is_finite() {
-        return Err(failed("PMF delta variance is not finite"));
-      }
-      add_compensated(&mut variance, &mut variance_correction, term);
-      add_compensated(&mut magnitude, &mut magnitude_correction, term.abs());
+  let log_mean = mean.ln();
+  let (log_eta_gradient, log_alpha_gradient) = match law {
+    CountProbabilityLaw::Poisson => (log_mean + log_probability, None),
+    CountProbabilityLaw::Nb2 { alpha } => {
+      let shape = 1.0 / alpha;
+      let log_shape = shape.ln();
+      let log_shape_plus_count = if count == 0 {
+        log_shape
+      } else {
+        log_shape + softplus((count as f64).ln() - log_shape)
+      };
+      let log_shape_plus_mean = log_shape + softplus(log_mean - log_shape);
+      (
+        log_mean + log_shape_plus_count - log_shape_plus_mean + log_probability,
+        count_nb2_cdf_log_alpha_gradient(mean, count, alpha)?,
+      )
     }
+  };
+  if !log_eta_gradient.is_finite() {
+    return Err(failed("CDF eta gradient is not finite"));
   }
-  if variance < 0.0 {
-    let roundoff_bound = 64.0 * f64::EPSILON * magnitude;
-    if variance >= -roundoff_bound {
-      variance = 0.0;
+
+  let mut log_gradient_magnitudes = Vec::with_capacity(parameter_count);
+  let mut gradient_signs = Vec::with_capacity(parameter_count);
+  for value in design {
+    log_gradient_magnitudes.push(if *value == 0.0 {
+      None
     } else {
-      return Err(failed("PMF delta variance is negative"));
-    }
+      Some(log_eta_gradient + value.abs().ln())
+    });
+    gradient_signs.push(-value.signum());
   }
-  let log_standard_error = max_log_gradient + 0.5 * log_max_covariance + 0.5 * variance.ln();
-  let standard_error = log_standard_error.exp();
-  if !standard_error.is_finite() {
-    return Err(failed("PMF delta standard error is not finite"));
+  if let Some((log_magnitude, sign)) = log_alpha_gradient {
+    log_gradient_magnitudes.push(Some(log_magnitude));
+    gradient_signs.push(sign);
+  } else if nuisance == 1 {
+    log_gradient_magnitudes.push(None);
+    gradient_signs.push(0.0);
   }
-  Ok(standard_error)
+  count_delta_standard_error(covariance, &log_gradient_magnitudes, &gradient_signs, "CDF")
 }
 
 /// Descriptive frequencies: average each individual's conditional probability,

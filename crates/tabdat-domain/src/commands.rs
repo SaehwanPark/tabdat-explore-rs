@@ -1103,12 +1103,16 @@ pub enum PredictKind {
   CountPmfStandardError(usize),
   /// Distributional P(Y<=k) after Poisson/NB2, k=0..100000.
   CountCdf(usize),
+  /// Pointwise delta-method SE for distributional P(Y<=k), k=0..100000.
+  CountCdfStandardError(usize),
   /// Distributional P(Y=k) after Poisson/NB2 using a current-row cutoff variable.
   CountPmfVariable,
   /// Pointwise delta-method SE for P(Y=k) using a current-row cutoff variable.
   CountPmfVariableStandardError,
   /// Distributional P(Y<=k) after Poisson/NB2 using a current-row cutoff variable.
   CountCdfVariable,
+  /// Pointwise delta-method SE for P(Y<=k) using a current-row cutoff variable.
+  CountCdfVariableStandardError,
   /// Current-time cause-specific Weibull/Gompertz hazard (not a probability).
   Hazard,
   /// Current-time integrated cause-specific Weibull/Gompertz or Cox/Breslow hazard.
@@ -1129,7 +1133,7 @@ pub struct PredictCommand {
   pub target_variable: String,
   /// Prediction kind.
   pub kind: PredictKind,
-  /// Current-row count cutoff variable for `CountPmfVariable`/`CountCdfVariable`.
+  /// Current-row cutoff variable for PMF/CDF probabilities and their standard errors.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub count_cutoff_variable: Option<String>,
   /// Whether interval bounds are requested.

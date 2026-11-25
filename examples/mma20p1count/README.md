@@ -628,7 +628,7 @@ executable values and leave the conflict as an explicit coverage gap pending
 new primary-source evidence.
 
 Exposure integrations beyond Poisson/NB2, weights, appropriate survey/multiway/panel methods,
-current-row CDF uncertainty and probability intervals, other formal specification tests,
+current-row probability intervals, other formal specification tests,
 richer counts and other remaining illustration/core/book work remain required.
 
 ### Current-row count probability prediction extension
@@ -640,10 +640,14 @@ the retained Table20.5 Poisson/NB2 ln-mean specifications with explicit
 keeps its tail cutoff1..100. This is a method
 extension of the documented RAND mean model, not a new replicated printed row.
 PMF means P(Y=k|current X, offset); CDF means P(Y<=k|current X, offset).
-Covariance selection does not establish either distributional law or uncertainty.
+Pointwise PMF/CDF SEs use the selected covariance, including NB2's joint
+beta/lnalpha block, with current predictors and fixed offsets/exposure treated
+as known. Covariance selection does not establish either distributional law;
+probability intervals and future-count uncertainty are not provided.
 Preserve bare xb, n, retained fit/sample, current row order, labels and atomic
 prediction failure. Missing/nonfinite/unrepresentable current indices yield NULL;
 exp-underflow zero means use their point-mass-at-zero limit. Current outcomes and
-cluster IDs are not required; fitted offsets are. Independent base-R
-checks cover308 direct probabilities and432 changed-current-row predictions;
-runtime/CLI checks cover offsets, sample/fit reuse, atomic failures and export.
+cluster IDs are not required; fitted offsets are. Independent base-R checks
+cover direct probabilities, changed-current-row predictions and finite-difference
+PMF/CDF standard errors; runtime/CLI checks cover offsets, sample/fit reuse,
+atomic failures and export.

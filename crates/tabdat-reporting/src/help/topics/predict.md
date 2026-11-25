@@ -1,7 +1,7 @@
 # predict
 
 Installed syntax:
-`predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | hazard | cumhaz | survival | pmf(k) | pmf(k) se | cdf(k) | pmf(cutoff_variable) | pmf(cutoff_variable) se | cdf(cutoff_variable)]`
+`predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | hazard | cumhaz | survival | pmf(k) | pmf(k) se | cdf(k) | cdf(k) se | pmf(cutoff_variable) | pmf(cutoff_variable) se | cdf(cutoff_variable) | cdf(cutoff_variable) se]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
 - Explicit-formula NLS: default/xb/mean is the nonlinear formula mean on current
@@ -89,6 +89,8 @@ Count example:
 - `predict log_mean, xb`
 - `predict p0, pmf(0)`
 - `predict p0_se, pmf(0) se`
+- `predict at_most_two, cdf(2)`
+- `predict at_most_two_se, cdf(2) se`
 
 Data and model notes:
 - No refitting or estimation-sample filtering: excluded rows can receive
@@ -130,29 +132,31 @@ Count distributional probabilities:
   cutoff variable. Choose one prediction kind. Missing cutoff values produce NULL;
   noninteger, negative or greater-than100000 values fail before adding the column.
 - `predict p_se, pmf(k) se` writes the pointwise delta-method SE for P(Y=k)
-  instead of the probability. Use a separate `predict p, pmf(k)` for the point
-  value. The `se` option is also supported with a current cutoff variable; it is
-  not supported with `cdf()`. SEs use the covariance selected by the retained fit,
-  including NB2's joint beta/lnalpha covariance. Current predictors and fixed
-  offsets/exposure are treated as known. This is parameter uncertainty for the
-  conditional probability, not future-count variation or a confidence interval.
+  instead of the probability; `predict cdf_se, cdf(k) se` does the same for
+  P(Y<=k). Use separate commands for point values. The `se` option is also
+  supported with a current cutoff variable. SEs use the covariance selected by
+  the retained fit, including NB2's joint beta/lnalpha covariance. Current
+  predictors and fixed offsets/exposure are treated as known. This is parameter
+  uncertainty for the conditional probability, not future-count variation or a
+  confidence interval.
 - For cutoffs above99, a single prediction may add at most10,000,000 cutoff
-  increments across rows with usable model inputs. An SE request counts both
-  log-PMF recurrence and gradient work against this limit. Exceeding it fails
-  before adding the column. `estat countprob` keeps its separate1..100 tail limit.
+  increments across rows with usable model inputs. SE requests count recurrence
+  and gradient work; NB2 CDF SEs can charge up to four cutoff passes. Exceeding
+  the limit fails before adding the column. `estat countprob` keeps its separate1..100 tail limit.
 - These assume the full fitted law, not merely a valid conditional mean or
-  robust covariance. PMF SEs use that selected covariance but do not establish
-  the distributional law; CDF SEs, confidence intervals, calibration guarantees
-  and formal tests are not provided. `estat countprob` remains an ORIGINAL
+  robust covariance. PMF/CDF SEs use that selected covariance but do not
+  establish the distributional law; probability intervals, calibration
+  guarantees and formal tests are not provided. `estat countprob` remains an ORIGINAL
   retained-sample summary; these predictions apply to current rows, including
   rows excluded at fitting.
 - Current outcome/cluster columns are unnecessary; fitted offsets are required.
   Missing/nonfinite or overflowing indices/means produce NULL. Exponential
-  underflow to zero uses a point mass at zero. Probability numerical failure
-  aborts before publication, leaving data/labels/fit unchanged. Empty data works.
+  underflow to zero uses a point mass at zero. Probability or gradient numerical
+  failure aborts before publication, leaving data/labels/fit unchanged. Empty data works.
 - Example: `poisson visits age, offset(log_time)` then `predict p0, pmf(0)`
   and `predict p0_se, pmf(0) se` for its parameter SE. Also try
-  `predict at_most_two, cdf(2)`. For current cutoffs, generate a numeric integer
-  column and use `predict at_most_k, cdf(k)` or `predict p_k_se, pmf(k) se`.
+  `predict at_most_two, cdf(2)` and `predict at_most_two_se, cdf(2) se`.
+  For current cutoffs, generate a numeric integer column and use
+  `predict at_most_k_se, cdf(k) se` or `predict p_k_se, pmf(k) se`.
   Inspect/export the appended DOUBLE columns.
   See examples/count-probability/README.md for a complete Poisson/NB2 workflow.

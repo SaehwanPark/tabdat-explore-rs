@@ -774,7 +774,7 @@ fn predict_discovery_names_model_specific_kinds_and_keeps_family_limits_explicit
   assert_eq!(envelope["data"]["help_topic"], "predict");
   assert_eq!(
     envelope["data"]["syntax"],
-    "predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | pmf(k) | pmf(k) se | cdf(k)]"
+    "predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | pmf(k) | pmf(k) se | cdf(k) | cdf(k) se]"
   );
   assert_eq!(
     envelope["data"]["options"],

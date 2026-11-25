@@ -9,6 +9,10 @@ fn bounded_count_kinds_are_explicit_and_exclusive() {
       PredictKind::CountPmfStandardError(2),
     ),
     ("predict p, cdf(99)", PredictKind::CountCdf(99)),
+    (
+      "predict p_se, cdf(7) se",
+      PredictKind::CountCdfStandardError(7),
+    ),
     ("predict p, pmf(100000)", PredictKind::CountPmf(100000)),
     ("predict p, pmf(k)", PredictKind::CountPmfVariable),
     (
@@ -18,6 +22,10 @@ fn bounded_count_kinds_are_explicit_and_exclusive() {
     (
       "predict p, cdf(`count cutoff`)",
       PredictKind::CountCdfVariable,
+    ),
+    (
+      "predict p_se, cdf(cutoff) se",
+      PredictKind::CountCdfVariableStandardError,
     ),
   ] {
     let Command::Predict { command } = parse_command(text).unwrap() else {
@@ -30,6 +38,7 @@ fn bounded_count_kinds_are_explicit_and_exclusive() {
         PredictKind::CountPmfVariable => Some("k".to_owned()),
         PredictKind::CountPmfVariableStandardError => Some("k".to_owned()),
         PredictKind::CountCdfVariable => Some("count cutoff".to_owned()),
+        PredictKind::CountCdfVariableStandardError => Some("cutoff".to_owned()),
         _ => None,
       }
     );
@@ -48,7 +57,6 @@ fn bounded_count_kinds_are_explicit_and_exclusive() {
     "cdf(0) interval",
     "pmf(0) std",
     "cdf(0) saving(out)",
-    "cdf(2) se",
     "se",
     "pmf(2) se se",
     "pmf(2) se(value)",
