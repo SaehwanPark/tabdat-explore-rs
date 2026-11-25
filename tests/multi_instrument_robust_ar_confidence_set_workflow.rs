@@ -95,6 +95,16 @@ impl Fixture {
       include_str!("../examples/robust-ar/robust_ar_eleven_ci_secondary_data.csv"),
     )
     .unwrap();
+    fs::write(
+      root.join("robust_ar_twelve_ci_multiple_data.csv"),
+      include_str!("../examples/robust-ar/robust_ar_twelve_ci_multiple_data.csv"),
+    )
+    .unwrap();
+    fs::write(
+      root.join("robust_ar_twelve_ci_secondary_data.csv"),
+      include_str!("../examples/robust-ar/robust_ar_twelve_ci_secondary_data.csv"),
+    )
+    .unwrap();
     Self(root)
   }
 
@@ -456,7 +466,7 @@ fn eight_instrument_hc1_and_cr1_workflows_report_reference_sets() {
   assert!(text.status.success());
   let text = String::from_utf8(text.stdout).unwrap();
   assert!(text.contains("asymptotic chi-square(8)"));
-  assert!(text.contains("two through eleven excluded instruments"));
+  assert!(text.contains("two through twelve excluded instruments"));
 }
 
 #[test]
@@ -511,7 +521,7 @@ fn nine_instrument_hc1_and_cr1_workflows_report_reference_sets() {
   assert!(text.status.success());
   let text = String::from_utf8(text.stdout).unwrap();
   assert!(text.contains("asymptotic chi-square(9)"));
-  assert!(text.contains("two through eleven excluded instruments"));
+  assert!(text.contains("two through twelve excluded instruments"));
 }
 
 #[test]
@@ -570,7 +580,7 @@ fn ten_instrument_hc1_and_cr1_workflows_report_reference_sets_and_json_availabil
   assert!(text.status.success());
   let text = String::from_utf8(text.stdout).unwrap();
   assert!(text.contains("asymptotic chi-square(10)"));
-  assert!(text.contains("two through eleven excluded instruments"));
+  assert!(text.contains("two through twelve excluded instruments"));
 
   fs::write(
     fixture.0.join("ten-retained-fit.td"),
@@ -650,22 +660,92 @@ fn eleven_instrument_hc1_and_cr1_workflows_report_reference_sets() {
   assert!(text.status.success());
   let text = String::from_utf8(text.stdout).unwrap();
   assert!(text.contains("asymptotic chi-square(11)"));
-  assert!(text.contains("two through eleven excluded instruments"));
+  assert!(text.contains("two through twelve excluded instruments"));
 }
 
 #[test]
-fn twelve_instrument_rejection_preserves_later_effects() {
+fn twelve_instrument_hc1_and_cr1_workflows_report_reference_sets() {
   let fixture = Fixture::new();
+  for (script_name, covariance, correction, groups, expected) in [
+    (
+      "twelve_instrument_ci.td",
+      "robust_hc1",
+      1.05109489051095,
+      Value::Null,
+      [1.03010254615802, 1.28953391130388],
+    ),
+    (
+      "twelve_instrument_ci_clustered.td",
+      "cluster(group)",
+      1.09298635353856,
+      serde_json::json!(24),
+      [1.14531210503888, 1.21665138888151],
+    ),
+  ] {
+    let script = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+      .join("examples/robust-ar")
+      .join(script_name);
+    let rows = json_lines(&fixture.run("--json", script.to_str().unwrap()));
+    assert_eq!(rows.len(), 3);
+    assert_eq!(
+      rows[1]["data"]["first_stage"]["scalar_ar_confidence_set_available"],
+      true
+    );
+    assert_eq!(
+      rows[2]["result_type"],
+      "RobustMultipleInstrumentAndersonRubinConfidenceSet"
+    );
+    let data = &rows[2]["data"];
+    assert_eq!(data["covariance"], covariance);
+    assert_eq!(
+      data["excluded_instruments"],
+      serde_json::json!([
+        "z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8", "z9", "z10", "z11", "z12"
+      ])
+    );
+    assert_eq!(data["degrees_of_freedom"], 12);
+    assert_eq!(data["observation_count"], 288);
+    assert_eq!(data["auxiliary_parameter_count"], 14);
+    assert_eq!(data["auxiliary_residual_df"], 274);
+    assert_eq!(data["cluster_group_count"], groups);
+    assert_eq!(data["shape"], "bounded");
+    close(&data["covariance_correction"], correction, 2e-14);
+    close(&data["critical_chi_square"], 21.0260698174831, 2e-12);
+    close(&data["intervals"][0]["lower"], expected[0], 3e-8);
+    close(&data["intervals"][0]["upper"], expected[1], 3e-8);
+  }
+
+  let script =
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/robust-ar/twelve_instrument_ci.td");
+  let text = fixture.run("--text", script.to_str().unwrap());
+  assert!(text.status.success());
+  let text = String::from_utf8(text.stdout).unwrap();
+  assert!(text.contains("asymptotic chi-square(12)"));
+  assert!(text.contains("two through twelve excluded instruments"));
+
   fs::write(
-    fixture.0.join("eleven-instruments.td"),
-    "use robust_ar_eleven_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 row) robust\nestat ar, ci\nexport should-not-exist.csv\n",
+    fixture.0.join("twelve-retained-fit.td"),
+    "use robust_ar_twelve_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 z12) robust\nestat ar, ci\nreplace y = 999\ndrop z1\nestat ar, ci\n",
   )
   .unwrap();
-  let output = fixture.run("--json", "eleven-instruments.td");
+  let rows = json_lines(&fixture.run("--json", "twelve-retained-fit.td"));
+  assert_eq!(rows.len(), 6);
+  assert_eq!(rows[2]["data"], rows[5]["data"]);
+}
+
+#[test]
+fn thirteen_instrument_rejection_preserves_later_effects() {
+  let fixture = Fixture::new();
+  fs::write(
+    fixture.0.join("thirteen-instruments.td"),
+    "use robust_ar_twelve_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 z12 row) robust\nestat ar, ci\nexport should-not-exist.csv\n",
+  )
+  .unwrap();
+  let output = fixture.run("--json", "thirteen-instruments.td");
   assert_eq!(output.status.code(), Some(1));
   assert!(
     String::from_utf8_lossy(&output.stderr)
-      .contains("currently support at most eleven excluded instruments")
+      .contains("currently support at most twelve excluded instruments")
   );
   assert!(!fixture.0.join("should-not-exist.csv").exists());
 }

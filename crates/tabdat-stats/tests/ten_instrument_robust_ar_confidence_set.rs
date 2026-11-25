@@ -15,6 +15,12 @@ fn make_problem(fixture: &str, clustered: bool) -> InstrumentalVariablesProblem 
     "eleven-secondary" => {
       include_str!("../../../examples/robust-ar/robust_ar_eleven_ci_secondary_data.csv")
     }
+    "twelve" => {
+      include_str!("../../../examples/robust-ar/robust_ar_twelve_ci_multiple_data.csv")
+    }
+    "twelve-secondary" => {
+      include_str!("../../../examples/robust-ar/robust_ar_twelve_ci_secondary_data.csv")
+    }
     _ => unreachable!(),
   };
   let rows = data
@@ -27,7 +33,9 @@ fn make_problem(fixture: &str, clustered: bool) -> InstrumentalVariablesProblem 
         .collect::<Vec<_>>()
     })
     .collect::<Vec<_>>();
-  let instrument_count = if fixture.starts_with("eleven") {
+  let instrument_count = if fixture.starts_with("twelve") {
+    12
+  } else if fixture.starts_with("eleven") {
     11
   } else {
     10
@@ -373,14 +381,155 @@ fn eleven_instrument_hc1_set_is_invariant_to_instrument_rescaling() {
 }
 
 #[test]
-fn twelve_instrument_design_is_rejected_by_stats_api() {
-  let mut problem = make_problem("multiple", false);
-  problem
-    .instrument_names
-    .extend(["row".into(), "row_squared".into()]);
+fn twelve_instrument_hc1_and_cr1_sets_match_independent_reference() {
+  let reference = include_str!("fixtures/robust_ar_twelve_ci_reference.csv");
+  for (fixture, reference_fixture, covariance_name, covariance) in [
+    ("twelve", "multiple", "hc1", CovarianceType::RobustHc1),
+    (
+      "twelve",
+      "multiple",
+      "cluster",
+      CovarianceType::Cluster("group".into()),
+    ),
+    (
+      "twelve-secondary",
+      "secondary",
+      "hc1",
+      CovarianceType::RobustHc1,
+    ),
+    (
+      "twelve-secondary",
+      "secondary",
+      "cluster",
+      CovarianceType::Cluster("group".into()),
+    ),
+  ] {
+    let problem = make_problem(fixture, covariance_name == "cluster");
+    let before = problem.clone();
+    let set = robust_multiple_instrument_anderson_rubin_confidence_set(&problem, 95.0, &covariance)
+      .unwrap_or_else(|error| panic!("{fixture}/{covariance_name}: {error}"));
+    assert_eq!(problem, before);
+    assert_eq!(set.endogenous, "x");
+    assert_eq!(
+      set.excluded_instruments,
+      (1..=12)
+        .map(|index| format!("z{index}"))
+        .collect::<Vec<_>>()
+    );
+    assert_eq!(set.observation_count, 288);
+    assert_eq!(set.auxiliary_parameter_count, 14);
+    assert_eq!(set.auxiliary_residual_df, 274);
+    assert_eq!(set.degrees_of_freedom, 12);
+    assert_eq!(set.covariance_type, covariance);
+    assert_eq!(
+      set.cluster_group_count,
+      (covariance_name == "cluster").then_some(24)
+    );
+
+    let expected_rows = reference
+      .lines()
+      .skip(1)
+      .filter_map(|line| {
+        let fields = line.split(',').collect::<Vec<_>>();
+        (fields[0] == reference_fixture && fields[1] == covariance_name).then_some(fields)
+      })
+      .collect::<Vec<_>>();
+    assert!(!expected_rows.is_empty());
+    assert!(expected_rows.iter().all(|fields| fields[12] == "24"));
+    assert!(expected_rows.iter().all(|fields| {
+      let root_count = fields[11].parse::<usize>().unwrap();
+      root_count <= 24 && root_count % 2 == 0
+    }));
+    let shape = match expected_rows[0][2] {
+      "multiple" => ArConfidenceSetShape::Multiple,
+      "disjoint" => ArConfidenceSetShape::Disjoint,
+      "all_real" => ArConfidenceSetShape::AllReal,
+      "bounded" => ArConfidenceSetShape::Bounded,
+      "empty" => ArConfidenceSetShape::Empty,
+      _ => unreachable!(),
+    };
+    assert_eq!(set.shape, shape);
+    let expected_intervals = expected_rows
+      .iter()
+      .filter(|fields| fields[13] == "interval")
+      .collect::<Vec<_>>();
+    assert_eq!(set.intervals.len(), expected_intervals.len());
+    for (actual, expected) in set.intervals.iter().zip(expected_intervals) {
+      match (actual.lower, reference_bound(expected[15])) {
+        (None, None) => {}
+        (Some(actual), Some(expected)) => close(actual, expected, 3e-8),
+        mismatch => panic!("lower endpoint mismatch: {mismatch:?}"),
+      }
+      match (actual.upper, reference_bound(expected[16])) {
+        (None, None) => {}
+        (Some(actual), Some(expected)) => close(actual, expected, 3e-8),
+        mismatch => panic!("upper endpoint mismatch: {mismatch:?}"),
+      }
+    }
+    close(
+      set.critical_chi_square,
+      expected_rows[0][10].parse().unwrap(),
+      2e-12,
+    );
+    close(
+      set.covariance_correction,
+      expected_rows[0][7].parse().unwrap(),
+      2e-14,
+    );
+    for expected in expected_rows.iter().filter(|fields| fields[13] == "probe") {
+      let beta = expected[17].parse::<f64>().unwrap();
+      let statistic = expected[18].parse::<f64>().unwrap();
+      let tested = robust_anderson_rubin_test(&problem, &[beta], &covariance).unwrap();
+      close(tested.statistic, statistic, 3e-8);
+      assert_eq!(
+        contains(&set, beta),
+        tested.statistic <= set.critical_chi_square
+      );
+    }
+  }
+}
+
+#[test]
+fn twelve_instrument_hc1_set_is_invariant_to_instrument_rescaling() {
+  let mut problem = make_problem("twelve", false);
+  let baseline = robust_multiple_instrument_anderson_rubin_confidence_set(
+    &problem,
+    95.0,
+    &CovarianceType::RobustHc1,
+  )
+  .unwrap();
+  for row in &mut problem.instruments {
+    for (value, scale) in row.iter_mut().zip([
+      -10.0, 0.25, 100.0, -0.5, 3.0, -2.0, 4.0, -1.5, 0.7, -0.8, 2.5, -0.25,
+    ]) {
+      *value *= scale;
+    }
+  }
+  let scaled = robust_multiple_instrument_anderson_rubin_confidence_set(
+    &problem,
+    95.0,
+    &CovarianceType::RobustHc1,
+  )
+  .unwrap();
+  assert_eq!(baseline.shape, scaled.shape);
+  assert_eq!(baseline.intervals.len(), scaled.intervals.len());
+  for (left, right) in baseline.intervals.iter().zip(&scaled.intervals) {
+    for (left, right) in [(left.lower, right.lower), (left.upper, right.upper)] {
+      match (left, right) {
+        (Some(left), Some(right)) => close(left, right, 3e-7),
+        (None, None) => {}
+        mismatch => panic!("endpoint mismatch after scaling: {mismatch:?}"),
+      }
+    }
+  }
+}
+
+#[test]
+fn thirteen_instrument_design_is_rejected_by_stats_api() {
+  let mut problem = make_problem("twelve", false);
+  problem.instrument_names.push("row".into());
   for (index, row) in problem.instruments.iter_mut().enumerate() {
     row.push((index + 1) as f64);
-    row.push(((index + 1) * (index + 1)) as f64);
   }
   let error = robust_multiple_instrument_anderson_rubin_confidence_set(
     &problem,
@@ -391,6 +540,6 @@ fn twelve_instrument_design_is_rejected_by_stats_api() {
   assert!(
     error
       .to_string()
-      .contains("two to eleven excluded instruments")
+      .contains("two to twelve excluded instruments")
   );
 }
