@@ -1262,6 +1262,38 @@ Base R 4.6.2 independently checks both links at cutoffs 0.5 and 0.35; runtime
 checks cover current-data edits, boundary cutoffs, zero denominators and no-fit
 failure. See the [fixture and reference](../../examples/binary-classification/README.md).
 
+## Current-row binary probability uncertainty
+
+After a retained logit or probit fit, `predict target, pr se` appends a DOUBLE
+column containing the pointwise delta-method standard error of the current-row
+fitted probability. `predict target, pr interval [level(95)]` appends the point
+probability and `<target>_lower`/`<target>_upper` DOUBLE columns. `level()` is
+expressed as a percentage and must be finite and strictly between 0 and 100.
+Intervals use an asymptotic-normal critical value on the latent-index scale;
+the endpoints are transformed through the retained logit or probit link and
+stay within [0,1]. They can be asymmetric. `se` and `interval` cannot be
+combined; use separate requests for uncertainty and interval output.
+
+Both operations use the full coefficient covariance selected by the fit:
+model-based, independent-row robust, or one-way clustered with the estimator's
+existing finite-sample covariance correction. The design vector includes the
+retained intercept and expanded factor columns in coefficient order. Current
+predictors are treated as fixed. This is parameter uncertainty conditional on
+current X, not variation in future Bernoulli outcomes, uncertainty in X,
+simultaneous bands or a few-cluster guarantee. Zero transformed variance gives
+zero SE and point bounds.
+
+Predictions score current rows rather than only the estimation sample, so a row
+excluded for missing y can still be scored. Missing/nonfinite predictors and
+factor levels not observed during fitting produce NULL in every requested
+column. Target or bound collisions, invalid covariance calculations and
+publication failures leave active data and retained fit unchanged. The
+synthetic 240-row mixed-factor fixture is independently checked with Base R
+4.6.2 for both links, model-based/robust/cluster covariance, all current rows,
+and 90%/95% levels; values match within 2e-8 absolute tolerance. This validates
+the method contract, not an additional Cameron–Trivedi illustration. See the
+[workflow and reference](../../examples/binary-probability-inference/README.md).
+
 ## Summaries and percentiles
 
 A summary uses `schema_version: 1`,

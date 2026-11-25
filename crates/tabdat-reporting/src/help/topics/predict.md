@@ -1,7 +1,7 @@
 # predict
 
 Installed syntax:
-`predict newvar [, xb | xbu | u | residuals | pearson | deviance | pr | mean | mills | ycond | yexpected | n | n interval | hazard | cumhaz | survival | pmf(k) | pmf(k) se | pmf(k) interval | cdf(k) | cdf(k) se | cdf(k) interval | pmf(cutoff_variable) | pmf(cutoff_variable) se | pmf(cutoff_variable) interval | cdf(cutoff_variable) | cdf(cutoff_variable) se | cdf(cutoff_variable) interval]`
+`predict newvar [, xb | xbu | u | residuals | pearson | deviance | pr | pr se | pr interval | mean | mills | ycond | yexpected | n | n interval | hazard | cumhaz | survival | pmf(k) | pmf(k) se | pmf(k) interval | cdf(k) | cdf(k) se | cdf(k) interval | pmf(cutoff_variable) | pmf(cutoff_variable) se | pmf(cutoff_variable) interval | cdf(cutoff_variable) | cdf(cutoff_variable) se | cdf(cutoff_variable) interval]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
 - Explicit-formula NLS: default/xb/mean is the nonlinear formula mean on current
@@ -30,8 +30,13 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
 - Logit: pr (probability) or xb (log odds). Additive `i.var` and
   `ib(level).var` main effects use the retained typed levels when scoring
   current rows; missing factor values or levels absent at fit time yield NULL.
+  `pr se` writes the pointwise delta-method SE for the current-row probability.
+  `pr interval [level(95)]` appends the point estimate and
+  `<newvar>_lower`/`<newvar>_upper` columns from a normal interval on the
+  retained latent-index scale transformed through the logit link.
 - Probit: pr (Gaussian probability) or xb (latent index), with the same
-  retained factor-level prediction rules as logit.
+  retained factor-level prediction rules and `pr se`/`pr interval` uncertainty
+  options as logit; interval endpoints use the probit inverse link.
 - Lower-censored Gaussian Tobit: xb (latent mean), pr (uncensoring probability),
   mean (observed censored mean E[max(lower,Y*)|X]). Not a truncated mean or count n.
   Missing/nonfinite current predictors give NULL; numerical failure aborts before
@@ -142,10 +147,22 @@ Data and model notes:
 - Terminal/--text confirms dataset dimensions. CLI-v1 `PredictionResult` contains
   dataset metadata, not vectors; inspect with head/tail or save/export values.
 
+Binary `se` and `interval` require explicit `pr`; they cannot be combined.
+The retained model-based, independent-row robust or one-way clustered
+covariance is used as selected at fit time. Predictors are treated as fixed;
+these are parameter-uncertainty measures, not future-outcome prediction
+intervals, simultaneous bands or covariate-distribution uncertainty. Bounds
+remain in [0,1] and can be asymmetric. A zero delta variance returns zero SE
+and point bounds. Missing/nonfinite predictors and unseen factor levels produce
+NULL in each requested output. Target/bound collisions or numerical/publication
+failures leave data and fit unchanged. Current rows excluded during fitting can
+still be scored when their predictors are available.
+
 Not installed for the other families: binary residuals, spatial_lag,
-posterior_predictive, general std/interval/level()/saving()
-prediction, or count cutoffs beyond the bounded integer 0..100000. Count
-PMF/CDF and `n` intervals are the bounded exceptions described below.
+posterior_predictive, general std/interval/level()/saving() prediction, or
+count cutoffs beyond the bounded integer 0..100000. `se` is limited to binary
+`pr` and count PMF/CDF. Count PMF/CDF and `n` intervals are the bounded
+exceptions described below.
 `probabilities` is not an accepted option spelling. Discovery/parser breadth does not
 imply an installed workflow for other families.
 
@@ -225,3 +242,8 @@ Count distributional probabilities:
   `predict p_k_interval, pmf(k) interval`.
   Inspect/export the appended DOUBLE columns.
   See examples/count-probability/README.md for a complete Poisson/NB2 workflow.
+- After either `logit` or `probit`, use `predict p_se, pr se` or
+  `predict p_interval, pr interval level(90)`. The interval command appends
+  point/lower/upper DOUBLE columns; inspect them with `head` or `export`.
+  These are current-row conditional-on-X parameter intervals using the fit's
+  selected covariance.

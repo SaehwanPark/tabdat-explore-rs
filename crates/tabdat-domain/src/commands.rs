@@ -1086,6 +1086,8 @@ pub enum PredictKind {
   FixedEffect,
   /// Family-defined probabilities: binary/choice, Tobit uncensoring or selection.
   Pr,
+  /// Delta-method standard error of a current-row logit/probit probability.
+  PrStandardError,
   /// Family-defined response mean (`mean`): censored/truncated Gaussian means
   /// or the explicit NLS fitted mean. Retains its legacy wire tag.
   TobitMean,

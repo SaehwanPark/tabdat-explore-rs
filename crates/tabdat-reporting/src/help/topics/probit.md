@@ -53,6 +53,8 @@ categorical columns):
 - `estat classification` — retained-sample class counts and descriptive
   percentages at the default probability cutoff of 0.5
 - `predict probability, pr`
+- `predict probability_se, pr se`
+- `predict probability_interval, pr interval`
 - `predict index_b, xb`
 - `head 8`
 - `export predictions.csv`
@@ -96,8 +98,11 @@ Convergence and supported limits:
   exact 0/1 values and both levels, including in mixed designs; expanded factor
   dummy columns are not selectable. See `help estat` for effect estimands and
   inference.
-- Only one-way clustering is supported. Weighted/survey probit and prediction
-  intervals are not installed. `lincom` combines retained latent-index
+- Only one-way clustering is supported. Weighted/survey probit is not installed.
+  Current-row `pr se` and `pr interval [level(95)]` use the selected retained
+  covariance, conditional on current predictors; intervals transform normal
+  latent-index bounds through the probit link. They are not outcome prediction
+  intervals or few-cluster guarantees. `lincom` combines retained latent-index
   coefficients with the selected covariance and asymptotic normal inference;
   probability effects remain under `estat margins`. `test` supports general
   linear restrictions on retained probit coefficients with an asymptotic Wald

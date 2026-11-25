@@ -4,7 +4,7 @@
 
 use crate::distributions::{chi_square_tail, normal_cdf, normal_pdf, normal_quantile};
 use crate::matrix::{
-  invert, qr_decompose_with_response, solve_upper_triangular, xtx_inverse_from_r,
+  add_compensated, invert, qr_decompose_with_response, solve_upper_triangular, xtx_inverse_from_r,
 };
 use crate::{EstimationProblem, EstimationSample, StatsError};
 use serde::{Deserialize, Serialize};
@@ -276,6 +276,181 @@ pub struct BinaryMleResult {
   /// Stable p*(1-p), even when a probability rounds to exactly one.
   pub fitted_weights: Vec<f64>,
   pub sample: Option<EstimationSample>,
+}
+
+/// Current-row fitted probability and its pointwise parameter uncertainty.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryProbabilityPrediction {
+  pub estimate: f64,
+  pub standard_error: f64,
+  /// Present only when a confidence level was requested.
+  pub lower: Option<f64>,
+  /// Present only when a confidence level was requested.
+  pub upper: Option<f64>,
+}
+
+/// Compute current-row probability uncertainty conditional on the supplied
+/// design row. The retained covariance already reflects the fit's
+/// model-based, row-robust or one-way clustered choice. Intervals are formed
+/// on the latent-index scale and transformed through the fitted link.
+pub fn binary_probability_prediction(
+  result: &BinaryMleResult,
+  design: &[f64],
+  interval_level: Option<f64>,
+) -> Result<BinaryProbabilityPrediction, StatsError> {
+  let parameter_count = result.coefficients.len();
+  if design.len() != parameter_count
+    || result.covariance.len() != parameter_count
+    || result
+      .covariance
+      .iter()
+      .any(|row| row.len() != parameter_count)
+  {
+    return Err(StatsError::DimensionMismatch(
+      "binary prediction design and covariance dimensions must match coefficients".into(),
+    ));
+  }
+  if parameter_count == 0 {
+    return Err(StatsError::DimensionMismatch(
+      "binary prediction requires at least one fitted coefficient".into(),
+    ));
+  }
+  if design.iter().any(|value| !value.is_finite())
+    || result
+      .coefficients
+      .iter()
+      .any(|coefficient| !coefficient.value.is_finite())
+    || result
+      .covariance
+      .iter()
+      .flatten()
+      .any(|value| !value.is_finite())
+  {
+    return Err(StatsError::NonFiniteValue(
+      "binary prediction design, coefficients and covariance must be finite".into(),
+    ));
+  }
+  if let Some(level) = interval_level
+    && (!level.is_finite() || !(0.0..100.0).contains(&level))
+  {
+    return Err(StatsError::InvalidEstimation(
+      "prediction interval level must be finite and strictly between 0 and 100".into(),
+    ));
+  }
+
+  let mut eta = 0.0;
+  let mut eta_correction = 0.0;
+  for (coefficient, value) in result.coefficients.iter().zip(design) {
+    let term = coefficient.value * value;
+    if !term.is_finite() {
+      return Err(StatsError::EstimationFailed(
+        "binary prediction index is not finite".into(),
+      ));
+    }
+    add_compensated(&mut eta, &mut eta_correction, term);
+  }
+  if !eta.is_finite() {
+    return Err(StatsError::EstimationFailed(
+      "binary prediction index is not finite".into(),
+    ));
+  }
+
+  let design_scale = design
+    .iter()
+    .fold(0.0_f64, |maximum, value| maximum.max(value.abs()));
+  let covariance_scale = result
+    .covariance
+    .iter()
+    .flatten()
+    .fold(0.0_f64, |maximum, value| maximum.max(value.abs()));
+  let standard_error_eta = if design_scale == 0.0 || covariance_scale == 0.0 {
+    0.0
+  } else {
+    let scaled_design = design
+      .iter()
+      .map(|value| value / design_scale)
+      .collect::<Vec<_>>();
+    let mut variance = 0.0;
+    let mut variance_correction = 0.0;
+    let mut magnitude = 0.0;
+    let mut magnitude_correction = 0.0;
+    for row in 0..parameter_count {
+      for column in 0..parameter_count {
+        let term = scaled_design[row]
+          * (result.covariance[row][column] / covariance_scale)
+          * scaled_design[column];
+        add_compensated(&mut variance, &mut variance_correction, term);
+        add_compensated(&mut magnitude, &mut magnitude_correction, term.abs());
+      }
+    }
+    if variance < 0.0 {
+      let roundoff_bound = 64.0 * f64::EPSILON * magnitude;
+      if variance >= -roundoff_bound {
+        variance = 0.0;
+      } else {
+        return Err(StatsError::EstimationFailed(
+          "binary prediction variance is negative".into(),
+        ));
+      }
+    }
+    if variance == 0.0 {
+      0.0
+    } else {
+      let log_standard_error =
+        design_scale.ln() + 0.5 * covariance_scale.ln() + 0.5 * variance.ln();
+      let standard_error = log_standard_error.exp();
+      if !standard_error.is_finite() {
+        return Err(StatsError::EstimationFailed(
+          "binary prediction standard error is not finite".into(),
+        ));
+      }
+      standard_error
+    }
+  };
+  let (estimate, derivative) = binary_link_and_derivative(result.model, eta);
+  let standard_error = derivative * standard_error_eta;
+  if !estimate.is_finite() || !(0.0..=1.0).contains(&estimate) || !standard_error.is_finite() {
+    return Err(StatsError::EstimationFailed(
+      "binary probability prediction is not finite".into(),
+    ));
+  }
+  let (lower, upper) = if let Some(level) = interval_level {
+    let critical = normal_quantile(0.5 + level / 200.0);
+    if !critical.is_finite() || critical <= 0.0 {
+      return Err(StatsError::InvalidEstimation(
+        "prediction interval level has no representable normal critical value".into(),
+      ));
+    }
+    let half_width = critical * standard_error_eta;
+    if !half_width.is_finite() {
+      return Err(StatsError::EstimationFailed(
+        "binary prediction interval width is not finite".into(),
+      ));
+    }
+    let lower = binary_link_and_derivative(result.model, eta - half_width).0;
+    let upper = binary_link_and_derivative(result.model, eta + half_width).0;
+    if !lower.is_finite()
+      || !upper.is_finite()
+      || lower < 0.0
+      || lower > estimate
+      || estimate > upper
+      || upper > 1.0
+    {
+      return Err(StatsError::EstimationFailed(
+        "binary probability interval endpoints are invalid".into(),
+      ));
+    }
+    (Some(lower), Some(upper))
+  } else {
+    (None, None)
+  };
+
+  Ok(BinaryProbabilityPrediction {
+    estimate,
+    standard_error,
+    lower,
+    upper,
+  })
 }
 
 /// Test arbitrary linear restrictions on a retained logit or probit fit.

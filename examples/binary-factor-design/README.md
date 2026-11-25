@@ -149,10 +149,22 @@ same retained sample after edits; zero-denominator and boundary-cutoff behavior
 is covered without extending the textbook illustration claim. See the
 [classification contract](../binary-classification/README.md).
 
+Current-row probability uncertainty is checked separately for mixed-factor
+and continuous-only designs, both links, and model-based, row-robust and
+one-way cluster covariance. The Base R reference records probability SEs and
+90%/95% latent-index intervals transformed through the logit/probit link for
+all 240 current rows in both designs. Missing x yields NULL; a missing region
+does so only when the fitted model includes the factor. The missing-outcome row
+still receives estimates. Runtime checks also cover edited current predictors,
+unseen factor levels, atomic interval-column collisions and retained-fit
+preservation. See the
+[probability uncertainty contract](../binary-probability-inference/README.md).
+
 Run the executable workflows from this directory with
 `tabdat-explore-rs --json -f logit.td` or `tabdat-explore-rs --json -f probit.td`;
 use `--text` for terminal reports. The scripts include grouped GOF and
 classification, continuous and factor probability effects, affine linear-index
-combinations, current-row `xb`/`pr` predictions and named estimate reports.
+combinations, current-row `xb`/`pr`/`pr se`/`pr interval` predictions and named
+estimate reports.
 These synthetic method
 contracts do not claim a Cameron–Trivedi illustration replication.

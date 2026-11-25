@@ -431,8 +431,10 @@ impl Session {
     command: &PredictCommand,
     model: BinaryModel,
   ) -> Result<ExecutionResult, RuntimeError> {
-    if !matches!(command.kind, PredictKind::Pr | PredictKind::Xb)
-      || command.interval
+    if !matches!(
+      command.kind,
+      PredictKind::Pr | PredictKind::PrStandardError | PredictKind::Xb
+    ) || (command.interval && command.kind != PredictKind::Pr)
       || command.std
       || command.saving.is_some()
     {
@@ -449,6 +451,25 @@ impl Session {
     }) else {
       return Err(RuntimeError::PredictRequiresPriorRegression);
     };
+    if command.kind == PredictKind::PrStandardError || command.interval {
+      let result = state.result.clone();
+      let design_terms = if state.design_terms.is_empty() {
+        result
+          .predictor_names
+          .iter()
+          .map(|name| LinearDesignTerm::Continuous { name: name.clone() })
+          .collect()
+      } else {
+        state.design_terms.clone()
+      };
+      return self.execute_binary_probability_uncertainty(
+        command,
+        model,
+        result,
+        design_terms,
+        state.problem.include_intercept,
+      );
+    }
     if !state.design_terms.is_empty() {
       let design_terms = state.design_terms.clone();
       let include_intercept = state.problem.include_intercept;
@@ -530,6 +551,171 @@ impl Session {
       }
       .map_err(|_| RuntimeError::PredictFailed)?
     };
+    let next = self.sync_active_dataset(added)?;
+    Ok(ExecutionResult::Prediction(PredictionResult {
+      dataset: next,
+    }))
+  }
+
+  fn execute_binary_probability_uncertainty(
+    &mut self,
+    command: &PredictCommand,
+    model: BinaryModel,
+    result: tabdat_stats::BinaryMleResult,
+    design_terms: Vec<LinearDesignTerm>,
+    include_intercept: bool,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let error = binary_error(model);
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "predict" })?
+      .clone();
+    let expected_coefficients = usize::from(include_intercept)
+      + design_terms
+        .iter()
+        .map(|term| match term {
+          LinearDesignTerm::Continuous { .. } => 1,
+          LinearDesignTerm::Factor {
+            reference, levels, ..
+          } => {
+            if include_intercept && reference.is_some() {
+              levels.len().saturating_sub(1)
+            } else {
+              levels.len()
+            }
+          }
+        })
+        .sum::<usize>();
+    if result.coefficients.len() != expected_coefficients {
+      return Err(RuntimeError::PredictFailed);
+    }
+    let required = design_terms
+      .iter()
+      .map(|term| match term {
+        LinearDesignTerm::Continuous { name } => name.clone(),
+        LinearDesignTerm::Factor { variable, .. } => variable.clone(),
+      })
+      .collect::<Vec<_>>();
+    let missing = required
+      .iter()
+      .filter(|name| {
+        !dataset
+          .columns
+          .iter()
+          .any(|column| column.name == name.as_str())
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !missing.is_empty() {
+      return Err(RuntimeError::PredictUnknownVariable { variables: missing });
+    }
+    for term in &design_terms {
+      let (name, factor) = match term {
+        LinearDesignTerm::Continuous { name } => (name, false),
+        LinearDesignTerm::Factor { variable, .. } => (variable, true),
+      };
+      let data_type = &dataset
+        .columns
+        .iter()
+        .find(|column| column.name == *name)
+        .ok_or(RuntimeError::PredictFailed)?
+        .data_type;
+      let supported = if factor {
+        is_numeric_data_type(data_type) || matches!(data_type.as_str(), "VARCHAR" | "BOOLEAN")
+      } else {
+        is_numeric_data_type(data_type)
+      };
+      if !supported {
+        return Err(error(format!(
+          "current data has an unsupported type for '{name}'"
+        )));
+      }
+    }
+
+    let selected = if required.is_empty() {
+      "1".to_owned()
+    } else {
+      required
+        .iter()
+        .map(|name| quote_identifier(name))
+        .collect::<Vec<_>>()
+        .join(", ")
+    };
+    let query = format!("SELECT {selected} FROM {ACTIVE_TABLE}");
+    let interval_level = if command.interval {
+      Some(
+        command
+          .level
+          .parse::<f64>()
+          .map_err(|_| error("prediction interval level is invalid".into()))?,
+      )
+    } else {
+      None
+    };
+    let mut values = Vec::with_capacity(usize::try_from(dataset.row_count).unwrap_or(0));
+    self
+      .backend
+      .as_ref()
+      .ok_or(RuntimeError::PredictFailed)?
+      .visit_rows(
+        &query,
+        |row| {
+          let cells = (0..design_terms.len())
+            .map(|index| read_owned_cell(row, index, true, "could not read predictor cell"))
+            .collect::<Result<Vec<_>, _>>()?;
+          let expanded =
+            crate::regress_design::expand_current_row(&design_terms, include_intercept, &cells)
+              .map_err(|failure| error(failure.to_string()))?;
+          let prediction = match expanded {
+            None => (None, None, None),
+            Some(mut design) => {
+              if include_intercept {
+                design.insert(0, 1.0);
+              }
+              let prediction =
+                tabdat_stats::binary_probability_prediction(&result, &design, interval_level)
+                  .map_err(|failure| error(failure.to_string()))?;
+              if command.interval {
+                (
+                  Some(prediction.estimate),
+                  prediction.lower,
+                  prediction.upper,
+                )
+              } else {
+                (Some(prediction.standard_error), None, None)
+              }
+            }
+          };
+          values.push(prediction);
+          Ok(())
+        },
+        error,
+      )?;
+    if u64::try_from(values.len()).ok() != Some(dataset.row_count) {
+      return Err(RuntimeError::PredictFailed);
+    }
+    let backend = self.backend.as_mut().ok_or(RuntimeError::PredictFailed)?;
+    let added = if command.interval {
+      let lower_target = format!("{}_lower", command.target_variable);
+      let upper_target = format!("{}_upper", command.target_variable);
+      let estimates = values.iter().map(|row| row.0).collect::<Vec<_>>();
+      let lower = values.iter().map(|row| row.1).collect::<Vec<_>>();
+      let upper = values.iter().map(|row| row.2).collect::<Vec<_>>();
+      backend.add_numeric_prediction_interval_columns(
+        &dataset,
+        [
+          command.target_variable.as_str(),
+          lower_target.as_str(),
+          upper_target.as_str(),
+        ],
+        [&estimates, &lower, &upper],
+      )
+    } else {
+      let standard_errors = values.iter().map(|row| row.0).collect::<Vec<_>>();
+      backend.add_numeric_prediction_column(&dataset, &command.target_variable, &standard_errors)
+    }
+    .map_err(|_| RuntimeError::PredictFailed)?;
     let next = self.sync_active_dataset(added)?;
     Ok(ExecutionResult::Prediction(PredictionResult {
       dataset: next,
