@@ -151,13 +151,16 @@ finite-difference and runtime evidence is recorded in the count workflow and
 coverage ledger.
 
 1. Extend current-row Poisson/NB2 `cdf(k)` predictions with a pointwise
-   delta-method SE, including the cutoff-variable form. Use the covariance
-   selected by the retained fit, including joint beta/lnalpha covariance for
-   NB2; treat current predictors and fixed offsets/exposure as known. Keep
-   existing point predictions unchanged. Do not imply confidence intervals or
-   future-count uncertainty. Validate analytic gradients against independent
-   finite differences across lower/upper tails, covariance modes, missing rows
-   and atomic failure behavior.
+   delta-method SE, including the cutoff-variable form. Use the closed-form
+   eta derivative through the cutoff PMF for both laws; compute NB2's lnalpha
+   derivative as the PMF-weighted score sum through the cutoff, with a
+   recurrence and signed log-scaled compensated accumulation. Use the
+   covariance selected by the retained fit, including joint beta/lnalpha
+   covariance for NB2; treat current predictors and fixed offsets/exposure as
+   known. Keep existing point predictions unchanged. Do not imply confidence
+   intervals or future-count uncertainty. Validate against independent base-R
+   finite differences across lower/upper tails and covariance modes, plus
+   missing rows, fixed offsets/exposure and atomic failure behavior.
 
 Do not turn the entire textbook inventory into a prerequisite for one bounded
 analysis. Preserve the assumptions and unresolved source differences in the ledger.
