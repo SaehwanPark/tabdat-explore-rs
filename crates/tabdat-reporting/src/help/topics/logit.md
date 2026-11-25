@@ -43,7 +43,9 @@ categorical columns):
 - `logit insured age i.region`
 - `logit insured age ib(West).region`
 - `estat margins` — continuous average predictor-column derivatives and delta SE/95% intervals
-- `estat margins, discrete(treated)` — average probability change for a numeric 0/1 predictor
+- `estat margins, discrete(treated)` — average probability change for an
+  original continuous numeric 0/1 predictor, including in additive factor
+  designs
 - `estat margins, factor(region)` — average probability contrasts of retained
   levels versus the fit-time reference
 - `predict probability, pr`
@@ -84,9 +86,10 @@ Convergence and supported limits:
   reports only original continuous predictor effects, including after these
   factor designs; factor coefficients enter the full delta gradient. `factor(var)`
   reports retained-level probability contrasts. Interactions remain unsupported.
-  The bounded `discrete(var)` form accepts one numeric predictor with exact 0/1
-  values and both levels in a continuous-only design; see `help estat` for the
-  effect estimands and inference.
+  The bounded `discrete(var)` form accepts one original continuous term with
+  exact 0/1 values and both levels, including in mixed designs; expanded factor
+  dummy columns are not selectable. See `help estat` for effect estimands and
+  inference.
 - Only one-way clustering is supported. Weighted/survey logit, prediction
   intervals and `lincom` are not installed. `test` supports general linear
   restrictions on retained logit coefficients with an asymptotic Wald

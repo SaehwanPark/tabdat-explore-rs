@@ -1,7 +1,10 @@
 use binary_factor_data.csv
-logit y x i.region
+generate treated = 0
+replace treated = 1 if x > 0
+logit y treated x i.region
 estat gof, group(10)
 estat margins
+estat margins, discrete(treated)
 estat margins, factor(region)
 predict index, xb
 predict probability, pr

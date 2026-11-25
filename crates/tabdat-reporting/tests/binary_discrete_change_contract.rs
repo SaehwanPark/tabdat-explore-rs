@@ -4,7 +4,7 @@ use tabdat_language::parse_command;
 use tabdat_reporting::{
   catalog::describe_command_result,
   json_results::{serialize_execution_result, supports_batch_command, supports_script_command},
-  terminal::render_execution_result,
+  terminal::{render_execution_result, render_interactive_help},
 };
 use tabdat_stats::{BinaryCluster, BinaryDiscreteChange, BinaryModel, LogitEstimate};
 
@@ -130,4 +130,21 @@ fn factor_margins_is_admitted_for_json_and_scripts_without_changing_bare_margins
   let schema = describe_command_result("estat").unwrap();
   assert!(schema.syntax.contains("estat margins, factor(variable)"));
   assert!(schema.options.iter().any(|option| option.name == "factor"));
+}
+
+#[test]
+fn binary_discrete_help_describes_original_terms_in_mixed_factor_designs() {
+  let estat = render_interactive_help(Some("estat")).unwrap();
+  assert!(estat.contains("original continuous term"));
+  assert!(estat.contains("additive factor terms"));
+  assert!(estat.contains("factor dummy columns are not selectable"));
+
+  for topic in ["logit", "probit"] {
+    let help = render_interactive_help(Some(topic)).unwrap();
+    assert!(help.contains("including in mixed designs"), "{topic} help");
+    assert!(
+      help.contains("dummy columns are not selectable"),
+      "{topic} help"
+    );
+  }
 }

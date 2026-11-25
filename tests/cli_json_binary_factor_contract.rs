@@ -128,3 +128,37 @@ fn probit_script_reports_continuous_margins_for_a_factor_design() {
   assert_eq!(margins["data"]["effects"].as_array().unwrap().len(), 1);
   assert_eq!(margins["data"]["effects"][0]["name"], "x");
 }
+
+#[test]
+fn discrete_changes_run_for_a_mixed_factor_design_in_cli_json_and_text() {
+  let fixture = Fixture::new();
+  fs::write(
+    fixture.0.path().join("analysis.td"),
+    "use binary_factor_data.csv\ngenerate treated = 0\nreplace treated = 1 if x > 0\nlogit y treated x i.region\nestat margins, discrete(treated)\n",
+  )
+  .unwrap();
+
+  let rows = envelopes(&fixture.run("--json"));
+  let change = rows
+    .iter()
+    .find(|row| row["result_type"] == "BinaryDiscreteChangeResult")
+    .expect("discrete change after an additive factor fit");
+  assert_eq!(change["error"], Value::Null);
+  assert_eq!(change["data"]["predictor"], "treated");
+  assert_eq!(change["data"]["from_value"], 0);
+  assert_eq!(change["data"]["to_value"], 1);
+  assert_eq!(change["data"]["observation_count"], 237);
+  assert_eq!(
+    change["data"]["effect"],
+    "average_discrete_probability_change"
+  );
+  assert!(change["data"]["effect_estimate"]["standard_error"].is_number());
+
+  let text = fixture.run("--text");
+  assert!(text.status.success(), "{text:?}");
+  assert!(text.stderr.is_empty(), "{text:?}");
+  let text = String::from_utf8_lossy(&text.stdout);
+  assert!(text.contains("Logit discrete average probability change"));
+  assert!(text.contains("Predictor treated set from 0 to 1"));
+  assert!(text.contains("other predictors stay at their observed retained-row values"));
+}

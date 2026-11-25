@@ -364,9 +364,18 @@ impl Session {
         message: "requires a prior logit or probit fit".into(),
       });
     };
-    if crate::regress_design::has_factor_terms(design_terms) {
+    let continuous_columns = binary_continuous_predictor_columns(problem, design_terms)
+      .map_err(|message| RuntimeError::EstatMarginsFailed { message })?;
+    if let Some(column) = problem
+      .predictor_names
+      .iter()
+      .position(|name| name == predictor)
+      && !continuous_columns.contains(&column)
+    {
       return Err(RuntimeError::EstatMarginsFailed {
-        message: "margins after binary fits with factor predictors is not supported".into(),
+        message: format!(
+          "discrete margins require an original continuous predictor; '{predictor}' is not one"
+        ),
       });
     }
     let result = tabdat_stats::binary_average_discrete_change(problem, result, predictor).map_err(

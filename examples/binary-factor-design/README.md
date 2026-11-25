@@ -27,8 +27,10 @@ fails the fit.
 
 `estat margins, factor(var)` reports probability contrasts for a retained
 factor. Bare `estat margins` reports average effects for original continuous
-predictor terms, including after additive factor terms; numeric `discrete(var)`
-changes remain available only for continuous-only designs. Interactions remain
+predictor terms, including after additive factor terms. `estat margins,
+discrete(var)` accepts an original continuous numeric predictor with exact 0/1
+values and both levels in the retained sample, including in additive factor
+designs. Expanded factor dummy columns cannot be selected. Interactions remain
 outside this slice. This synthetic method fixture does not claim a textbook
 illustration replication.
 
@@ -62,17 +64,37 @@ all model coefficients and uses the retained model-based, robust or one-way
 cluster covariance for normal delta-method inference and a fixed 95% interval.
 
 Factor-only designs will fail clearly because they contain no continuous
-predictor to differentiate. Numeric `discrete(var)` remains limited to
-continuous-only designs. Interactions, weights, multiway clustering and
-simultaneous intervals remain unsupported.
+predictor to differentiate. The `discrete(var)` form accepts an original
+continuous term with exact 0/1 values and both levels in the retained sample,
+including in these additive factor designs. It changes only the selected
+column in each retained design row, so factor indicators and other covariates
+remain observed. Interactions, weights, multiway clustering and simultaneous
+intervals remain unsupported.
+
+## Discrete changes in mixed designs
+
+`estat margins, discrete(treated)` reports the average fitted probability
+difference after setting the selected original numeric term to 1 versus 0 at
+each retained row. It leaves factor indicators and all other continuous values
+unchanged. The full gradient includes every model coefficient and uses the
+selected model-based, row-robust or one-way clustered covariance for
+asymptotic-normal inference and the fixed 95% interval. Current-data edits do
+not change the retained-design calculation.
+
+Expanded factor dummy columns will not qualify as the selected numeric
+predictor. Models with interactions, weights, multiway clustering or
+simultaneous intervals remain unsupported. Independent Base R references cover
+both links, default and explicit factor references, `noconstant`, numeric-code
+and boolean factors, plus model-based, robust and clustered covariance for the
+default text-factor design.
 
 ## Independent validation
 
 `Rscript reference.R` uses R 4.6.2 and seed 84523 to generate
-`binary_factor_data.csv` plus independent fit, covariance, prediction, summary
-factor-contrast and continuous-marginal-effect references. The fixture has 240
-rows; IDs 5, 12 and 18 are excluded from fitting for missing region, x and y
-respectively, leaving N=237 with 110 events.
+`binary_factor_data.csv` plus independent fit, covariance, prediction, summary,
+factor-contrast, continuous-marginal-effect and discrete-change references.
+The fixture has 240 rows; IDs 5, 12 and 18 are excluded from fitting for
+missing region, x and y respectively, leaving N=237 with 110 events.
 Current-row prediction does not require y, so ID 18 still receives a
 probability/index.
 
@@ -88,8 +110,10 @@ links under default, explicit-reference and `noconstant` designs, plus numeric
 and boolean factors. Robust and cluster covariance contrasts are checked for the
 text factor. Continuous marginal effects are checked for both links across
 default, explicit-reference, `noconstant`, numeric and boolean factor designs,
-including robust and cluster covariance. Their full delta gradients include
-all expanded factor coefficients. The Base R `glm` starting values are polished
+including robust and cluster covariance. Discrete changes are checked across
+those same five designs for both links, with robust and cluster covariance on
+the default text-factor design. Their full delta gradients include all expanded
+factor coefficients. The Base R `glm` starting values are polished
 to score norm below 1e-13. Probit covariance is independently computed as
 inverse observed information with R's `pnorm`, `dnorm` and matrix operations;
 Base R `vcov(glm)` uses Fisher/IRLS information instead.
@@ -100,8 +124,9 @@ factor/continuous/outcome rows, complete-row nonbinary outcomes, default and
 explicit references, `noconstant`, robust/cluster fits, unseen current-data
 levels returning NULL, prediction after data edits, retained Wald/GOF use,
 factor metadata in named estimates, JSON/text script execution, continuous
-marginal effects in mixed designs and average factor probability contrasts. A
-complete row with y outside {0,1}, an absent
+marginal effects and discrete changes in mixed designs, average factor
+probability contrasts, factor-dummy rejection and results retained across
+current-data edits. A complete row with y outside {0,1}, an absent
 explicit reference and a factor-margin request for an absent term fail clearly;
 failed fits clear stale estimation state. Interactions remain unsupported.
 

@@ -169,6 +169,21 @@ fn continuous_marginal_effect_reference(
   .collect()
 }
 
+fn discrete_change_reference(
+  model: &str,
+  design: &str,
+  covariance_type: &str,
+) -> Vec<Vec<&'static str>> {
+  rows(include_str!(
+    "../../../examples/binary-factor-design/binary_factor_discrete_change_reference.csv"
+  ))
+  .into_iter()
+  .filter(|row| {
+    field(row, 0) == model && field(row, 1) == design && field(row, 2) == covariance_type
+  })
+  .collect()
+}
+
 fn retained_result(session: &Session) -> tabdat_stats::BinaryMleResult {
   match session.state().estimation.unwrap() {
     EstimationState::Logit(state) | EstimationState::Probit(state) => state.result,
@@ -480,6 +495,11 @@ fn continuous_margins_after_factor_fits_match_base_r_and_use_only_retained_conti
       assert_eq!(actual.observation_count, 237, "{fit}");
       assert_eq!(actual.robust, covariance != "model_based", "{fit}");
       assert_eq!(actual.cluster.is_some(), covariance == "cluster", "{fit}");
+      assert_eq!(
+        actual.cluster.as_ref().map(|cluster| cluster.group_count),
+        (covariance == "cluster").then_some(24),
+        "{fit} cluster groups"
+      );
       assert_eq!(actual.effects.len(), 1, "{fit}");
       assert_eq!(actual.effects[0].name, "x", "{fit}");
       assert_eq!(reference.len(), 1, "{fit}");
@@ -700,6 +720,135 @@ fn factor_probability_contrasts_require_a_retained_factor_and_preserve_fit_state
     RuntimeError::EstatMarginsFailed { .. }
   ));
   assert_eq!(session.state().estimation, before);
+}
+
+#[test]
+fn discrete_changes_in_mixed_factor_designs_match_base_r_and_use_only_the_retained_design() {
+  let fixture = Fixture::new();
+  for model in ["logit", "probit"] {
+    for (design, covariance) in [
+      ("default", "model_based"),
+      ("default", "robust"),
+      ("default", "cluster"),
+      ("west_reference", "model_based"),
+      ("noconstant", "model_based"),
+      ("numeric_factor", "model_based"),
+      ("boolean_factor", "model_based"),
+    ] {
+      let factor_terms = match design {
+        "default" | "robust" | "cluster" => "i.region",
+        "west_reference" => "ib(West).region",
+        "noconstant" => "i.region",
+        "numeric_factor" => "i.group_code",
+        "boolean_factor" => "i.is_west",
+        _ => unreachable!(),
+      };
+      let options = match (design, covariance) {
+        ("noconstant", "model_based") => ", noconstant",
+        (_, "model_based") => "",
+        (_, "robust") => ", robust",
+        (_, "cluster") => ", cluster(cluster)",
+        _ => unreachable!(),
+      };
+      let fit = format!("{model} y treated x {factor_terms}{options}");
+      let mut session = fixture.load();
+      run(&mut session, "generate treated = 0");
+      run(&mut session, "replace treated = 1 if x > 0");
+      run(&mut session, &fit);
+      let before = session.state().estimation;
+      let ExecutionResult::BinaryDiscreteChange(actual) =
+        run(&mut session, "estat margins, discrete(treated)")
+      else {
+        panic!("expected discrete probability change for {fit}")
+      };
+      let reference_design = if covariance == "robust" || covariance == "cluster" {
+        "default"
+      } else {
+        design
+      };
+      let reference = discrete_change_reference(model, reference_design, covariance);
+      assert_eq!(reference.len(), 1, "{fit}");
+      assert_eq!(
+        actual.model,
+        if model == "logit" {
+          BinaryModel::Logit
+        } else {
+          BinaryModel::Probit
+        }
+      );
+      assert_eq!(actual.predictor, "treated");
+      assert_eq!((actual.from_value, actual.to_value), (0, 1));
+      assert_eq!(actual.observation_count, 237, "{fit}");
+      assert_eq!(actual.robust, covariance != "model_based", "{fit}");
+      assert_eq!(actual.cluster.is_some(), covariance == "cluster", "{fit}");
+      assert_eq!(
+        actual.cluster.as_ref().map(|cluster| cluster.group_count),
+        (covariance == "cluster").then_some(24),
+        "{fit} cluster groups"
+      );
+      for (name, value, index) in [
+        ("estimate", actual.effect.value, 4),
+        ("standard error", actual.effect.standard_error, 5),
+        ("statistic", actual.effect.statistic, 6),
+        ("p-value", actual.effect.p_value, 7),
+        ("lower interval", actual.effect.confidence_lower, 8),
+        ("upper interval", actual.effect.confidence_upper, 9),
+      ] {
+        close_named(
+          value,
+          field(&reference[0], index).parse().unwrap(),
+          &format!("{fit} {name}"),
+        );
+      }
+      assert_eq!(session.state().estimation, before, "{fit}");
+      if design == "default" && covariance == "model_based" {
+        run(&mut session, "replace treated = 1 - treated");
+        run(&mut session, "replace region = 'Unused' if id == 1");
+        run(&mut session, "replace x = x + 100 if id == 2");
+        let ExecutionResult::BinaryDiscreteChange(after_edit) =
+          run(&mut session, "estat margins, discrete(treated)")
+        else {
+          panic!("expected retained discrete probability change after data edits")
+        };
+        assert_eq!(*after_edit, *actual);
+      }
+    }
+  }
+}
+
+#[test]
+fn discrete_changes_reject_factor_dummies_and_nonbinary_continuous_terms_without_losing_fit() {
+  let fixture = Fixture::new();
+  let mut session = fixture.load();
+  run(&mut session, "generate treated = 0");
+  run(&mut session, "replace treated = 1 if x > 0");
+  run(&mut session, "logit y treated x i.region");
+  let before = session.state().estimation;
+
+  let factor_error = fail(&mut session, "estat margins, discrete(region_North)");
+  assert!(matches!(
+    factor_error,
+    RuntimeError::EstatMarginsFailed { message }
+      if message.contains("original continuous predictor")
+  ));
+  assert_eq!(session.state().estimation, before);
+
+  let nonbinary_error = fail(&mut session, "estat margins, discrete(x)");
+  assert!(matches!(
+    nonbinary_error,
+    RuntimeError::EstatMarginsFailed { message }
+      if message.contains("only 0 and 1")
+  ));
+  assert_eq!(session.state().estimation, before);
+
+  let mut factor_only = fixture.load();
+  run(&mut factor_only, "logit y i.region");
+  let factor_only_before = factor_only.state().estimation;
+  assert!(matches!(
+    fail(&mut factor_only, "estat margins, discrete(x)"),
+    RuntimeError::EstatMarginsFailed { .. }
+  ));
+  assert_eq!(factor_only.state().estimation, factor_only_before);
 }
 
 #[test]
