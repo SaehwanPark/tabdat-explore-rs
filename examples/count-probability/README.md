@@ -5,11 +5,22 @@ P(Y<=k|current X,offset). The cutoff may be an integer literal0..100000 or a num
 current-row variable whose nonmissing values are exact integers0..100000. Missing
 cutoffs produce SQL NULL; negative, fractional, or greater-than100000 values fail
 before a new column is published. For cutoffs above99, one prediction may add at
-most10,000,000 cutoff increments across rows with usable model inputs. Exceeding
-that work limit fails before publication. These are plug-in distributional probabilities,
-not confidence/prediction intervals or a goodness-of-fit test. A robust/cluster
+most10,000,000 cutoff-work units across rows with usable model inputs. An SE request
+counts both log-PMF recurrence and gradient work against this limit. Exceeding
+the limit fails before publication. These are plug-in distributional probabilities, not
+confidence/prediction intervals or a goodness-of-fit test. A robust/cluster
 covariance does not justify a Poisson or NB2 law; NB2 uses retained alpha with
 variance mu+alpha*mu².
+
+For a current-row PMF, add `se` to write its pointwise delta-method standard error
+instead of the probability, for example `predict p2_se, pmf(2) se` or
+`predict p_k_se, pmf(cutoff) se`. Run `predict p2, pmf(2)` separately for the
+point estimate. The SE uses the covariance selected by the retained fit; NB2
+includes beta/lnalpha covariance. Current predictors and fixed offsets/exposure
+are treated as known. This measures parameter uncertainty in P(Y=k|X), not
+future-count variation. CDF standard errors and confidence intervals are not
+provided. Missing/nonfinite model inputs produce SQL NULL; invalid cutoffs,
+unrepresentable covariance propagation, or work-limit failures publish no column.
 
 Run in a fresh directory (paths below assume `root` is the repository):
 
@@ -19,7 +30,8 @@ cp "$root/examples/nb2-offset/nb2_offset.csv" .
 ```
 
 This synthetic method extension demonstrates both laws, fixed offsets, changed
-current rows, scalar and row-specific cutoffs and CSV export. The corresponding
+current rows, scalar and row-specific cutoffs, PMF parameter standard errors,
+and CSV export. The corresponding
 RAND Table20.5 mean models are a target application, but this example adds no
 published table row or resolution of the printed Table20.6 NB2 discrepancy.
 Exports refuse existing files; earlier successful script effects are not rolled back
@@ -32,8 +44,8 @@ finite index whose exponential underflows to zero uses the limiting point mass
 at zero. Empty data is supported. Bounds, missing/nonnumeric required columns,
 existing targets, unsupported estimator/mode/options or probability convergence
 failure fail before publication, preserving data/labels/fit. Bare predict remains
-xb; `n` remains the mean and binary `pr` keeps its meaning. Survival options and
-parameter uncertainty remain unsupported.
+xb; `n` remains the mean and binary `pr` keeps its meaning. CDF standard errors,
+probability intervals and future-count uncertainty remain unsupported.
 
 Independent base-R4.6.1 `dpois`/`ppois`/`dnbinom`/`pnbinom` validate308 PMF/CDF
 quantities over tiny/large/zero means, extreme supported alpha and k=0,1,9,99,
@@ -50,6 +62,14 @@ Regenerate development fixtures from the repository root:
 
 ```sh
 Rscript crates/tabdat-stats/tests/fixtures/count_point_reference.R
+Rscript crates/tabdat-stats/tests/fixtures/count_probability_se_reference.R \
+  crates/tabdat-stats/tests/fixtures/count_probability_se_reference.csv
 ```
+
+The PMF SE kernel additionally matches independent base-R central differences
+for Poisson (`p=0.125408498627284`, `SE=0.0548118642581173`) and joint NB2
+(`p=0.0810312073097155`, `SE=0.0128222345247593`) under full covariance matrices,
+including beta/lnalpha cross-covariance. The test uses relative1e-9 plus1e-13
+absolute tolerance for finite-difference SEs.
 
 No production Python/R dependency is used.

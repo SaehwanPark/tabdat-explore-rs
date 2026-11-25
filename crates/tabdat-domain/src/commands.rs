@@ -1097,12 +1097,16 @@ pub enum PredictKind {
   MultinomialXb(i64),
   /// Conditional mean exp(xb), requested by `n` after Poisson or NB2.
   MeanCount,
-  /// Distributional P(Y=k) after Poisson/NB2, k=0..99.
+  /// Distributional P(Y=k) after Poisson/NB2, k=0..100000.
   CountPmf(usize),
-  /// Distributional P(Y<=k) after Poisson/NB2, k=0..99.
+  /// Pointwise delta-method SE for distributional P(Y=k), k=0..100000.
+  CountPmfStandardError(usize),
+  /// Distributional P(Y<=k) after Poisson/NB2, k=0..100000.
   CountCdf(usize),
   /// Distributional P(Y=k) after Poisson/NB2 using a current-row cutoff variable.
   CountPmfVariable,
+  /// Pointwise delta-method SE for P(Y=k) using a current-row cutoff variable.
+  CountPmfVariableStandardError,
   /// Distributional P(Y<=k) after Poisson/NB2 using a current-row cutoff variable.
   CountCdfVariable,
   /// Current-time cause-specific Weibull/Gompertz hazard (not a probability).

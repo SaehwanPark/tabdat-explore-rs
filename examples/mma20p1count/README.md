@@ -628,7 +628,7 @@ executable values and leave the conflict as an explicit coverage gap pending
 new primary-source evidence.
 
 Exposure integrations beyond Poisson/NB2, weights, appropriate survey/multiway/panel methods,
-uncertainty for current-row probabilities, other formal specification tests,
+current-row CDF uncertainty and probability intervals, other formal specification tests,
 richer counts and other remaining illustration/core/book work remain required.
 
 ### Current-row count probability prediction extension

@@ -4,9 +4,17 @@ use tabdat_language::parse_command;
 fn bounded_count_kinds_are_explicit_and_exclusive() {
   for (text, kind) in [
     ("predict p, pmf(0)", PredictKind::CountPmf(0)),
+    (
+      "predict p_se, pmf(2) se",
+      PredictKind::CountPmfStandardError(2),
+    ),
     ("predict p, cdf(99)", PredictKind::CountCdf(99)),
     ("predict p, pmf(100000)", PredictKind::CountPmf(100000)),
     ("predict p, pmf(k)", PredictKind::CountPmfVariable),
+    (
+      "predict p_se, pmf(k) se",
+      PredictKind::CountPmfVariableStandardError,
+    ),
     (
       "predict p, cdf(`count cutoff`)",
       PredictKind::CountCdfVariable,
@@ -20,6 +28,7 @@ fn bounded_count_kinds_are_explicit_and_exclusive() {
       command.count_cutoff_variable,
       match kind {
         PredictKind::CountPmfVariable => Some("k".to_owned()),
+        PredictKind::CountPmfVariableStandardError => Some("k".to_owned()),
         PredictKind::CountCdfVariable => Some("count cutoff".to_owned()),
         _ => None,
       }
@@ -39,6 +48,10 @@ fn bounded_count_kinds_are_explicit_and_exclusive() {
     "cdf(0) interval",
     "pmf(0) std",
     "cdf(0) saving(out)",
+    "cdf(2) se",
+    "se",
+    "pmf(2) se se",
+    "pmf(2) se(value)",
   ] {
     assert!(
       parse_command(&format!("predict p, {suffix}")).is_err(),

@@ -1503,9 +1503,10 @@ fn get_command_schema(
           required: false,
         },
         OptionDescriptor { name: "pmf".to_string(), required: false },
+        OptionDescriptor { name: "se".to_string(), required: false },
         OptionDescriptor { name: "cdf".to_string(), required: false },
       ],
-      syntax: "predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | pmf(k) | cdf(k)]".to_string(),
+      syntax: "predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | pmf(k) | pmf(k) se | cdf(k)]".to_string(),
     }),
     "probit" => Ok(CommandSchemaResult {
       arguments: vec![

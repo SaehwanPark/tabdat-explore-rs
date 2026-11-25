@@ -294,6 +294,219 @@ pub fn count_point_probabilities(
   Ok((bins[count], cumulative))
 }
 
+fn count_log_point_probability(
+  law: CountProbabilityLaw,
+  mean: f64,
+  count: usize,
+) -> Result<Option<f64>, StatsError> {
+  let cutoff = count
+    .checked_add(1)
+    .filter(|&cutoff| cutoff <= MAX_COUNT_POINT_CUTOFF + 1)
+    .ok_or_else(|| invalid("count must be an integer from 0 to 100000"))?;
+  validate(
+    law,
+    cutoff,
+    MAX_COUNT_POINT_CUTOFF + 1,
+    "count must be an integer from 0 to 100000",
+  )?;
+  if !mean.is_finite() || mean < 0.0 {
+    return Err(invalid("conditional means must be finite and nonnegative"));
+  }
+  if mean == 0.0 {
+    return Ok(None);
+  }
+
+  let log_mean = mean.ln();
+  if matches!(law, CountProbabilityLaw::Poisson) {
+    // Around the Poisson mode, use the stable Stirling rearrangement already
+    // used by the tail calculation. Away from it, a short recurrence retains
+    // finite log probabilities even when exp(log_p) underflows.
+    let shape = count as f64 + 1.0;
+    let delta = (mean - shape) / shape;
+    if shape >= 64.0 && (-0.5..=0.5).contains(&delta) {
+      return Ok(Some(poisson_log_prefactor(mean, shape) - log_mean));
+    }
+    let (mut log_p, mut correction) = (-mean, 0.0);
+    for j in 1..=count {
+      add_compensated(&mut log_p, &mut correction, log_mean - (j as f64).ln());
+    }
+    return Ok(Some(log_p));
+  }
+
+  let CountProbabilityLaw::Nb2 { alpha } = law else {
+    unreachable!();
+  };
+  let shape = 1.0 / alpha;
+  let log_shape = shape.ln();
+  let log_mu_fraction = -softplus(log_shape - log_mean);
+  let (mut log_p, mut correction) = (-shape * softplus(log_mean - log_shape), 0.0);
+  for j in 0..count {
+    let next = (j + 1) as f64;
+    let relative_count_step = (shape - 1.0) / next;
+    add_compensated(
+      &mut log_p,
+      &mut correction,
+      relative_count_step.ln_1p() + log_mu_fraction,
+    );
+  }
+  Ok(Some(log_p))
+}
+
+/// Pointwise delta-method SE for a current-row PMF, conditional on its design
+/// and fixed offset/exposure. `design` and the square `covariance` use fitted
+/// beta order, including an intercept when fitted; NB2 appends lnalpha. A zero
+/// mean uses the installed point-mass limit and returns zero. Invalid laws,
+/// means, counts, covariance dimensions, nonfinite inputs, or a materially
+/// negative delta variance return an error.
+pub fn count_point_pmf_standard_error(
+  law: CountProbabilityLaw,
+  mean: f64,
+  count: usize,
+  design: &[f64],
+  covariance: &[Vec<f64>],
+) -> Result<f64, StatsError> {
+  if design.is_empty() {
+    return Err(invalid(
+      "PMF design must contain at least one fitted coefficient",
+    ));
+  }
+  let nuisance = if matches!(law, CountProbabilityLaw::Nb2 { .. }) {
+    1
+  } else {
+    0
+  };
+  let parameter_count = design
+    .len()
+    .checked_add(nuisance)
+    .ok_or_else(|| StatsError::DimensionMismatch("count PMF parameter count overflow".into()))?;
+  if covariance.len() != parameter_count
+    || covariance.iter().any(|row| row.len() != parameter_count)
+  {
+    return Err(StatsError::DimensionMismatch(format!(
+      "count PMF covariance must be {parameter_count} by {parameter_count}"
+    )));
+  }
+  if design.iter().any(|value| !value.is_finite())
+    || covariance.iter().flatten().any(|value| !value.is_finite())
+  {
+    return Err(StatsError::IncompatibleHypothesis(
+      "count PMF design and covariance must be finite".into(),
+    ));
+  }
+
+  let Some(log_probability) = count_log_point_probability(law, mean, count)? else {
+    // The installed zero-mean point-mass limit has a zero parameter gradient.
+    return Ok(0.0);
+  };
+
+  let (eta_score, log_alpha_score) = match law {
+    CountProbabilityLaw::Poisson => (count as f64 - mean, None),
+    CountProbabilityLaw::Nb2 { alpha } => {
+      let shape = 1.0 / alpha;
+      let log_ratio = mean.ln() - shape.ln();
+      let mean_fraction = (-softplus(-log_ratio)).exp();
+      let shape_fraction = (-softplus(log_ratio)).exp();
+      let (mut harmonic, mut harmonic_correction) = (0.0, 0.0);
+      for j in 0..count {
+        add_compensated(
+          &mut harmonic,
+          &mut harmonic_correction,
+          1.0 / (shape + j as f64),
+        );
+      }
+      // Differentiate the NB2 log PMF in eta=ln(mu) and ln(alpha). The finite
+      // harmonic sum is psi(shape+k)-psi(shape), with no external special fn.
+      let count_f = count as f64;
+      let eta = count_f * shape_fraction - shape * mean_fraction;
+      let log_shape = shape * harmonic - shape * softplus(log_ratio) + shape * mean_fraction
+        - count_f * shape_fraction;
+      (eta, Some(-log_shape))
+    }
+  };
+
+  let mut log_gradient_magnitudes = Vec::with_capacity(parameter_count);
+  let mut gradient_signs = Vec::with_capacity(parameter_count);
+  for value in design {
+    log_gradient_magnitudes.push(if eta_score == 0.0 || *value == 0.0 {
+      None
+    } else {
+      Some(log_probability + eta_score.abs().ln() + value.abs().ln())
+    });
+    gradient_signs.push(eta_score.signum() * value.signum());
+  }
+  if let Some(score) = log_alpha_score {
+    log_gradient_magnitudes.push(if score == 0.0 {
+      None
+    } else {
+      Some(log_probability + score.abs().ln())
+    });
+    gradient_signs.push(score.signum());
+  }
+  if log_gradient_magnitudes
+    .iter()
+    .flatten()
+    .any(|value| !value.is_finite())
+  {
+    return Err(failed("PMF parameter gradient is not finite"));
+  }
+  let Some(max_log_gradient) = log_gradient_magnitudes
+    .iter()
+    .flatten()
+    .copied()
+    .reduce(f64::max)
+  else {
+    return Ok(0.0);
+  };
+
+  // Scale before the quadratic form so an underflowed PMF can still have a
+  // representable SE, while large finite design/covariance values do not
+  // overflow intermediate products.
+  let max_covariance = covariance
+    .iter()
+    .flatten()
+    .fold(0.0_f64, |maximum, value| maximum.max(value.abs()));
+  if max_covariance == 0.0 {
+    return Ok(0.0);
+  }
+  let log_max_covariance = max_covariance.ln();
+  let scaled_gradient: Vec<_> = log_gradient_magnitudes
+    .iter()
+    .zip(&gradient_signs)
+    .map(|(value, sign)| {
+      value.map_or(0.0, |log_magnitude| {
+        sign * (log_magnitude - max_log_gradient).exp()
+      })
+    })
+    .collect();
+
+  let (mut variance, mut variance_correction) = (0.0, 0.0);
+  let (mut magnitude, mut magnitude_correction) = (0.0, 0.0);
+  for i in 0..parameter_count {
+    for j in 0..parameter_count {
+      let term = scaled_gradient[i] * (covariance[i][j] / max_covariance) * scaled_gradient[j];
+      if !term.is_finite() {
+        return Err(failed("PMF delta variance is not finite"));
+      }
+      add_compensated(&mut variance, &mut variance_correction, term);
+      add_compensated(&mut magnitude, &mut magnitude_correction, term.abs());
+    }
+  }
+  if variance < 0.0 {
+    let roundoff_bound = 64.0 * f64::EPSILON * magnitude;
+    if variance >= -roundoff_bound {
+      variance = 0.0;
+    } else {
+      return Err(failed("PMF delta variance is negative"));
+    }
+  }
+  let log_standard_error = max_log_gradient + 0.5 * log_max_covariance + 0.5 * variance.ln();
+  let standard_error = log_standard_error.exp();
+  if !standard_error.is_finite() {
+    return Err(failed("PMF delta standard error is not finite"));
+  }
+  Ok(standard_error)
+}
+
 /// Descriptive frequencies: average each individual's conditional probability,
 /// not a probability at the average fitted mean. No uncertainty or test follows
 /// from these bins, and covariance selection does not establish the fitted law.
