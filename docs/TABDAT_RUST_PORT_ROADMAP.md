@@ -186,6 +186,19 @@ missingness, covariance invariance, collisions, empty data and invalid current
 counts. These are raw response residuals, not Pearson, deviance or standardized
 residuals.
 
+The next bounded IV slice extends HC1/one-way CR1 robust scalar AR confidence
+sets from two through nine to exactly ten excluded instruments for one
+endogenous regressor. Preserve included-exogenous nuisance treatment, retained
+sample/groups and existing covariance corrections; keep q=11+ and other
+endogenous/covariance dimensions unsupported. Degree-20 boundaries may contain
+20 simple real roots and 11 confidence-set components, so extend solver limits
+only with direct degree-20 and ambiguity/failure tests. Validate a 240-row,
+ten-instrument synthetic reference in base R for HC1 and CR1, including numeric
+determinants at 21 Chebyshev nodes, `polyroot` endpoints, and direct Wald probes.
+Correct the first-stage JSON availability flag and command-results prose to
+report the actual q<=10 support. Update SPEC, help, examples and the coverage
+ledger; do not claim an MMA illustration from synthetic method evidence.
+
 Do not turn the entire textbook inventory into a prerequisite for one bounded
 analysis. Preserve the assumptions and unresolved source differences in the ledger.
 
