@@ -220,10 +220,10 @@ impl Session {
 
     let expression = generate_expression_to_assert(&expression)?;
     match expression_domain(&expression, &dataset) {
-      Ok(ExpressionDomain::Numeric) => {}
+      Ok(ExpressionDomain::Numeric | ExpressionDomain::Boolean) => {}
       Ok(_) => {
         return Err(RuntimeError::GenerateTypeMismatch {
-          message: "expression type mismatch: arithmetic requires numeric operands".to_owned(),
+          message: "generate requires a numeric expression or numeric comparison".to_owned(),
         });
       }
       Err(RuntimeError::AssertTypeMismatch { message }) => {

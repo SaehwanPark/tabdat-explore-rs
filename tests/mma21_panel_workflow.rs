@@ -564,6 +564,173 @@ fn between_script_uses_equal_weight_joint_case_means_and_exports_identically() {
   );
 }
 
+fn balanced_panel_summary_fixture() -> String {
+  let mut csv = String::from("source_row,lnhr,lnwg,kids,ageh,agesq,disab,id,year\n");
+  let mut source_row = 0;
+  for id in 1..=532 {
+    for year in 1979..=1988 {
+      let t = year - 1979;
+      let lnhr =
+        6.5 + 0.01 * f64::from(id) + 0.04 * f64::from(t) + 0.001 * f64::from((id * t + 3) % 7);
+      let lnwg =
+        2.0 + 0.003 * f64::from(id) + 0.01 * f64::from(t) + 0.002 * f64::from((id + t) % 5);
+      let kids = (id + t) % 7;
+      let ageh = 22 + (id % 30) + t;
+      let agesq = ageh * ageh;
+      let disab = (id + t) % 2;
+      source_row += 1;
+      csv.push_str(&format!(
+        "{source_row},{lnhr},{lnwg},{kids},{ageh},{agesq},{disab},{id},{year}\n"
+      ));
+    }
+  }
+  csv
+}
+
+#[test]
+fn data_summary_script_reports_complete_panel_and_rejects_changed_cohorts() {
+  let csv = balanced_panel_summary_fixture();
+  let dir = TestDir::new();
+  fs::write(dir.path().join("MOM.csv"), &csv).unwrap();
+  let out = run(&dir, "data_summary.td", true);
+  assert!(out.status.success(), "{out:?}");
+  let events: Vec<Value> = String::from_utf8(out.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  assert!(
+    events
+      .iter()
+      .all(|e| e["schema_version"] == 1 && e.get("error").is_none())
+  );
+  assert_eq!(
+    events
+      .iter()
+      .filter(|event| event["result_type"] == "GenerateResult")
+      .count(),
+    10
+  );
+  let describe = &events
+    .iter()
+    .find(|event| event["result_type"] == "DescribeResult")
+    .unwrap()["data"]["dataset"]["columns"];
+  let names: Vec<_> = describe
+    .as_array()
+    .unwrap()
+    .iter()
+    .map(|column| column["name"].as_str().unwrap())
+    .collect();
+  assert_eq!(names.len(), 18);
+  assert_eq!(names[8], "dyear1");
+  assert_eq!(names[17], "dyear10");
+  assert!(
+    describe.as_array().unwrap()[8..]
+      .iter()
+      .all(|column| column["data_type"] == "TINYINT")
+  );
+  let summary = &events
+    .iter()
+    .find(|event| event["result_type"] == "SummarizeResult")
+    .unwrap()["data"]["rows"];
+  assert_eq!(summary.as_array().unwrap().len(), 18);
+  let years = events
+    .iter()
+    .find(|event| event["result_type"] == "TabulateResult")
+    .unwrap();
+  assert_eq!(years["data"]["rows"].as_array().unwrap().len(), 10);
+  assert!(
+    years["data"]["rows"]
+      .as_array()
+      .unwrap()
+      .iter()
+      .all(|row| row[1] == 532)
+  );
+
+  let tables: Vec<_> = events
+    .iter()
+    .filter(|event| event["result_type"] == "TableResult")
+    .map(|event| &event["data"])
+    .collect();
+  assert_eq!(tables.len(), 4);
+  let xtsum = tables
+    .iter()
+    .find(|table| table["headers"][0] == "variable")
+    .unwrap();
+  assert_eq!(xtsum["rows"].as_array().unwrap().len(), 6);
+  assert_eq!(xtsum["rows"][0][0], "lnhr");
+  let structure = tables
+    .iter()
+    .find(|table| table["headers"][0] == "observations")
+    .unwrap();
+  assert_eq!(structure["rows"][0][0], 5320);
+  assert_eq!(structure["rows"][0][1], 532);
+  assert_eq!(structure["rows"][0][6], 10);
+  assert_eq!(structure["rows"][0][9], 1.0);
+  assert_eq!(structure["rows"][0][10], 1.0);
+  assert_eq!(fs::read_to_string(dir.path().join("MOM.csv")).unwrap(), csv);
+
+  let mut variants = Vec::new();
+  let mut duplicate = csv.lines().map(str::to_owned).collect::<Vec<_>>();
+  let mut fields = duplicate[2]
+    .split(',')
+    .map(str::to_owned)
+    .collect::<Vec<_>>();
+  fields[8] = "1979".to_owned();
+  duplicate[2] = fields.join(",");
+  variants.push(("duplicate key", duplicate.join("\n") + "\n"));
+
+  let mut missing_year = csv.lines().map(str::to_owned).collect::<Vec<_>>();
+  missing_year.pop();
+  variants.push(("missing year", missing_year.join("\n") + "\n"));
+
+  let mut extra_year = csv.lines().map(str::to_owned).collect::<Vec<_>>();
+  let last = extra_year.len() - 1;
+  let mut fields = extra_year[last]
+    .split(',')
+    .map(str::to_owned)
+    .collect::<Vec<_>>();
+  fields[8] = "1989".to_owned();
+  extra_year[last] = fields.join(",");
+  variants.push(("extra year", extra_year.join("\n") + "\n"));
+
+  let mut nonfinite = csv.lines().map(str::to_owned).collect::<Vec<_>>();
+  let mut fields = nonfinite[1]
+    .split(',')
+    .map(str::to_owned)
+    .collect::<Vec<_>>();
+  fields[1] = "NaN".to_owned();
+  nonfinite[1] = fields.join(",");
+  let nonfinite = nonfinite.join("\n") + "\n";
+  variants.push(("nonfinite field", nonfinite));
+
+  let mut short_panel = csv.lines().map(str::to_owned).collect::<Vec<_>>();
+  short_panel.drain(short_panel.len() - 10..);
+  variants.push(("wrong row count", short_panel.join("\n") + "\n"));
+
+  for (kind, bad) in variants {
+    let dir = TestDir::new();
+    fs::write(dir.path().join("MOM.csv"), &bad).unwrap();
+    let out = run(&dir, "data_summary.td", true);
+    assert!(!out.status.success(), "{kind}: {out:?}");
+    let events: Vec<Value> = String::from_utf8(out.stdout)
+      .unwrap()
+      .lines()
+      .map(|line| serde_json::from_str(line).unwrap())
+      .collect();
+    assert!(
+      events.last().unwrap().get("error").is_some(),
+      "{kind}: {events:?}"
+    );
+    assert_eq!(fs::read_to_string(dir.path().join("MOM.csv")).unwrap(), bad);
+    assert_eq!(
+      fs::read_dir(dir.path()).unwrap().count(),
+      1,
+      "{kind} created an artifact"
+    );
+  }
+}
+
 #[test]
 fn between_script_rejects_bad_keys_or_unusable_samples_before_export() {
   let (csv, _) = panel_fixture();

@@ -46,7 +46,7 @@ for example-specific scope, references and unresolved discrepancies.
 | Workflow | Available now | Important boundaries / next need |
 | --- | --- | --- |
 | Session and automation | Persistent terminal session, batch commands, scripts, help and bounded JSON/text results; macros and conditional script flow | No general Stata-language parity, persistent history, in-flight cancellation guarantee or MCP transport. Script `seed` records context; bootstrap has its own explicit seed. |
-| Data | Local eager CSV/Parquet, inspection, finite summaries, missingness, tabulation, key checks, transformations, joins, reshape, SQL, save/export | DTA runtime and broad remote/lazy input are not installed. Define sample, NULL/finite, ordering, type and label semantics per command. |
+| Data | Local eager CSV/Parquet, inspection, finite summaries, missingness, tabulation, key checks, bounded arithmetic `generate` and numeric-comparison indicator columns, joins, reshape, SQL, save/export | DTA runtime and broad remote/lazy input are not installed. Define sample, NULL/finite, ordering, type and label semantics per command. |
 | Analysis and reporting | Bounded linear and nonlinear estimators, post-estimation, current-data predictions, selected immutable named reports and SVG scatter/line overlays | Options and inference vary by model. Named reports are not restorable fits; factors/interactions, broader diagnostics and reusable comparisons remain needed. |
 | Reliability | Explicit supported data/state and statistical contracts, reproducible bounded bootstrap streams and independent reference evidence for selected workflows | Supported surface only: do not infer generalized capability, platform support or release certification from a parser or a single example. |
 

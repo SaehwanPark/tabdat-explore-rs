@@ -138,6 +138,47 @@ an existing file. Output parent directories must exist. CSV inference can store
   `RegressionResult.sample` distinguishes relation rows from dropped model cases.
   No panel declaration is retained and no general calendar/lag DSL is claimed.
 
+## C21-P1-DATA: source summaries
+
+[`data_summary.td`](data_summary.td) reproduces the bounded data-inspection
+block in the first author program: ten year counts, all 18 source and generated
+variable summaries, balanced-panel `xtdes` facts, and six overall/between/within
+rows for `lnhr lnwg kids ageh agesq disab`. It requires the complete finite
+5,320-row source sample, unique keys, 532 people and each year from 1979–1988;
+it stops if the cohort or ten-year balance changes. The ten generated year
+indicators are numeric `TINYINT` 0/1 columns, with the original `source_row`
+removed from the author-style inventory after the provenance check.
+
+The `xtsum` rows use pooled sample moments for overall, sample moments of
+person means for between, and `x_it - xbar_i + overall_mean` for within. Thus
+the within min/max remain on the outcome scale. The Base R reference reports
+the native raw-double calculations and a separate float32-rounded path for
+checking the historical Stata log. The checker verifies the raw source,
+converter token/order preservation, native results, published log values and
+changed-cohort failures; all source hashes are pinned in
+[`data_summary.md`](data_summary.md).
+
+From the repository root, this reproduces the complete-source audit (requires
+Rust/Cargo, R and Python 3):
+
+```sh
+repo=$(pwd)
+work=$(mktemp -d)
+curl -fsSL https://cameron.econ.ucdavis.edu/mmabook/MOM.dat -o "$work/MOM.dat"
+curl -fsSL https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.do -o "$work/mma21p1panfeandre.do"
+curl -fsSL https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.txt -o "$work/mma21p1panfeandre.txt"
+examples/mma21p1panel/prepare.sh "$work/MOM.dat" "$work/MOM.csv"
+(cd "$work" && cargo run --locked --manifest-path "$repo/Cargo.toml" -- --json -f "$repo/examples/mma21p1panel/data_summary.td" > data_summary.jsonl)
+Rscript examples/mma21p1panel/data_summary_reference.R "$work/MOM.dat" "$work/reference"
+python3 examples/mma21p1panel/check_data_summary.py \
+  "$work/data_summary.jsonl" "$work/reference" "$work/MOM.dat" "$work/MOM.csv" \
+  "$work/mma21p1panfeandre.do" "$work/mma21p1panfeandre.txt"
+```
+
+This is a source-specific workflow, not persistent panel state, a general
+`xtsum`/`xtdes` command, Stata DTA type/label parity, or the author's
+`save mom.dta` behavior.
+
 ## POLS/FD inference and interpretation
 
 K=2 includes the intercept. Classical covariance is `(RSS/(N-K)) (X'X)^-1`;

@@ -146,6 +146,90 @@ fn parsed_generate_appends_numeric_column_and_preserves_rows() {
 }
 
 #[test]
+fn generate_numeric_comparisons_appends_zero_one_indicators_and_propagates_nulls() {
+  let fixture = Fixture::new();
+  let mut session = Session::new();
+  session
+    .execute(use_command(&fixture.parquet))
+    .expect("fixture should load");
+
+  for command in [
+    "generate equal = age == 42",
+    "generate not_equal = age != 42",
+    "generate less = age < 42",
+    "generate less_equal = age <= 42",
+    "generate greater = age > 42",
+    "generate greater_equal = age >= 42",
+    "generate positive_cost = cost > 100",
+  ] {
+    session
+      .execute(parse_command(command).unwrap())
+      .unwrap_or_else(|error| panic!("{command} should execute: {error:?}"));
+  }
+
+  let dataset = session.active_dataset().unwrap();
+  assert_eq!(dataset.row_count, 3);
+  for name in [
+    "equal",
+    "not_equal",
+    "less",
+    "less_equal",
+    "greater",
+    "greater_equal",
+    "positive_cost",
+  ] {
+    let column = dataset
+      .columns
+      .iter()
+      .find(|column| column.name == name)
+      .unwrap();
+    assert_eq!(column.data_type, "TINYINT");
+  }
+
+  let result = session
+    .execute(parse_command("head 3").unwrap())
+    .expect("indicator rows should be previewable");
+  let ExecutionResult::Head(preview) = result else {
+    panic!("head should return a Head result");
+  };
+  let indicators: [[i128; 6]; 3] = [[0, 1, 1, 1, 0, 0], [1, 0, 0, 1, 0, 1], [0, 1, 0, 0, 1, 1]];
+  for (row, expected) in preview.rows.iter().zip(indicators) {
+    for (column, value) in expected.into_iter().enumerate() {
+      assert_eq!(row[column + 4], CellValue::SignedInteger(value));
+    }
+  }
+  assert_eq!(preview.rows[0][10], CellValue::SignedInteger(0));
+  assert_eq!(preview.rows[1][10], CellValue::SignedInteger(1));
+  assert_eq!(preview.rows[2][10], CellValue::Null);
+}
+
+#[test]
+fn generate_numeric_comparisons_turn_nonfinite_operands_into_null_indicators() {
+  let fixture = Fixture::new();
+  let nonfinite = fixture.write_parquet(
+    "nonfinite.parquet",
+    "SELECT CAST('NaN' AS DOUBLE) AS value UNION ALL SELECT 0.0 AS value UNION ALL SELECT 1.0 AS value",
+  );
+  let mut session = Session::new();
+  session
+    .execute(use_command(&nonfinite))
+    .expect("nonfinite fixture should load");
+
+  session
+    .execute(parse_command("generate positive = value > 0").unwrap())
+    .expect("numeric comparison should execute");
+  let result = session
+    .execute(parse_command("head 3").unwrap())
+    .expect("indicator rows should be previewable");
+  let ExecutionResult::Head(preview) = result else {
+    panic!("head should return a Head result");
+  };
+  assert_eq!(preview.rows[0][1], CellValue::Null);
+  assert_eq!(preview.rows[1][1], CellValue::SignedInteger(0));
+  assert_eq!(preview.rows[2][1], CellValue::SignedInteger(1));
+}
+
+#[test]
 fn generate_supports_unary_minus_precedence_parentheses_literals_and_quoted_names() {
   let fixture = Fixture::new();
   let quoted = fixture.write_parquet(
@@ -290,9 +374,9 @@ fn generate_rejects_invalid_forms_before_mutating_metadata_or_rows() {
       },
     ),
     (
-      "generate test = age > 0",
-      RuntimeError::GenerateUnsupportedExpression {
-        message: "generate does not support comparison expressions".to_owned(),
+      "generate test = sex > 0",
+      RuntimeError::GenerateTypeMismatch {
+        message: "expression type mismatch: cannot compare string and numeric values".to_owned(),
       },
     ),
     (

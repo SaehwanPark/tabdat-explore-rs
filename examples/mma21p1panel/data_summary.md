@@ -3,7 +3,7 @@
 ## Bounded objective
 
 Reproduce the data-inspection block in the March 2005 `mma21p1panfeandre.do`
-program (lines 80–93): year frequencies, the 18-variable inventory and summary,
+program (lines 80–96): year frequencies, the 18-variable inventory and summary,
 the balanced panel structure, and overall/between/within summaries for
 `lnhr lnwg kids ageh agesq disab`. This adds an executable source workflow; it
 does not add persistent panel state or claim a general `xtsum`/`xtdes` command.
