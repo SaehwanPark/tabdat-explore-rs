@@ -6864,7 +6864,7 @@ fn parse_cfregress_command(body: &str) -> Result<Command, ParseError> {
 }
 
 fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
-  let syntax = "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|overdispersion|countprob|gof|did|drdid|dml|bayes|spatial|report>";
+  let syntax = "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|overdispersion|countprob|countgof|gof|did|drdid|dml|bayes|spatial|report>";
   let parts = parse_simple_body(body, false)?;
   if parts.missing_condition_expression {
     return Err(ParseError::new("missing expression after if"));
@@ -6911,6 +6911,35 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
     return Ok(Command::Estat {
       command: EstatCommand {
         subcommand: EstatSubcommand::CountProbabilities { tail_from },
+      },
+    });
+  }
+  if !argument.backtick_quoted && normalized_subcommand == "countgof" {
+    let options = first_unquoted_comma(body)
+      .map(|index| parse_use_options(&body[index + 1..]))
+      .transpose()?
+      .unwrap_or_default();
+    let tail_from = match options.as_slice() {
+      [] => 10,
+      [
+        UseOption {
+          name,
+          value: UseOptionValue::Number(value),
+        },
+      ] if name == "max" => value
+        .parse::<usize>()
+        .ok()
+        .filter(|n| (1..=10).contains(n))
+        .ok_or_else(|| ParseError::new("estat countgof max must be an integer from 1 to 10"))?,
+      _ => {
+        return Err(ParseError::new(
+          "estat countgof supports only max(10), an integer from 1 to 10",
+        ));
+      }
+    };
+    return Ok(Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::CountGoodnessOfFit { tail_from },
       },
     });
   }
@@ -7076,7 +7105,7 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
     ("hausman", false) => EstatSubcommand::Hausman,
     _ => {
       return Err(ParseError::new(
-        "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, overdispersion, countprob, gof, did, drdid, dml, bayes, spatial, or report",
+        "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, overdispersion, countprob, countgof, gof, did, drdid, dml, bayes, spatial, or report",
       ));
     }
   };

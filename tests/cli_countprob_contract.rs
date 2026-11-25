@@ -22,6 +22,12 @@ fn countprob_discovery_explains_bounds_retention_and_distributional_limits() {
       .contains("estat countprob [, max(10)]")
   );
   assert!(
+    schema["data"]["syntax"]
+      .as_str()
+      .unwrap()
+      .contains("estat countgof [, max(10)]")
+  );
+  assert!(
     schema["data"]["options"]
       .as_array()
       .unwrap()
@@ -42,6 +48,93 @@ fn countprob_discovery_explains_bounds_retention_and_distributional_limits() {
     "ORIGINAL retained",
     "NO formal goodness-of-fit test",
     "printed Table20.6 NB2 row",
+  ] {
+    assert!(text.contains(phrase), "{phrase}");
+  }
+}
+
+#[test]
+fn countgof_returns_the_retained_sample_and_explicit_iid_chi_square_contract() {
+  let d = TestDir::new();
+  let y = [
+    0, 0, 2, 0, 0, 3, 0, 3, 1, 3, 8, 3, 0, 0, 0, 2, 1, 2, 0, 0, 2, 1, 1, 2, 0, 5, 4, 1, 1, 0, 0, 2,
+    2, 0, 1, 0,
+  ];
+  let mut csv = "id,y,x,z\n".to_owned();
+  for (i, y) in y.iter().enumerate() {
+    csv.push_str(&format!(
+      "{},{},{},{}\n",
+      i + 1,
+      y,
+      -2. + 4. * i as f64 / 35.,
+      [0., 1., 0.4][i % 3]
+    ));
+  }
+  fs::write(d.path().join("gof.csv"), csv).unwrap();
+  let o = tabdat_bin()
+    .current_dir(d.path())
+    .args([
+      "--json",
+      "-c",
+      "use gof.csv",
+      "-c",
+      "nbreg y x z",
+      "-c",
+      "estat countgof",
+    ])
+    .output()
+    .unwrap();
+  success(&o);
+  let result = records(&o).pop().unwrap();
+  assert_eq!(result["result_type"], "CountGoodnessOfFitResult");
+  assert_eq!(result["data"]["estimator"], "nb2_grouped_probability_gof");
+  assert_eq!(
+    result["data"]["method"],
+    "andrews_score_adjusted_grouped_chi_square"
+  );
+  assert_eq!(
+    result["data"]["reference_distribution"]["family"],
+    "chi_square"
+  );
+  assert_eq!(result["data"]["degrees_of_freedom"], 10);
+  assert_eq!(
+    result["data"]["reference_distribution"]["degrees_of_freedom"],
+    10
+  );
+  assert_eq!(
+    result["data"]["table"]["bins"].as_array().unwrap().len(),
+    11
+  );
+  assert_eq!(
+    result["data"]["assumptions"],
+    serde_json::json!([
+      "independent_observations",
+      "correctly_specified_conditional_NB2_distribution"
+    ])
+  );
+
+  let text = tabdat_bin()
+    .current_dir(d.path())
+    .args([
+      "--text",
+      "-c",
+      "use gof.csv",
+      "-c",
+      "nbreg y x z",
+      "-c",
+      "estat countgof",
+    ])
+    .output()
+    .unwrap();
+  success(&text);
+  let text = String::from_utf8_lossy(&text.stdout);
+  for phrase in [
+    "NB2 grouped count goodness-of-fit test",
+    "Andrews score-adjusted CGF",
+    "chi-square(10) p",
+    ">=10",
+    "independent observations",
+    "author program reports df=9",
   ] {
     assert!(text.contains(phrase), "{phrase}");
   }

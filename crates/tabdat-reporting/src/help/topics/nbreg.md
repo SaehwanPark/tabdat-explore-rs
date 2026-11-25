@@ -23,6 +23,8 @@ Example workflow:
 - `summarize visits`
 - `nbreg visits age income, robust`
 - `estat margins`
+- `nbreg visits age income`
+- `estat countgof, max(10)`
 - `predict nb_mean_visits, n`
 - `predict nb_index, xb`
 - `head 8`
@@ -107,6 +109,14 @@ Inference and interpretation:
 using retained y/means/alpha (exact0..9 plus >=10 by default). Full conditional NB2
 law is an assumption, not guaranteed by robust/cluster covariance. This is a
 descriptive report without uncertainty/formal goodness-of-fit test; see `help estat`.
+
+`estat countgof [, max(10)]` is a separate Andrews score-adjusted grouped
+goodness-of-fit test. It requires an unclustered, unweighted model-based NB2 fit
+without an offset and assumes independent observations. It reports the 0..9 and
+>=10 cells plus N*uncentered-R2 and chi-square(10) by default. It does not supply
+a cluster-robust reference; repeated person-years need a panel-appropriate
+analysis. See `help estat` for the degrees-of-freedom difference from the
+November 2006 author program.
 
 Immutable `estimates store/table/drop` reports retain the full joint beta/lnalpha
 covariance, `lnalpha` dispersion, offset identity, selected covariance correction,

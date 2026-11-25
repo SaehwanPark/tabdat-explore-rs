@@ -29,8 +29,29 @@ is therefore reported as method reproduction, not dependable panel inference.
 
 ## Verification
 
-The Rust implementation will be checked against a separate Base R calculation
-of the auxiliary regression on independent synthetic NB2 samples and the exact
-prepared MMA sample. Runtime coverage will check retained-row use, text/JSON
-results, unsupported fit families, clustered-fit rejection and state-preserving
-failure behavior. The author data remain external and are not redistributed.
+An independent Base R/MASS reference (`R 4.6.2`, `MASS 7.3.66`) fits the synthetic
+fixture and exact prepared author sample, polishes the joint NB2 likelihood
+scores, and computes probabilities, likelihood scores and the auxiliary
+regression independently. The reference validates the exact prepared ASCII by
+SHA-256 `c8b1eee8ae1f637f4d4e4c6aa6b2dcbf2b8aa98f276b9369adcb4f02a528c58a`; no
+raw author data are committed.
+
+On the exact `N=20,186` sample the independent reference gives
+`CGF=123.15399170935741`, `df=10`, and `p=1.1576503947859055e-21`. Rust gives
+`123.15399170936661`, `df=10`, and `1.157650394780931e-21`. Across 47 compared
+quantities (statistic, df, p-value, and observed count/fraction, fitted fraction
+and expected count for each of 11 cells), maximum absolute error is `9.60654e-12`. The
+November 2006 author program prints `CGF=123.15368` and uses `df=9`; its
+statistic differs from the independently polished reference by about
+`0.000312`. The cause of the statistic difference is unresolved. The separate
+df discrepancy is documented above and the book's `J-1` rule is used.
+
+The independently polished fit also matches Rust across 20 retained quantities
+(18 coefficients, alpha and log likelihood), with maximum absolute error
+`2.11003e-10`. Base R's maximum absolute likelihood score is `2.54e-11`; the
+Rust fit reports scaled score `7.98e-15` and scaled Newton step `2.19e-14`.
+
+Runtime tests cover retained-row use, read-only behavior after current-data
+edits, unsupported fit families, clustered/robust/offset-fit rejection and
+state-preserving failures. Language, JSON CLI and terminal output contracts are
+also checked. The fixed QR work bound prevents oversized auxiliary regressions.

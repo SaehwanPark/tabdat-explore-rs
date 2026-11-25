@@ -1457,6 +1457,10 @@ pub enum EstatSubcommand {
   CountProbabilities {
     tail_from: usize,
   },
+  /// Score-adjusted grouped frequency test after an unclustered NB2 ML fit.
+  CountGoodnessOfFit {
+    tail_from: usize,
+  },
   Gof,
   Did,
   Drdid,

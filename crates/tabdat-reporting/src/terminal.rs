@@ -2821,6 +2821,34 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       text.push_str("Fitted fractions average individual conditional probabilities over the ORIGINAL retained sample, not the probability at an average mean.\nDescriptive distributional assumption: Poisson/NB2 probabilities are NOT guaranteed by robust/cluster QMLE covariance. No uncertainty or formal goodness-of-fit test is computed.\n");
       text
     }
+    ExecutionResult::CountGoodnessOfFit(result) => {
+      let mut text = format!(
+        "NB2 grouped count goodness-of-fit test\nOutcome: {}; retained estimation N = {}\nAndrews score-adjusted CGF = {}; chi-square({}) p = {}\nCount\tObserved N\tObserved fraction\tFitted fraction\tExpected N\n",
+        result.outcome.escape_debug(),
+        result.test.observation_count,
+        result.test.statistic,
+        result.test.degrees_of_freedom,
+        result.test.p_value,
+      );
+      for bin in &result.test.table.bins {
+        let label = if bin.upper_bound.is_some() {
+          bin.lower_bound.to_string()
+        } else {
+          format!(">={}", bin.lower_bound)
+        };
+        writeln!(
+          text,
+          "{label}\t{}\t{}\t{}\t{}",
+          bin.observed_count, bin.observed_fraction, bin.fitted_fraction, bin.expected_count
+        )
+        .unwrap();
+      }
+      text.push_str("Method: N times the uncentered R-squared from a no-intercept regression of one on the retained cell residuals and all NB2 likelihood scores, including lnalpha. The reference assumes independent observations and a correctly specified conditional NB2 distribution; no cluster-robust reference is installed.\n");
+      if result.test.tail_from == 10 {
+        text.push_str("Source note: the 2006 author program reports df=9 for these 11 cells; this result uses df=10 from the book's J-1 rule.\n");
+      }
+      text
+    }
     ExecutionResult::Nbreg(result) => nb2_report(result),
     ExecutionResult::NbregMarginalEffects(result) => format!(
       "NB2 continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed X; {}, asymptotic normal 95% intervals. Uses beta block of FULL joint beta/lnalpha covariance.\n{}{}{}{}",
