@@ -165,7 +165,7 @@ CR1 with 20 groups gives [1.16236801651081, 1.39363336463301]. Corrections are
 1.0752688172043 and 1.12054329371817. A second design yields an empty CR1 set
 and a bounded HC1 set. The degree-ten method supports up to ten boundary roots
 and six set components. Tests compare endpoints and direct Wald probes,
-rescaling, retained state, text/JSON and seven-instrument rejection.
+rescaling, retained state, text/JSON and eight-instrument rejection.
 
 [`six_instrument_ci.td`](six_instrument_ci.td) and
 [`six_instrument_ci_clustered.td`](six_instrument_ci_clustered.td) extend the
@@ -180,8 +180,32 @@ HC1 [0.744654120556704, 1.63797231436378] and CR1
 [0.848220516944529, 1.52707474910469]. The degree-twelve method supports up to
 twelve real roots and seven accepted components. Tests compare reference
 endpoints and direct Wald probes within 3e-8, correction and metadata, instrument
-rescaling, retained state, JSON/text output and seven-instrument rejection.
-Seven or more excluded instruments remain unsupported.
+rescaling, retained state, JSON/text output and eight-instrument rejection.
+
+[seven_instrument_ci.td](seven_instrument_ci.td) and
+[seven_instrument_ci_clustered.td](seven_instrument_ci_clustered.td) extend the
+same workflow to seven excluded instruments. The deterministic 168-row designs
+have one included control, K_aux=9 and residual DF=159; the 95% chi-square(7)
+critical value is 14.0671404493402. The independent Base R 4.6.2 generator and
+reference are in
+[robust_ar_seven_ci_reference.R](../../crates/tabdat-stats/tests/fixtures/robust_ar_seven_ci_reference.R).
+The primary HC1 set is [0.87058126469739, 1.50944638151829] and the CR1 set
+with 24 groups is [1.03741500489376, 1.47495371597571]. Corrections are
+1.05660377358491 and 1.09598031173093. A second design independently checks
+HC1 [1.11163705575731, 1.51047538844265] and CR1
+[1.17198974024994, 1.53810157793966]. The degree-fourteen method supports
+fourteen real roots and eight accepted components. Tests compare endpoints and
+direct Wald probes within 3e-8, rescaling, retained state, text/JSON and
+eight-instrument rejection.
+
+Regenerate both data fixtures and the independent reference by running
+robust_ar_seven_ci_reference.R with Base R 4.6.2; the script writes the two
+CSV inputs and reference results to its output directory. From the repository
+root, run:
+
+    work=$(mktemp -d)
+    Rscript crates/tabdat-stats/tests/fixtures/robust_ar_seven_ci_reference.R "$work" > "$work/robust_ar_seven_ci_reference.csv"
+Eight or more excluded instruments remain unsupported.
 
 ## Robust projected coefficient sets
 
@@ -244,6 +268,8 @@ cp crates/tabdat-stats/tests/fixtures/robust_ar_four_ci*csv "$work/"
 cp examples/robust-ar/robust_ar_five_ci*csv "$work/"
 cp examples/robust-ar/projected_ar_data.csv "$work/"
 cp examples/robust-ar/robust_ar_six_ci_multiple_data.csv "$work/"
+cp examples/robust-ar/robust_ar_seven_ci_multiple_data.csv "$work/"
+cp examples/robust-ar/robust_ar_seven_ci_secondary_data.csv "$work/"
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/two_instrument_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/two_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/two_instrument_ci_all_real.td")
@@ -257,16 +283,18 @@ cp examples/robust-ar/robust_ar_six_ci_multiple_data.csv "$work/"
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/five_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/six_instrument_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/six_instrument_ci_clustered.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/seven_instrument_ci.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/seven_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/projected_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/projected_ci_clustered.td")
 ```
 
-Degree-four through degree-twelve boundaries are solved by
+Degree-four through degree-fourteen boundaries are solved by
 recursively isolating derivative roots and checking every intervening region,
 without a finite grid.
 Repeated or ambiguous roots and singular or ill-conditioned score covariance
 fail explicitly. This remains synthetic method evidence, not a
-Cameron–Trivedi illustration or a claim of instrument validity. Seven or more
+Cameron–Trivedi illustration or a claim of instrument validity. Eight or more
 excluded instruments, robust projection outside the bounded two-endogenous/
 two-instrument slice, larger endogenous systems, HAC/survey covariance and
 few-cluster inference remain unsupported.

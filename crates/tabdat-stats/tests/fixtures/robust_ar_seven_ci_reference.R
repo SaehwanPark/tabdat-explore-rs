@@ -185,8 +185,8 @@ fit_reference <- function(data, fixture, covariance) {
   rbind(common, probe_rows)
 }
 
-multiple <- make_data(3L)
-secondary <- make_data(4L)
+multiple <- make_data(4L)
+secondary <- make_data(7L)
 for (entry in list(list(name = "multiple", data = multiple),
                    list(name = "secondary", data = secondary))) {
   write.csv(entry$data, file.path(args[[1]], paste0("robust_ar_seven_ci_", entry$name, "_data.csv")),

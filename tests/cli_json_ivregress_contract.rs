@@ -792,7 +792,7 @@ fn three_instrument_robust_ar_confidence_sets_report_json_and_text() {
     );
     let text = String::from_utf8(text.stdout).unwrap();
     assert!(text.contains("asymptotic chi-square(3)"));
-    assert!(text.contains("two, three, four, five or six excluded instruments"));
+    assert!(text.contains("two, three, four, five, six or seven excluded instruments"));
   }
 }
 
@@ -913,7 +913,7 @@ fn four_instrument_robust_ar_confidence_sets_report_json_text_and_dimension_limi
   assert!(text.status.success());
   let text = String::from_utf8(text.stdout).unwrap();
   assert!(text.contains("asymptotic chi-square(4)"));
-  assert!(text.contains("two, three, four, five or six excluded instruments"));
+  assert!(text.contains("two, three, four, five, six or seven excluded instruments"));
 
   let script =
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/robust-ar/five_instrument_ci.td");
@@ -921,15 +921,20 @@ fn four_instrument_robust_ar_confidence_sets_report_json_text_and_dimension_limi
   assert!(text.status.success());
   let text = String::from_utf8(text.stdout).unwrap();
   assert!(text.contains("asymptotic chi-square(5)"));
-  assert!(text.contains("two, three, four, five or six excluded instruments"));
+  assert!(text.contains("two, three, four, five, six or seven excluded instruments"));
 
   fs::write(
-    fixture.0.join("seven-instruments.td"),
-    "use robust_ar_six_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 row) robust\nestat ar, ci\nexport should-not-exist.csv\n",
+    fixture.0.join("robust_ar_seven_ci_multiple_data.csv"),
+    include_str!("../examples/robust-ar/robust_ar_seven_ci_multiple_data.csv"),
   )
   .unwrap();
-  let output = fixture.run(&["--json", "-f", "seven-instruments.td"]);
+  fs::write(
+    fixture.0.join("eight-instruments.td"),
+    "use robust_ar_seven_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 row) robust\nestat ar, ci\nexport should-not-exist.csv\n",
+  )
+  .unwrap();
+  let output = fixture.run(&["--json", "-f", "eight-instruments.td"]);
   assert_eq!(output.status.code(), Some(1));
-  assert!(String::from_utf8_lossy(&output.stderr).contains("at most six excluded instruments"));
+  assert!(String::from_utf8_lossy(&output.stderr).contains("at most seven excluded instruments"));
   assert!(!fixture.0.join("should-not-exist.csv").exists());
 }
