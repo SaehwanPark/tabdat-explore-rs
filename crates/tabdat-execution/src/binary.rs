@@ -106,29 +106,53 @@ impl Session {
       return Err(error("cannot combine robust and cluster".to_owned()));
     }
     let command_name = binary_family(model);
+    let terms = crate::regress_design::parse_regress_terms(predictors)
+      .map_err(|failure| error(failure.to_string()))?;
     let dataset = self
       .active_dataset
       .as_ref()
       .ok_or(RuntimeError::NoActiveDataset {
         command: command_name,
       })?;
-    let variables: Vec<&str> = std::iter::once(outcome)
-      .chain(predictors.iter().map(String::as_str))
-      .collect();
-    for name in &variables {
+    let outcome_column = dataset
+      .columns
+      .iter()
+      .find(|column| column.name == outcome)
+      .ok_or_else(|| error(format!("unknown variable: {outcome}")))?;
+    if !is_numeric_data_type(&outcome_column.data_type) {
+      return Err(error(format!("numeric variable required: {outcome}")));
+    }
+    for term in &terms {
+      let name = term.variable();
       let column = dataset
         .columns
         .iter()
-        .find(|c| c.name == **name)
+        .find(|column| column.name == name)
         .ok_or_else(|| error(format!("unknown variable: {name}")))?;
-      if !is_numeric_data_type(&column.data_type) {
-        return Err(error(format!("numeric variable required: {name}")));
+      let supported = match term {
+        crate::regress_design::RegressTerm::Continuous { .. } => {
+          is_numeric_data_type(&column.data_type)
+        }
+        crate::regress_design::RegressTerm::Factor { .. } => {
+          is_numeric_data_type(&column.data_type)
+            || matches!(column.data_type.as_str(), "VARCHAR" | "BOOLEAN")
+        }
+      };
+      if !supported {
+        return Err(error(match term {
+          crate::regress_design::RegressTerm::Continuous { .. } => {
+            format!("numeric variable required: {name}")
+          }
+          crate::regress_design::RegressTerm::Factor { .. } => {
+            format!("factor variable must be text, boolean or numeric codes: {name}")
+          }
+        }));
       }
     }
-    let mut select_columns: Vec<String> = variables
-      .iter()
-      .map(|name| quote_identifier(name))
-      .collect();
+    let mut select_columns =
+      Vec::with_capacity(1 + terms.len() + usize::from(cluster_variable.is_some()));
+    select_columns.push(quote_identifier(outcome));
+    select_columns.extend(terms.iter().map(|term| quote_identifier(term.variable())));
     if let Some(name) = cluster_variable {
       let column = dataset
         .columns
@@ -161,28 +185,48 @@ impl Session {
         |row| {
           let index = total_rows;
           total_rows += 1;
-          let mut values = Vec::with_capacity(variables.len());
-          let mut outcome_is_binary = false;
-          for j in 0..variables.len() {
-            let cell = row.cell(j).map_err(|read_error| {
+          let outcome_cell = row.cell(0).map_err(|read_error| {
+            error(match read_error {
+              CellReadError::Backend(message) => message,
+              _ => format!("could not read {command_name} outcome cell"),
+            })
+          })?;
+          let outcome_is_binary = exact_binary_outcome(outcome_cell);
+          // Exclude missing/nonfinite outcomes before inspecting the design.
+          // A finite nonbinary outcome is rejected only when its whole row is
+          // otherwise in the estimation sample, matching the existing policy.
+          let Some(outcome_value) = cell_to_f64(outcome_cell).filter(|value| value.is_finite())
+          else {
+            return Ok(());
+          };
+          let mut raw_terms = Vec::with_capacity(terms.len());
+          for (term_index, term) in terms.iter().enumerate() {
+            let cell = row.cell(term_index + 1).map_err(|read_error| {
               error(match read_error {
                 CellReadError::Backend(message) => message,
-                _ => format!("could not read {command_name} numeric cell"),
+                _ => format!("could not read {command_name} predictor cell"),
               })
             })?;
-            if j == 0 {
-              // Validate the owned numeric value before f64 rounding can map a
-              // nearby nonbinary DECIMAL onto one. Exclusions still come first.
-              outcome_is_binary = exact_binary_outcome(cell);
-            }
-            match cell_to_f64(cell) {
-              Some(v) if v.is_finite() => values.push(v),
-              _ => return Ok(()),
+            match term {
+              crate::regress_design::RegressTerm::Continuous { .. } => {
+                let Some(value) = cell_to_f64(cell).filter(|value| value.is_finite()) else {
+                  return Ok(());
+                };
+                raw_terms.push(crate::regress_design::ObservedTermValue::Continuous(value));
+              }
+              crate::regress_design::RegressTerm::Factor { .. } => {
+                let Some(value) = crate::regress_design::ObservedFactor::from_cell(cell)
+                  .map_err(|failure| error(failure.to_string()))?
+                else {
+                  return Ok(());
+                };
+                raw_terms.push(crate::regress_design::ObservedTermValue::Factor(value));
+              }
             }
           }
           let cluster_group = if cluster_variable.is_some() {
             let cell = row
-              .cell(variables.len())
+              .cell(terms.len() + 1)
               .map_err(|_| error("could not read cluster cell".to_owned()))?;
             let Some(group) =
               binary_cluster_key(cell).map_err(|message| error(message.to_owned()))?
@@ -201,8 +245,8 @@ impl Session {
           retained.push(index);
           // Canonicalize validated exact DECIMAL one: its f64 division need
           // not itself round to bit-exact one at every scale.
-          response.push(if values[0] == 0.0 { 0.0 } else { 1.0 });
-          design.push(values[1..].to_vec());
+          response.push(if outcome_value == 0.0 { 0.0 } else { 1.0 });
+          design.push(raw_terms);
           if let Some(group) = cluster_group {
             cluster_groups.push(group);
           }
@@ -222,11 +266,18 @@ impl Session {
       cluster_variable.is_some().then_some(cluster_groups),
     )
     .map_err(|e| error(e.to_string()))?;
+    let expanded = crate::regress_design::expand_design(&terms, &design, include_intercept)
+      .map_err(|failure| error(failure.to_string()))?;
+    let design_terms = if crate::regress_design::has_factor_terms(&expanded.design_terms) {
+      expanded.design_terms
+    } else {
+      Vec::new()
+    };
     let problem = tabdat_stats::EstimationProblem::new(
       outcome.to_owned(),
-      predictors.to_vec(),
+      expanded.parameter_names,
       response,
-      design,
+      expanded.design_matrix,
     )
     .map_err(|e| error(e.to_string()))?
     .with_intercept(include_intercept)
@@ -246,10 +297,12 @@ impl Session {
       BinaryModel::Logit => EstimationState::Logit(Box::new(BinaryLogitState {
         problem,
         result: result.clone(),
+        design_terms,
       })),
       BinaryModel::Probit => EstimationState::Probit(Box::new(BinaryProbitState {
         problem,
         result: result.clone(),
+        design_terms,
       })),
     });
     Ok(match model {
@@ -262,6 +315,11 @@ impl Session {
     let Some(EstimationState::Logit(state)) = &self.estimation else {
       return Err(RuntimeError::EstatMarginsRequiresPriorLogit);
     };
+    if crate::regress_design::has_factor_terms(&state.design_terms) {
+      return Err(RuntimeError::EstatMarginsFailed {
+        message: "margins after binary fits with factor predictors is not supported".into(),
+      });
+    }
     let result = tabdat_stats::logit_average_marginal_effects(&state.problem, &state.result)
       .map_err(|e| RuntimeError::EstatMarginsFailed {
         message: e.to_string(),
@@ -273,6 +331,11 @@ impl Session {
     &self,
     state: &BinaryProbitState,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if crate::regress_design::has_factor_terms(&state.design_terms) {
+      return Err(RuntimeError::EstatMarginsFailed {
+        message: "margins after binary fits with factor predictors is not supported".into(),
+      });
+    }
     let result = tabdat_stats::binary_average_marginal_effects(&state.problem, &state.result)
       .map_err(|e| RuntimeError::EstatMarginsFailed {
         message: e.to_string(),
@@ -284,15 +347,24 @@ impl Session {
     &self,
     predictor: &str,
   ) -> Result<ExecutionResult, RuntimeError> {
-    let Some((problem, result)) = (match &self.estimation {
-      Some(EstimationState::Logit(state)) => Some((&state.problem, &state.result)),
-      Some(EstimationState::Probit(state)) => Some((&state.problem, &state.result)),
+    let Some((problem, result, design_terms)) = (match &self.estimation {
+      Some(EstimationState::Logit(state)) => {
+        Some((&state.problem, &state.result, &state.design_terms))
+      }
+      Some(EstimationState::Probit(state)) => {
+        Some((&state.problem, &state.result, &state.design_terms))
+      }
       _ => None,
     }) else {
       return Err(RuntimeError::EstatMarginsFailed {
         message: "requires a prior logit or probit fit".into(),
       });
     };
+    if crate::regress_design::has_factor_terms(design_terms) {
+      return Err(RuntimeError::EstatMarginsFailed {
+        message: "margins after binary fits with factor predictors is not supported".into(),
+      });
+    }
     let result = tabdat_stats::binary_average_discrete_change(problem, result, predictor).map_err(
       |error| RuntimeError::EstatMarginsFailed {
         message: error.to_string(),
@@ -338,6 +410,23 @@ impl Session {
     }) else {
       return Err(RuntimeError::PredictRequiresPriorRegression);
     };
+    if !state.design_terms.is_empty() {
+      let design_terms = state.design_terms.clone();
+      let include_intercept = state.problem.include_intercept;
+      let coefficients = state
+        .result
+        .coefficients
+        .iter()
+        .map(|coefficient| coefficient.value)
+        .collect();
+      return self.execute_binary_design_prediction(
+        command,
+        model,
+        design_terms,
+        include_intercept,
+        coefficients,
+      );
+    }
     let dataset = self
       .active_dataset
       .as_ref()
@@ -406,5 +495,181 @@ impl Session {
     Ok(ExecutionResult::Prediction(PredictionResult {
       dataset: next,
     }))
+  }
+
+  fn execute_binary_design_prediction(
+    &mut self,
+    command: &PredictCommand,
+    model: BinaryModel,
+    design_terms: Vec<LinearDesignTerm>,
+    include_intercept: bool,
+    coefficients: Vec<f64>,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let error = binary_error(model);
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "predict" })?
+      .clone();
+    if dataset
+      .columns
+      .iter()
+      .any(|column| column.name == command.target_variable)
+    {
+      return Err(RuntimeError::PredictTargetExists {
+        variable: command.target_variable.clone(),
+      });
+    }
+
+    let expected_coefficients = usize::from(include_intercept)
+      + design_terms
+        .iter()
+        .map(|term| match term {
+          LinearDesignTerm::Continuous { .. } => 1,
+          LinearDesignTerm::Factor {
+            reference, levels, ..
+          } => {
+            if include_intercept && reference.is_some() {
+              levels.len().saturating_sub(1)
+            } else {
+              levels.len()
+            }
+          }
+        })
+        .sum::<usize>();
+    if coefficients.len() != expected_coefficients {
+      return Err(RuntimeError::PredictFailed);
+    }
+
+    let required = design_terms
+      .iter()
+      .map(|term| match term {
+        LinearDesignTerm::Continuous { name } => name.clone(),
+        LinearDesignTerm::Factor { variable, .. } => variable.clone(),
+      })
+      .collect::<Vec<_>>();
+    let missing = required
+      .iter()
+      .filter(|name| {
+        !dataset
+          .columns
+          .iter()
+          .any(|column| column.name == name.as_str())
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !missing.is_empty() {
+      return Err(RuntimeError::PredictUnknownVariable { variables: missing });
+    }
+    for term in &design_terms {
+      let name = match term {
+        LinearDesignTerm::Continuous { name } => name,
+        LinearDesignTerm::Factor { variable, .. } => variable,
+      };
+      let data_type = &dataset
+        .columns
+        .iter()
+        .find(|column| column.name == *name)
+        .ok_or(RuntimeError::PredictFailed)?
+        .data_type;
+      let supported = match term {
+        LinearDesignTerm::Continuous { .. } => is_numeric_data_type(data_type),
+        LinearDesignTerm::Factor { .. } => {
+          is_numeric_data_type(data_type) || matches!(data_type.as_str(), "VARCHAR" | "BOOLEAN")
+        }
+      };
+      if !supported {
+        return Err(error(format!(
+          "current data has an unsupported type for '{name}'"
+        )));
+      }
+    }
+
+    let query = format!(
+      "SELECT {} FROM {ACTIVE_TABLE}",
+      required
+        .iter()
+        .map(|name| quote_identifier(name))
+        .collect::<Vec<_>>()
+        .join(", ")
+    );
+    let mut values = Vec::with_capacity(usize::try_from(dataset.row_count).unwrap_or(0));
+    self
+      .backend
+      .as_ref()
+      .ok_or(RuntimeError::PredictFailed)?
+      .visit_rows(
+        &query,
+        |row| {
+          let cells = (0..design_terms.len())
+            .map(|index| read_owned_cell(row, index, true, "could not read predictor cell"))
+            .collect::<Result<Vec<_>, _>>()?;
+          let value = match crate::regress_design::expand_current_row(
+            &design_terms,
+            include_intercept,
+            &cells,
+          )
+          .map_err(|failure| error(failure.to_string()))?
+          {
+            None => None,
+            Some(columns) => {
+              let mut index = 0usize;
+              let mut xb = if include_intercept {
+                let value = coefficients[0];
+                index = 1;
+                value
+              } else {
+                0.0
+              };
+              for column in columns {
+                xb += coefficients[index] * column;
+                index += 1;
+              }
+              if !xb.is_finite() {
+                return Err(RuntimeError::PredictFailed);
+              }
+              let prediction = if command.kind == PredictKind::Pr {
+                binary_probability(model, xb)
+              } else {
+                xb
+              };
+              Some(prediction)
+            }
+          };
+          if value.is_some_and(|value| !value.is_finite()) {
+            return Err(RuntimeError::PredictFailed);
+          }
+          values.push(value);
+          Ok(())
+        },
+        |message| RuntimeError::RegressFailed { message },
+      )?;
+    if u64::try_from(values.len()).ok() != Some(dataset.row_count) {
+      return Err(RuntimeError::PredictFailed);
+    }
+    let next_dataset = self
+      .backend
+      .as_mut()
+      .ok_or(RuntimeError::PredictFailed)?
+      .add_numeric_prediction_column(&dataset, &command.target_variable, &values)
+      .map_err(|_| RuntimeError::PredictFailed)?;
+    let next_dataset = self.sync_active_dataset(next_dataset)?;
+    Ok(ExecutionResult::Prediction(PredictionResult {
+      dataset: next_dataset,
+    }))
+  }
+}
+
+fn binary_probability(model: BinaryModel, xb: f64) -> f64 {
+  match model {
+    BinaryModel::Logit => {
+      if xb >= 0.0 {
+        1.0 / (1.0 + (-xb).exp())
+      } else {
+        let exponential = xb.exp();
+        exponential / (1.0 + exponential)
+      }
+    }
+    BinaryModel::Probit => tabdat_stats::normal_cdf(xb),
   }
 }

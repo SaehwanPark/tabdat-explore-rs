@@ -93,6 +93,64 @@ fn old_states_default_missing_report_registry_and_unknown_estimator_without_gues
 }
 
 #[test]
+fn binary_factor_design_state_roundtrips_and_legacy_state_defaults_terms() {
+  let response = (0..90)
+    .map(|index| f64::from(u8::from((index * 7 + index / 3 * 5) % 11 < 5)))
+    .collect::<Vec<_>>();
+  let design = (0..90)
+    .map(|index| {
+      let level = index % 3;
+      let x = ((index * 7 % 13) as f64 - 6.0) / 4.0;
+      vec![
+        x,
+        f64::from(u8::from(level == 1)),
+        f64::from(u8::from(level == 2)),
+      ]
+    })
+    .collect::<Vec<_>>();
+  let problem = tabdat_stats::EstimationProblem::new(
+    "y",
+    vec!["x".into(), "region_North".into(), "region_West".into()],
+    response,
+    design,
+  )
+  .unwrap();
+  let result = tabdat_stats::fit_binary_logit(&problem).unwrap();
+  let state = BinaryLogitState {
+    problem,
+    result,
+    design_terms: vec![
+      LinearDesignTerm::Continuous { name: "x".into() },
+      LinearDesignTerm::Factor {
+        variable: "region".into(),
+        reference: Some("East".into()),
+        levels: vec![
+          LinearFactorLevel::Text {
+            label: "East".into(),
+          },
+          LinearFactorLevel::Text {
+            label: "North".into(),
+          },
+          LinearFactorLevel::Text {
+            label: "West".into(),
+          },
+        ],
+      },
+    ],
+  };
+  let wire = serde_json::to_value(&state).unwrap();
+  assert_eq!(
+    serde_json::from_value::<BinaryLogitState>(wire.clone()).unwrap(),
+    state
+  );
+
+  let mut legacy_wire = wire;
+  legacy_wire.as_object_mut().unwrap().remove("design_terms");
+  let legacy = serde_json::from_value::<BinaryLogitState>(legacy_wire).unwrap();
+  assert!(legacy.design_terms.is_empty());
+}
+
+#[test]
 fn legacy_poisson_placeholder_and_owned_executable_fit_have_distinct_roundtrippable_tags() {
   let problem = tabdat_stats::EstimationProblem::new(
     "y",

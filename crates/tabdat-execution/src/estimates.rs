@@ -180,7 +180,7 @@ fn snapshot(
         name: name.into(),
         estimator: estimator.into(),
         outcome: result.outcome.clone(),
-        linear_design_terms: Vec::new(),
+        linear_design_terms: state.design_terms.clone(),
         nls_model: None,
         nls_centered_r_squared: None,
         nls_covariance_correction: None,

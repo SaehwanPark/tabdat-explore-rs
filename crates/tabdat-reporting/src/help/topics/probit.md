@@ -1,7 +1,7 @@
 # probit
 
 Installed syntax:
-`probit y x1 x2 [, robust cluster(group) noconstant]`
+`probit y x1 i.group [, robust cluster(group) noconstant]`
 
 Fit an unweighted independent-Bernoulli binary probit model. Reports model-based
 inverse observed-information (OIM) covariance from Newton steps, coefficient
@@ -39,8 +39,11 @@ pseudoinverse or reduced-q test is substituted. This is not a specification
 test or small-cluster reliability guarantee. General binary `test` remains
 unsupported.
 
-Workflow (after loading numeric data):
+Workflow (after loading numeric outcomes/continuous predictors and any typed
+categorical columns):
 - `probit insured age bmi`
+- `probit insured age i.region`
+- `probit insured age ib(West).region`
 - `estat margins` — continuous average predictor-column derivatives and delta SE/95% intervals
 - `estat margins, discrete(treated)` — average probability change for a numeric 0/1 predictor
 - `predict probability, pr`
@@ -49,17 +52,25 @@ Workflow (after loading numeric data):
 - `export predictions.csv`
 
 Sample and state:
-- Outcome and predictor columns must be numeric. SQL NULL/nonfinite model values
-  are excluded jointly; retained y must be exactly 0/1 with both classes. Other
-  finite outcomes are errors, not silently mapped to nonzero=1.
+- Outcomes and continuous predictors must be numeric. Explicit factors use
+  `i.var` or `ib(level).var` and accept finite numeric codes, text or booleans.
+  Missing/nonfinite model values are excluded jointly; retained y must be
+  exactly 0/1 with both classes. Other finite outcomes on complete rows are
+  errors, not silently mapped to nonzero=1.
+- `i.var` omits the first sorted level in the retained sample; `ib(level).var`
+  selects a reference explicitly. With `noconstant`, every observed level is
+  included and `ib(level)` is invalid. Expanded names use `<var>_<level>` with
+  stable collision suffixes. The retained design records typed levels and the
+  reference used.
 - The intercept is included unless `noconstant`; names/order and exact retained
   indices are recorded. Without an intercept the LR null is probability 0.5,
   not an estimated constant probability.
-- A successful fit owns its original design/sample. Both continuous and
-  discrete `estat margins` results remain unchanged after current-data edits.
-  Prediction instead uses current predictor
-  rows, without requiring the outcome; probability columns are computed by the
-  same validated Gaussian function the fit used (`tabdat_gauss_phi`).
+- A successful fit owns its original design/sample. Available `estat margins`
+  results remain unchanged after current-data edits. Prediction instead scores
+  current predictor rows, without requiring the outcome. Factor predictions use
+  the retained typed levels; missing values or levels absent from the fit yield
+  NULL. Probability columns use the same validated Gaussian function the fit
+  used (`tabdat_gauss_phi`).
 - A new fit attempt clears the previous model, including on failure. Refit
   successfully before requesting subsequent inference/prediction.
 
@@ -71,8 +82,9 @@ Convergence and supported limits:
   singularity/nonconvergence cannot publish a fit merely because likelihood
   looks flat. This is not an analytic separation classifier; extreme finite
   designs may also fail numerical-resolution bounds.
-- Plain numeric predictor columns only: no automatic factor/interactions or
-  chain-rule interpretation of generated columns. The bounded discrete-change
+- Additive one-way factor main effects are supported; interactions and
+  factor-specific margins/probability contrasts are not. `estat margins` is
+  available only after continuous-only designs. The bounded discrete-change
   command accepts one numeric predictor with exact 0/1 values and both levels
   in the retained sample; see `help estat`.
 - Only one-way clustering is supported. Weighted/survey probit, prediction

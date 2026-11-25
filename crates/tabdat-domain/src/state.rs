@@ -230,6 +230,10 @@ pub struct RandomEffectsState {
 pub struct BinaryLogitState {
   pub problem: tabdat_stats::EstimationProblem,
   pub result: tabdat_stats::BinaryLogitResult,
+  /// Ordered design terms for fits with categorical factor predictors.
+  /// Empty for legacy continuous-only fits.
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub design_terms: Vec<LinearDesignTerm>,
 }
 
 /// Owned binary probit fit; the shared design/fit record with the family
