@@ -174,6 +174,18 @@ covariance invariance, offsets/exposure, missing rows, collisions, support/work
 limits and empty data. This discrete predictive interval is separate from the
 pointwise parameter-uncertainty interval for an individual PMF or CDF.
 
+The next count-diagnostics slice is raw current-row Poisson/NB2 response
+residuals through `predict target, residuals`. Define the result as current
+`y - exp(xb)`, using the retained mean coefficients and current predictors plus
+fixed offset/exposure; covariance selection does not change it. Require the
+current outcome, return NULL for missing/nonfinite outcomes or model inputs,
+and fail atomically on finite outcomes outside the family count domain. Keep
+bare `xb`, `n`, the fit/sample and row order unchanged. Check every row against
+independent base-R `glm`/`MASS::glm.nb` response residuals after changing current
+predictors/offsets and outcomes; cover missingness, collisions and invalid
+current counts at runtime and CLI boundaries. Residuals are raw response
+residuals, not Pearson, deviance or standardized residuals.
+
 Do not turn the entire textbook inventory into a prerequisite for one bounded
 analysis. Preserve the assumptions and unresolved source differences in the ledger.
 
