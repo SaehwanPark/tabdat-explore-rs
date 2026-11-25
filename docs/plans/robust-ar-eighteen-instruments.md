@@ -32,7 +32,7 @@ q>=19 and other endogenous/covariance dimensions remain unsupported.
 - [x] Implement q=18 support and independent reference fixtures.
 - [x] Update runtime/CLI coverage and specifications/examples.
 - [x] Verify reference regeneration and affected checks.
-- [ ] Final PR review and merge.
+- [x] Final PR review and merge (PR #504, merge commit `a1a7eda7`).
 
 Verification note: the two generated data files and Base R reference CSV match
 the checked-in fixtures byte-for-byte. The q=18 statistics reference test passes
