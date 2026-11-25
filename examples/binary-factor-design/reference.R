@@ -52,6 +52,28 @@ fit_one <- function(data, family, design) {
   }
 }
 
+fit_discrete_one <- function(data, family, design) {
+  control <- glm.control(epsilon = 1e-13, maxit = 100L)
+  if (design == "default") {
+    glm(y ~ treated + x + region, data = data, family = family,
+        na.action = na.exclude, control = control)
+  } else if (design == "west_reference") {
+    glm(y ~ treated + x + relevel(region, ref = "West"), data = data,
+        family = family, na.action = na.exclude, control = control)
+  } else if (design == "noconstant") {
+    glm(y ~ 0 + treated + x + region, data = data, family = family,
+        na.action = na.exclude, control = control)
+  } else if (design == "numeric_factor") {
+    glm(y ~ treated + x + factor(group_code), data = data, family = family,
+        na.action = na.exclude, control = control)
+  } else if (design == "boolean_factor") {
+    glm(y ~ treated + x + factor(is_west), data = data, family = family,
+        na.action = na.exclude, control = control)
+  } else {
+    stop("unknown discrete-change design")
+  }
+}
+
 # Polish Base R glm starts with R's own link, matrix and QR/solve operations so
 # all references use a score norm below 1e-13 rather than glm's stopping delta.
 logit_polished_reference <- function(fit) {
@@ -111,6 +133,7 @@ prediction_rows <- list()
 fit_summary_rows <- list()
 factor_contrast_rows <- list()
 continuous_marginal_effect_rows <- list()
+discrete_change_rows <- list()
 append_covariance <- function(model, design, type, covariance) {
   for (row in seq_len(nrow(covariance))) {
     for (column in seq_len(ncol(covariance))) {
@@ -220,6 +243,48 @@ append_continuous_marginal_effects <- function(model, design, covariance_type,
       )
   }
 }
+append_discrete_change <- function(model, design, covariance_type, fit,
+                                   covariance, estimates) {
+  X <- model.matrix(fit)
+  index <- match("treated", colnames(X))
+  stopifnot(!is.na(index))
+  from <- X
+  to <- X
+  from[, index] <- 0
+  to[, index] <- 1
+  eta_from <- drop(from %*% estimates)
+  eta_to <- drop(to %*% estimates)
+  if (model == "logit") {
+    probability_from <- plogis(eta_from)
+    probability_to <- plogis(eta_to)
+    derivative_from <- probability_from * (1 - probability_from)
+    derivative_to <- probability_to * (1 - probability_to)
+  } else {
+    probability_from <- pnorm(eta_from)
+    probability_to <- pnorm(eta_to)
+    derivative_from <- dnorm(eta_from)
+    derivative_to <- dnorm(eta_to)
+  }
+  estimate <- mean(probability_to - probability_from)
+  gradient <- colMeans(
+    sweep(to, 1L, derivative_to, `*`) -
+      sweep(from, 1L, derivative_from, `*`)
+  )
+  standard_error <- sqrt(drop(gradient %*% covariance %*% gradient))
+  statistic <- estimate / standard_error
+  discrete_change_rows[[length(discrete_change_rows) + 1L]] <<- data.frame(
+    model = model,
+    design = design,
+    covariance_type = covariance_type,
+    predictor = "treated",
+    estimate = estimate,
+    standard_error = standard_error,
+    statistic = statistic,
+    p_value = 2 * pnorm(-abs(statistic)),
+    confidence_lower = estimate - qnorm(0.975) * standard_error,
+    confidence_upper = estimate + qnorm(0.975) * standard_error
+  )
+}
 for (model in c("logit", "probit")) {
   family <- binomial(link = model)
   for (design in c("default", "west_reference", "noconstant",
@@ -319,6 +384,51 @@ for (model in c("logit", "probit")) {
   }
 }
 
+discrete_data <- transform(data, treated = as.integer(x > 0))
+for (model in c("logit", "probit")) {
+  family <- binomial(link = model)
+  for (design in c("default", "west_reference", "noconstant",
+                   "numeric_factor", "boolean_factor")) {
+    fit <- fit_discrete_one(discrete_data, family, design)
+    if (model == "probit") {
+      reference <- probit_observed_reference(fit)
+    } else {
+      reference <- logit_polished_reference(fit)
+    }
+    estimates <- reference$beta
+    covariance <- reference$covariance
+    append_discrete_change(model, design, "model_based", fit,
+                           covariance, estimates)
+    if (design == "default") {
+      X <- model.matrix(fit)
+      eta_sample <- drop(X %*% estimates)
+      probability_sample <- if (model == "logit") plogis(eta_sample) else pnorm(eta_sample)
+      score_multiplier <- if (model == "logit") {
+        fit$y - probability_sample
+      } else {
+        (fit$y - probability_sample) * dnorm(eta_sample) /
+          (probability_sample * (1 - probability_sample))
+      }
+      score_matrix <- X * score_multiplier
+      robust_covariance <- covariance %*% crossprod(score_matrix) %*% covariance *
+        nrow(X) / (nrow(X) - 1L)
+      append_discrete_change(model, design, "robust", fit,
+                             robust_covariance, estimates)
+      retained_rows <- as.integer(rownames(model.frame(fit)))
+      cluster_scores <- rowsum(
+        score_matrix,
+        data$cluster[retained_rows],
+        reorder = FALSE
+      )
+      cluster_count <- nrow(cluster_scores)
+      cluster_covariance <- covariance %*% crossprod(cluster_scores) %*% covariance *
+        cluster_count / (cluster_count - 1L)
+      append_discrete_change(model, design, "cluster", fit,
+                             cluster_covariance, estimates)
+    }
+  }
+}
+
 write.csv(do.call(rbind, fit_rows), "binary_factor_fit_reference.csv",
           row.names = FALSE)
 write.csv(do.call(rbind, covariance_rows), "binary_factor_covariance_reference.csv",
@@ -331,3 +441,5 @@ write.csv(do.call(rbind, factor_contrast_rows),
           "binary_factor_contrast_reference.csv", row.names = FALSE)
 write.csv(do.call(rbind, continuous_marginal_effect_rows),
           "binary_factor_marginal_effect_reference.csv", row.names = FALSE)
+write.csv(do.call(rbind, discrete_change_rows),
+          "binary_factor_discrete_change_reference.csv", row.names = FALSE)

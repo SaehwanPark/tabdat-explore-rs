@@ -459,9 +459,11 @@ all factor coefficients and their covariance. A factor-only design fails
 because it has no continuous predictor. Interactions remain unsupported.
 
 `estat margins, discrete(variable)` after either family returns
-`BinaryDiscreteChangeResult`. It accepts one retained numeric predictor with
-exactly both 0 and 1 represented. For each retained row it changes that column
-to 0 and 1, leaves all other columns at their row values, and averages
+`BinaryDiscreteChangeResult`. It accepts one retained original continuous
+predictor with exactly both 0 and 1 represented, including in an additive
+factor design. Expanded factor dummy columns are not selectable. For each
+retained row it changes that column to 0 and 1, leaves all other columns at
+their row values, and averages
 `Pr(y=1|X, variable=1) - Pr(y=1|X, variable=0)`. JSON identifies this as
 `effect: "average_discrete_probability_change"`, names the predictor and
 `from_value`/`to_value`, reports `sample: "retained_estimation_design"`, N,
