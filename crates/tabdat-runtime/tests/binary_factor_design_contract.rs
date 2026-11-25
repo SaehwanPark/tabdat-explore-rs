@@ -65,6 +65,14 @@ fn close_named(actual: f64, expected: f64, context: &str) {
   );
 }
 
+fn close_relative(actual: f64, expected: f64, relative_tolerance: f64, context: &str) {
+  let tolerance = relative_tolerance * expected.abs();
+  assert!(
+    (actual - expected).abs() <= tolerance,
+    "{context}: {actual:.17e} != {expected:.17e} (relative tolerance {relative_tolerance:.3e})"
+  );
+}
+
 fn field<'a>(row: &'a [&str], index: usize) -> &'a str {
   row[index].trim_matches('"')
 }
@@ -181,6 +189,15 @@ fn discrete_change_reference(
   .filter(|row| {
     field(row, 0) == model && field(row, 1) == design && field(row, 2) == covariance_type
   })
+  .collect()
+}
+
+fn binary_lincom_reference(model: &str, covariance_type: &str) -> Vec<Vec<&'static str>> {
+  rows(include_str!(
+    "../../../examples/binary-factor-design/binary_factor_lincom_reference.csv"
+  ))
+  .into_iter()
+  .filter(|row| field(row, 0) == model && field(row, 1) == covariance_type)
   .collect()
 }
 
@@ -861,4 +878,96 @@ fn a_nonbinary_outcome_on_an_incomplete_factor_row_is_excluded() {
   };
   assert_eq!(result.observation_count, 237);
   assert_eq!(result.sample.as_ref().unwrap().dropped_observations, 3);
+}
+
+#[test]
+fn binary_lincom_matches_base_r_for_factor_coefficients_and_selected_covariances() {
+  let fixture = Fixture::new();
+  let combinations = [
+    ("slope_offset", "lincom x + 0.5"),
+    (
+      "factor_contrast",
+      "lincom x + region_North - region_West + 0.5",
+    ),
+    ("intercept_slope", "lincom intercept + x"),
+  ];
+
+  for model in ["logit", "probit"] {
+    for covariance in ["model_based", "robust", "cluster"] {
+      let options = match covariance {
+        "model_based" => "",
+        "robust" => ", robust",
+        "cluster" => ", cluster(cluster)",
+        _ => unreachable!(),
+      };
+      let mut session = fixture.load();
+      run(&mut session, &format!("{model} y x i.region{options}"));
+      run(&mut session, "replace y = 1 - y if id == 1");
+      let retained_state = session.state();
+      let references = binary_lincom_reference(model, covariance);
+      assert_eq!(references.len(), combinations.len(), "{model} {covariance}");
+
+      for (combination, command) in combinations {
+        let reference = references
+          .iter()
+          .find(|row| field(row, 2) == combination)
+          .unwrap_or_else(|| panic!("missing {model} {covariance} {combination} reference"));
+        let ExecutionResult::Lincom(actual) = run(&mut session, command) else {
+          panic!("expected linear combination after {model}")
+        };
+        for (name, value, column) in [
+          ("estimate", actual.estimate, 3),
+          ("standard error", actual.standard_error, 4),
+          ("z statistic", actual.statistic, 5),
+          ("lower interval", actual.ci_lower, 7),
+          ("upper interval", actual.ci_upper, 8),
+        ] {
+          close_named(
+            value,
+            field(reference, column).parse().unwrap(),
+            &format!("{model} {covariance} {combination} {name}"),
+          );
+        }
+        close_relative(
+          actual.p_value,
+          field(reference, 6).parse().unwrap(),
+          1e-8,
+          &format!("{model} {covariance} {combination} p-value"),
+        );
+        close(actual.ci_level, field(reference, 9).parse().unwrap());
+        assert_eq!(
+          actual.df_residual, None,
+          "{model} {covariance} {combination}"
+        );
+        assert_eq!(
+          session.state(),
+          retained_state,
+          "{model} {covariance} {combination}"
+        );
+      }
+
+      let ExecutionResult::Lincom(zero_se) = run(&mut session, "lincom 2") else {
+        panic!("expected zero-SE binary linear combination")
+      };
+      assert_eq!(zero_se.estimate, 2.0);
+      assert_eq!(zero_se.standard_error, 0.0);
+      assert!(zero_se.statistic.is_nan());
+      assert!(zero_se.p_value.is_nan());
+      assert_eq!((zero_se.ci_lower, zero_se.ci_upper), (2.0, 2.0));
+      assert_eq!(zero_se.df_residual, None);
+      assert_eq!(session.state(), retained_state);
+
+      for command in ["lincom absent", "lincom x * intercept"] {
+        assert!(matches!(
+          fail(&mut session, command),
+          RuntimeError::LincomFailed { .. }
+        ));
+        assert_eq!(
+          session.state(),
+          retained_state,
+          "{model} {covariance} {command}"
+        );
+      }
+    }
+  }
 }

@@ -94,11 +94,13 @@ Convergence and supported limits:
   exact 0/1 values and both levels, including in mixed designs; expanded factor
   dummy columns are not selectable. See `help estat` for effect estimands and
   inference.
-- Only one-way clustering is supported. Weighted/survey probit, prediction
-  intervals and `lincom` are not installed. `test` supports general linear
-  restrictions on retained probit coefficients with an asymptotic Wald
-  chi-square reference; see `help test`. Normal coefficient inference and (for
-  model-based fits only) the overall LR test are reported directly by `probit`;
+- Only one-way clustering is supported. Weighted/survey probit and prediction
+  intervals are not installed. `lincom` combines retained latent-index
+  coefficients with the selected covariance and asymptotic normal inference;
+  probability effects remain under `estat margins`. `test` supports general
+  linear restrictions on retained probit coefficients with an asymptotic Wald
+  chi-square reference; see `help test`. Normal coefficient inference and, for
+  model-based fits only, the overall LR test are reported directly by `probit`;
   do not substitute linear t/F inference.
 - Terminal/`--text`, CLI-v1 JSON and scripts share the fitted model and semantics.
   JSON returns `BinaryProbitResult`; continuous `estat margins` returns

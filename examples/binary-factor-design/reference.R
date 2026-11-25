@@ -134,6 +134,7 @@ fit_summary_rows <- list()
 factor_contrast_rows <- list()
 continuous_marginal_effect_rows <- list()
 discrete_change_rows <- list()
+binary_lincom_rows <- list()
 append_covariance <- function(model, design, type, covariance) {
   for (row in seq_len(nrow(covariance))) {
     for (column in seq_len(ncol(covariance))) {
@@ -243,6 +244,31 @@ append_continuous_marginal_effects <- function(model, design, covariance_type,
       )
   }
 }
+append_binary_lincom <- function(model, covariance_type, estimates, covariance) {
+  append <- function(combination, weights, offset) {
+    stopifnot(all(names(weights) %in% names(estimates)))
+    weight_vector <- setNames(rep(0, length(estimates)), names(estimates))
+    weight_vector[names(weights)] <- weights
+    estimate <- offset + sum(weight_vector * estimates)
+    standard_error <- sqrt(drop(weight_vector %*% covariance %*% weight_vector))
+    statistic <- estimate / standard_error
+    binary_lincom_rows[[length(binary_lincom_rows) + 1L]] <<- data.frame(
+      model = model,
+      covariance_type = covariance_type,
+      combination = combination,
+      estimate = estimate,
+      standard_error = standard_error,
+      statistic = statistic,
+      p_value = 2 * pnorm(-abs(statistic)),
+      confidence_lower = estimate - qnorm(0.975) * standard_error,
+      confidence_upper = estimate + qnorm(0.975) * standard_error,
+      confidence_level = 95
+    )
+  }
+  append("slope_offset", c(x = 1), 0.5)
+  append("factor_contrast", c(x = 1, regionNorth = 1, regionWest = -1), 0.5)
+  append("intercept_slope", c(`(Intercept)` = 1, x = 1), 0)
+}
 append_discrete_change <- function(model, design, covariance_type, fit,
                                    covariance, estimates) {
   X <- model.matrix(fit)
@@ -328,6 +354,7 @@ for (model in c("logit", "probit")) {
     }
     append_covariance(model, design, "model_based", covariance)
     if (design == "default") {
+      append_binary_lincom(model, "model_based", estimates, covariance)
       X <- model.matrix(fit)
       eta_sample <- drop(X %*% estimates)
       probability_sample <- if (model == "logit") plogis(eta_sample) else pnorm(eta_sample)
@@ -341,6 +368,7 @@ for (model in c("logit", "probit")) {
       robust_covariance <- covariance %*% crossprod(score_matrix) %*% covariance *
         nrow(X) / (nrow(X) - 1L)
       append_covariance(model, design, "robust", robust_covariance)
+      append_binary_lincom(model, "robust", estimates, robust_covariance)
       append_factor_contrasts(model, design, "robust", fit, robust_covariance,
                               estimates, family, factor_variable, factor_levels,
                               baseline_level)
@@ -356,6 +384,7 @@ for (model in c("logit", "probit")) {
       cluster_covariance <- covariance %*% crossprod(cluster_scores) %*% covariance *
         cluster_count / (cluster_count - 1L)
       append_covariance(model, design, "cluster", cluster_covariance)
+      append_binary_lincom(model, "cluster", estimates, cluster_covariance)
       append_factor_contrasts(model, design, "cluster", fit, cluster_covariance,
                               estimates, family, factor_variable, factor_levels,
                               baseline_level)
@@ -443,3 +472,5 @@ write.csv(do.call(rbind, continuous_marginal_effect_rows),
           "binary_factor_marginal_effect_reference.csv", row.names = FALSE)
 write.csv(do.call(rbind, discrete_change_rows),
           "binary_factor_discrete_change_reference.csv", row.names = FALSE)
+write.csv(do.call(rbind, binary_lincom_rows),
+          "binary_factor_lincom_reference.csv", row.names = FALSE)

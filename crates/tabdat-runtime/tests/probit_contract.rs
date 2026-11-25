@@ -437,14 +437,18 @@ fn prior_margins_wording_stays_logit_and_other_families_do_not_supply_margins() 
   assert!(test.is_chi2);
   assert_eq!(test.df, 1);
   assert_eq!(test.df_residual, None);
+  let ExecutionResult::Lincom(lincom) = execute(&mut s, "lincom x1 + 0.5") else {
+    panic!("expected a probit linear combination")
+  };
+  assert_eq!(lincom.df_residual, None);
+  assert_eq!(lincom.ci_level, 95.0);
   let before = s.state();
-  for command in ["lincom x1", "estat vif", "estat ar, null(0)"] {
+  for command in ["estat vif", "estat ar, null(0)"] {
     let error = fail(&mut s, command);
     assert!(
       matches!(
         error,
-        RuntimeError::LincomRequiresPriorEstimation
-          | RuntimeError::TestRequiresPriorEstimation
+        RuntimeError::TestRequiresPriorEstimation
           | RuntimeError::EstatRequiresPriorRegression
           | RuntimeError::EstatArRequiresPriorIv
       ),

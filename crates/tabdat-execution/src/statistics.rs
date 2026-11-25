@@ -16,14 +16,20 @@ enum WaldTestTarget<'a> {
 }
 
 #[derive(Clone, Copy)]
-enum CountLincomTarget<'a> {
+enum NormalLincomTarget<'a> {
+  Binary(&'a tabdat_stats::BinaryMleResult),
   Poisson(&'a tabdat_stats::PoissonResult),
   Nb2(&'a tabdat_stats::Nb2Result),
 }
 
-impl CountLincomTarget<'_> {
+impl NormalLincomTarget<'_> {
   fn parameter_names(self) -> Vec<String> {
     match self {
+      Self::Binary(result) => result
+        .coefficients
+        .iter()
+        .map(|coefficient| coefficient.name.clone())
+        .collect(),
       Self::Poisson(result) => result
         .coefficients
         .iter()
@@ -44,6 +50,9 @@ impl CountLincomTarget<'_> {
     confidence_level: f64,
   ) -> Result<tabdat_stats::NormalLinearCombinationInferenceResult, tabdat_stats::StatsError> {
     match self {
+      Self::Binary(result) => {
+        tabdat_stats::binary_linear_combination(result, weights, offset, confidence_level)
+      }
       Self::Poisson(result) => {
         tabdat_stats::poisson_linear_combination(result, weights, offset, confidence_level)
       }
@@ -804,20 +813,17 @@ impl Session {
     if matches!(self.estimation, Some(EstimationState::RandomEffects(_))) {
       return Err(RuntimeError::LincomFailed { message: "RE reports normal coefficient intervals and a joint zero-slope Wald test; general restrictions are not implemented".into() });
     }
-    if matches!(self.estimation, Some(EstimationState::Logit(_))) {
-      return Err(RuntimeError::LincomFailed {
-        message:
-          "lincom after logit is not implemented; logit reports normal coefficient inference".into(),
-      });
-    }
-    let count_target = match &self.estimation {
-      Some(EstimationState::PoissonFit(state)) => Some(CountLincomTarget::Poisson(&state.result)),
+    let normal_target = match &self.estimation {
+      Some(EstimationState::Logit(state)) | Some(EstimationState::Probit(state)) => {
+        Some(NormalLincomTarget::Binary(&state.result))
+      }
+      Some(EstimationState::PoissonFit(state)) => Some(NormalLincomTarget::Poisson(&state.result)),
       Some(EstimationState::NegativeBinomialFit(state)) => {
-        Some(CountLincomTarget::Nb2(&state.result))
+        Some(NormalLincomTarget::Nb2(&state.result))
       }
       _ => None,
     };
-    let post_estimation = if count_target.is_none() {
+    let post_estimation = if normal_target.is_none() {
       Some(
         self
           .linear_inference_model()
@@ -826,8 +832,8 @@ impl Session {
     } else {
       None
     };
-    let parameter_names = count_target
-      .map(CountLincomTarget::parameter_names)
+    let parameter_names = normal_target
+      .map(NormalLincomTarget::parameter_names)
       .unwrap_or_else(|| {
         post_estimation
           .as_ref()
@@ -846,7 +852,7 @@ impl Session {
       parameter_names.len(),
     )?;
 
-    if let Some(target) = count_target {
+    if let Some(target) = normal_target {
       let inference = target
         .linear_combination(&combination.weights, combination.offset, 95.0)
         .map_err(|error| RuntimeError::LincomFailed {
