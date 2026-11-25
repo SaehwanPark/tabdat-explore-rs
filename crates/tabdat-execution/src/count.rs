@@ -328,6 +328,13 @@ impl Session {
       ),
       _ => return Err(RuntimeError::PredictRequiresPriorRegression),
     };
+    let interval_kind = matches!(
+      command.kind,
+      PredictKind::CountPmf(_)
+        | PredictKind::CountCdf(_)
+        | PredictKind::CountPmfVariable
+        | PredictKind::CountCdfVariable
+    );
     if !matches!(
       command.kind,
       PredictKind::Xb
@@ -340,7 +347,7 @@ impl Session {
         | PredictKind::CountPmfVariableStandardError
         | PredictKind::CountCdfVariable
         | PredictKind::CountCdfVariableStandardError
-    ) || command.interval
+    ) || (command.interval && !interval_kind)
       || command.std
       || command.saving.is_some()
     {
@@ -363,15 +370,44 @@ impl Session {
       .as_ref()
       .ok_or(RuntimeError::NoActiveDataset { command: "predict" })?
       .clone();
-    if dataset
-      .columns
-      .iter()
-      .any(|c| c.name == command.target_variable)
-    {
+    let lower_target = format!("{}_lower", command.target_variable);
+    let upper_target = format!("{}_upper", command.target_variable);
+    let target_names = if command.interval {
+      vec![
+        command.target_variable.as_str(),
+        lower_target.as_str(),
+        upper_target.as_str(),
+      ]
+    } else {
+      vec![command.target_variable.as_str()]
+    };
+    if let Some(existing) = dataset.columns.iter().find(|column| {
+      target_names
+        .iter()
+        .any(|name| column.name.eq_ignore_ascii_case(name))
+    }) {
       return Err(RuntimeError::PredictTargetExists {
-        variable: command.target_variable.clone(),
+        variable: existing.name.clone(),
       });
     }
+    let interval_level = if command.interval {
+      let level = command
+        .level
+        .parse::<f64>()
+        .map_err(|_| family.error("predict interval level must be numeric"))?;
+      if !level.is_finite() || !(0.0..100.0).contains(&level) {
+        return Err(family.error("predict interval level must be between 0 and 100"));
+      }
+      let upper_probability = 0.5 + level / 200.0;
+      if upper_probability <= 0.5 || upper_probability >= 1.0 {
+        return Err(family.error(
+          "predict interval level is too close to 0 or 100 to represent a finite normal critical value",
+        ));
+      }
+      level
+    } else {
+      95.0
+    };
     let mut predictors = problem.predictor_names.clone();
     let offset_variable = match &self.estimation {
       Some(EstimationState::PoissonFit(state)) => state.result.offset_variable.as_ref(),
@@ -440,17 +476,17 @@ impl Session {
       residuals: false,
     };
     let probability_request = match command.kind {
-      PredictKind::CountPmf(count) => Some((true, Some(count), false)),
-      PredictKind::CountPmfStandardError(count) => Some((true, Some(count), true)),
-      PredictKind::CountCdf(count) => Some((false, Some(count), false)),
-      PredictKind::CountCdfStandardError(count) => Some((false, Some(count), true)),
-      PredictKind::CountPmfVariable => Some((true, None, false)),
-      PredictKind::CountPmfVariableStandardError => Some((true, None, true)),
-      PredictKind::CountCdfVariable => Some((false, None, false)),
-      PredictKind::CountCdfVariableStandardError => Some((false, None, true)),
+      PredictKind::CountPmf(count) => Some((true, Some(count), false, command.interval)),
+      PredictKind::CountPmfStandardError(count) => Some((true, Some(count), true, false)),
+      PredictKind::CountCdf(count) => Some((false, Some(count), false, command.interval)),
+      PredictKind::CountCdfStandardError(count) => Some((false, Some(count), true, false)),
+      PredictKind::CountPmfVariable => Some((true, None, false, command.interval)),
+      PredictKind::CountPmfVariableStandardError => Some((true, None, true, false)),
+      PredictKind::CountCdfVariable => Some((false, None, false, command.interval)),
+      PredictKind::CountCdfVariableStandardError => Some((false, None, true, false)),
       _ => None,
     };
-    if let Some((is_pmf, fixed_cutoff, standard_error)) = probability_request {
+    if let Some((is_pmf, fixed_cutoff, standard_error, interval)) = probability_request {
       // Validate direct API commands even on empty data, before publication.
       if let Some(count) = fixed_cutoff {
         tabdat_stats::count_point_probabilities(law, 0.0, count)
@@ -483,11 +519,11 @@ impl Session {
                   .map_err(|_| family.error("could not read count cutoff"))?;
                 match cell {
                   CellValue::Null => {
-                    values.push(None);
+                    values.push((None, None, None));
                     return Ok(());
                   }
                   CellValue::Float(value) if !value.is_finite() => {
-                    values.push(None);
+                    values.push((None, None, None));
                     return Ok(());
                   }
                   _ => exact_count(cell, tabdat_stats::MAX_COUNT_POINT_CUTOFF as i128)
@@ -515,7 +551,7 @@ impl Session {
                   .map_err(|_| family.error("could not read predictor"))?,
               )
               .filter(|v| v.is_finite()) else {
-                values.push(None);
+                values.push((None, None, None));
                 return Ok(());
               };
               xb += coefficient * x;
@@ -531,19 +567,27 @@ impl Session {
               )
               .filter(|value| value.is_finite() && *value > 0.0);
               let Some(exposure) = exposure else {
-                values.push(None);
+                values.push((None, None, None));
                 return Ok(());
               };
               xb += exposure.ln();
             }
             let mean = xb.exp();
             if !xb.is_finite() || !mean.is_finite() {
-              values.push(None);
+              values.push((None, None, None));
               return Ok(());
             }
             let expansion = count.saturating_sub(tabdat_stats::MAX_COUNT_PROBABILITY_TAIL - 1);
             if mean > 0.0 && expansion > 0 {
-              let work_multiplier = if !standard_error {
+              let work_multiplier = if interval {
+                if is_pmf {
+                  3
+                } else if matches!(law, tabdat_stats::CountProbabilityLaw::Poisson) {
+                  4
+                } else {
+                  7
+                }
+              } else if !standard_error {
                 1
               } else if is_pmf || matches!(law, tabdat_stats::CountProbabilityLaw::Poisson) {
                 2
@@ -562,7 +606,34 @@ impl Session {
                 )));
               }
             }
-            let value = if standard_error {
+            let row_values = if interval {
+              let interval_result = if is_pmf {
+                tabdat_stats::count_point_pmf_interval(
+                  law,
+                  mean,
+                  count,
+                  &design,
+                  covariance,
+                  interval_level,
+                )
+              } else {
+                tabdat_stats::count_point_cdf_interval(
+                  law,
+                  mean,
+                  count,
+                  &design,
+                  covariance,
+                  interval_level,
+                )
+              }
+              .map_err(|e| family.error(e.to_string()))?;
+              (
+                Some(interval_result.estimate),
+                Some(interval_result.lower),
+                Some(interval_result.upper),
+              )
+            } else {
+              let value = if standard_error {
               let standard_error = if is_pmf {
                 tabdat_stats::count_point_pmf_standard_error(law, mean, count, &design, covariance)
               } else {
@@ -573,18 +644,33 @@ impl Session {
               let (pmf, cdf) = tabdat_stats::count_point_probabilities(law, mean, count)
                 .map_err(|e| family.error(e.to_string()))?;
               if is_pmf { pmf } else { cdf }
+              };
+              (Some(value), None, None)
             };
-            values.push(Some(value));
+            values.push(row_values);
             Ok(())
           },
           |message| family.error(message),
         )?;
-      let added = self
-        .backend
-        .as_mut()
-        .ok_or(RuntimeError::PredictFailed)?
-        .add_numeric_prediction_column(&dataset, &command.target_variable, &values)
-        .map_err(|_| RuntimeError::PredictFailed)?;
+      let backend = self.backend.as_mut().ok_or(RuntimeError::PredictFailed)?;
+      let added = if interval {
+        let estimates: Vec<_> = values.iter().map(|row| row.0).collect();
+        let lower: Vec<_> = values.iter().map(|row| row.1).collect();
+        let upper: Vec<_> = values.iter().map(|row| row.2).collect();
+        backend.add_numeric_prediction_interval_columns(
+          &dataset,
+          [
+            command.target_variable.as_str(),
+            lower_target.as_str(),
+            upper_target.as_str(),
+          ],
+          [&estimates, &lower, &upper],
+        )
+      } else {
+        let estimates: Vec<_> = values.iter().map(|row| row.0).collect();
+        backend.add_numeric_prediction_column(&dataset, &command.target_variable, &estimates)
+      }
+      .map_err(|_| RuntimeError::PredictFailed)?;
       let next = self.sync_active_dataset(added)?;
       return Ok(ExecutionResult::Prediction(PredictionResult {
         dataset: next,

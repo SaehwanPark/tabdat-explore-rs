@@ -43,6 +43,40 @@ fn bounded_count_kinds_are_explicit_and_exclusive() {
       }
     );
   }
+  for (text, kind, cutoff, level) in [
+    (
+      "predict pmf2, pmf(2) interval",
+      PredictKind::CountPmf(2),
+      None,
+      "95.0",
+    ),
+    (
+      "predict cdf2, cdf(2) interval level(90)",
+      PredictKind::CountCdf(2),
+      None,
+      "90",
+    ),
+    (
+      "predict pmf_row, pmf(k) interval",
+      PredictKind::CountPmfVariable,
+      Some("k"),
+      "95.0",
+    ),
+    (
+      "predict cdf_row, cdf(cutoff) interval level(80)",
+      PredictKind::CountCdfVariable,
+      Some("cutoff"),
+      "80",
+    ),
+  ] {
+    let Command::Predict { command } = parse_command(text).unwrap() else {
+      panic!("predict")
+    };
+    assert_eq!(command.kind, kind);
+    assert_eq!(command.count_cutoff_variable.as_deref(), cutoff);
+    assert!(command.interval);
+    assert_eq!(command.level, level);
+  }
   for suffix in [
     "pmf",
     "cdf(true)",
@@ -54,7 +88,11 @@ fn bounded_count_kinds_are_explicit_and_exclusive() {
     "cdf(1) pr",
     "cdf(1) n",
     "pmf(0) pmf(0)",
-    "cdf(0) interval",
+    "pmf(0) interval se",
+    "cdf(0) se interval",
+    "pmf(0) level(95)",
+    "cdf(0) interval level(NaN)",
+    "cdf(0) interval level(100)",
     "pmf(0) std",
     "cdf(0) saving(out)",
     "se",

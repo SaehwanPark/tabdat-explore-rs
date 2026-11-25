@@ -77,7 +77,7 @@ order. Each row describes a bounded end-to-end outcome, not every option.
 | --- | --- |
 | **IV/2SLS** | Exogenous/endogenous/instrument design, exact sample and rank checks, classical and appropriate robust/cluster inference, first-stage diagnostics, endogeneity and overidentification tests where identified, and weak-instrument-robust inference where required. Bounded homoskedastic tests/sets include the DATA66 `grade76` AR projection with other endogenous coefficients unrestricted; HC1/one-way CR0 Wooldridge overidentification scores, HC1/CR1 scalar AR sets for one endogenous regressor and one to nine excluded instruments, and closed robust AR projection for exactly two endogenous regressors/two excluded instruments are also installed. Broader robust projection and endogenous-subvector tests remain. Conventional first-stage F does not certify validity. |
 | **Logit/probit** | Domain and separation/convergence failures, model-based/robust/cluster inference, probability and linear-index predictions, continuous average marginal effects plus a bounded numeric 0/1 probability change with explicit estimands and delta uncertainty, and retained-fit Wald tests of general linear restrictions. |
-| **Poisson/NB2** | Count-domain checks, offsets/exposure, explicit variance parameterization, model-specific diagnostics, conditional means/effects and covariance conventions, retained-fit Wald tests and linear combinations of mean coefficients, a Poisson NB2-direction score test with selected model/row/cluster score variance, bounded model-based unclustered plus one-way cluster-robust NB2 grouped score-adjusted goodness-of-fit tests, and current-row PMF/CDF predictions with pointwise PMF/CDF delta-method SEs under the retained covariance. Distinguish Poisson QMLE from distributional claims. |
+| **Poisson/NB2** | Count-domain checks, offsets/exposure, explicit variance parameterization, model-specific diagnostics, conditional means/effects and covariance conventions, retained-fit Wald tests and linear combinations of mean coefficients, a Poisson NB2-direction score test with selected model/row/cluster score variance, bounded model-based unclustered plus one-way cluster-robust NB2 grouped score-adjusted goodness-of-fit tests, and current-row PMF/CDF predictions with pointwise delta-method SEs and logit-Wald intervals under the retained covariance. Distinguish Poisson QMLE from distributional claims. |
 | **Linear panels** | Explicit unit/time keys, gaps and duplicates, lag/lead/difference semantics, pooled/within/Between/FD/RE fits, model comparisons, predictions and inference. Read-only [`xtdes`](commands/xtdes.md) and [`xtsum`](commands/xtsum.md) take explicit keys without retaining panel state; broader model comparisons and diagnostics remain open. |
 | **Quantile regression** | Conditional quantiles, current-row predictions, IID uncertainty and a bounded whole-cluster pairs bootstrap with explicit resampling unit. Analytic clustered covariance, general restrictions, simultaneous bands, effects and Figure 4.1 remain. |
 | **Seeded resampling** | Explicit seed/stream, IID and cluster units, B−1 uncertainty, percentile conventions and failure policy. Current OLS, quantile and selected Poisson/panel compositions are bounded source workflows, not a general automatic bootstrap API. |
@@ -96,7 +96,7 @@ the next outcome without repeating the ledger's detailed delivery records.
 | Choice | MNL, balanced conditional logit and restricted normalized/non-normalized nested-choice workflows with source audits | Broader availability and choice sets, ordered/richer models, effects uncertainty, IIA diagnostics and remaining illustrations |
 | Censoring and selection | Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step workflows with declared inference/effects | Richer truncation/censoring, two-part and selection workflows, default ML and remaining illustrations |
 | Survival | KM/NA compositions plus bounded exponential, Weibull, Gompertz and Cox/Breslow source workflows | General declarations, delayed entry, time-varying covariates, clustered inference, competing-risk incidence and richer diagnostics |
-| Counts | Poisson/NB2, fixed offsets and a bounded `exposure(var)` option, effects, probability bins, pointwise current-row PMF/CDF delta-method SEs under the retained covariance, a Poisson NB2-direction score test, unclustered and one-way cluster-robust NB2 grouped GOF tests, and selected person/cluster workflows | Current-row probability intervals, household/site/multiway/survey/panel inference, hurdle/zero-inflated/mixture models, other formal NB tests and unresolved Table 20.6 output |
+| Counts | Poisson/NB2, fixed offsets and a bounded `exposure(var)` option, effects, probability bins, pointwise current-row PMF/CDF delta-method SEs and logit-Wald intervals under the retained covariance, a Poisson NB2-direction score test, unclustered and one-way cluster-robust NB2 grouped GOF tests, and selected person/cluster workflows | Future-count prediction intervals, household/site/multiway/survey/panel inference, hurdle/zero-inflated/mixture models, other formal NB tests and unresolved Table 20.6 output |
 | Linear and nonlinear panels | Explicit-key linear panels, IV/GMM composition, Gaussian GEE and selected Poisson FE/RE/GEE workflows | Persistent declarations, dynamic-panel methods, broader GEE/FE/RE inference, model comparisons and instrument-control diagnostics |
 | Treatment and clustered samples | NSW/PSID comparisons, DID, overlap diagnostics, IPW, kernel and descriptive matching compositions; household/individual clustered workflows | General estimands, matching uncertainty, survey weights/strata/PSUs, design-based variance and remaining treatment/Chapter 24 analyses |
 | Nonparametric and missing data | Bounded KDE/LOWESS source adaptations and complete-case/single-fill/Rubin-summary comparisons | General smoothing/uncertainty, tied-curve parity, imputation generation/diagnostics and finite-complete-DF multiple-imputation inference |
@@ -143,35 +143,32 @@ records the evidence and keeps the conflict explicit in the count ledger. Resume
 that investigation only if new primary-source evidence becomes available; do not
 tune estimates or tolerances.
 
-Current-row Poisson/NB2 PMF and CDF predictions now support pointwise
-delta-method SEs through `predict target, pmf(k) se` and
-`predict target, cdf(k) se`, including current-cutoff forms. They use the
-retained covariance, including joint beta/lnalpha covariance for NB2, and treat
-current predictors and fixed offsets/exposure as known. Lower-tail NB2 CDF
-dispersion gradients use a score recurrence; when the CDF is near one, the
-implementation differentiates log survival to avoid cancellation in the prefix
-score. Fifteen independent base-R finite-difference cases and runtime/CLI
-contracts are recorded in the count workflow and coverage ledger. These are
-parameter SEs for conditional probabilities, not probability intervals or
-future-count uncertainty.
+Current-row Poisson/NB2 PMF and CDF predictions support pointwise delta-method
+SEs and two-sided logit-Wald intervals through `predict target, pmf(k) se`,
+`predict target, cdf(k) se`, and their `interval [level(95)]` forms, including
+current-cutoff variants. They use the retained covariance, including joint
+beta/lnalpha covariance for NB2, and treat current predictors and fixed
+offsets/exposure as known. The interval endpoints append atomically alongside
+the point estimate. Log probabilities, complements and transformed delta SEs
+preserve underflowed probabilities. Zero means and zero transformed variance
+yield degenerate intervals; invalid levels, arithmetic, cutoffs or work limits
+fail without publishing partial columns. Forty-four independent base-R
+finite-difference endpoint cases and runtime/CLI contracts are recorded in the
+count workflow and coverage ledger. These are pointwise parameter-uncertainty
+intervals, not simultaneous bands, future-count prediction intervals or a
+distributional-law guarantee; separate intervals need not sum to one or be
+monotone across cutoffs.
 
-The next bounded count-uncertainty action is a pointwise two-sided logit-Wald
-interval for a current-row PMF or CDF. Use the selected retained covariance,
-including joint beta/lnalpha covariance for NB2, and asymptotic normal coverage
-with default `level(95)` and any level strictly between 0 and 100, using
-`logit(p) ± z * SE_delta(logit(p))`. Treat current predictors and fixed
-offsets/exposure as known. `predict target, pmf(k) interval` and its
-CDF/current-cutoff forms append the point estimate plus
-`target_lower`/`target_upper` atomically. Compute log probabilities,
-complements and transformed delta SEs without first rounding a tiny probability
-to 0 or a near-one probability to 1. Zero means and zero transformed variance
-yield degenerate intervals at the point estimate; fail closed on invalid arithmetic.
-Validate endpoints against independent base-R finite differences and runtime
-contracts for covariance selection, offsets/exposure, missingness, invalid
-cutoffs/levels, work limits and all-or-nothing column publication. These are
-pointwise parameter-uncertainty intervals, not simultaneous bands, future-count
-prediction intervals, or a distributional-law guarantee; separate intervals
-need not sum to one or be monotone across cutoffs.
+The next bounded count-uncertainty action is a pointwise future-count prediction
+interval for Poisson/NB2 current rows. Use a two-sided discrete equal-tail
+convention: lower and upper endpoints are the smallest integer counts whose
+retained fitted-law CDF reaches `level/2` and `1-level/2`, respectively. The
+interval describes outcome variation conditional on the retained mean and NB2
+alpha, with current predictors and fixed offsets/exposure held fixed; it does
+not add parameter uncertainty from the retained covariance. State the count-law
+assumption, attained coverage convention for discrete outcomes, missingness and
+work bounds, and extreme-tail behavior, and validate both endpoints and
+coverage against independent Poisson/NB2 references before implementation.
 
 Do not turn the entire textbook inventory into a prerequisite for one bounded
 analysis. Preserve the assumptions and unresolved source differences in the ledger.

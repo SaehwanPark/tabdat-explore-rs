@@ -1,7 +1,7 @@
 # predict
 
 Installed syntax:
-`predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | hazard | cumhaz | survival | pmf(k) | pmf(k) se | cdf(k) | cdf(k) se | pmf(cutoff_variable) | pmf(cutoff_variable) se | cdf(cutoff_variable) | cdf(cutoff_variable) se]`
+`predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | hazard | cumhaz | survival | pmf(k) | pmf(k) se | pmf(k) interval | cdf(k) | cdf(k) se | cdf(k) interval | pmf(cutoff_variable) | pmf(cutoff_variable) se | pmf(cutoff_variable) interval | cdf(cutoff_variable) | cdf(cutoff_variable) se | cdf(cutoff_variable) interval]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
 - Explicit-formula NLS: default/xb/mean is the nonlinear formula mean on current
@@ -89,8 +89,10 @@ Count example:
 - `predict log_mean, xb`
 - `predict p0, pmf(0)`
 - `predict p0_se, pmf(0) se`
+- `predict p0_interval, pmf(0) interval`
 - `predict at_most_two, cdf(2)`
 - `predict at_most_two_se, cdf(2) se`
+- `predict at_most_two_interval, cdf(2) interval level(90)`
 
 Data and model notes:
 - No refitting or estimation-sample filtering: excluded rows can receive
@@ -120,8 +122,10 @@ Data and model notes:
 - Terminal/--text confirms dataset dimensions. CLI-v1 `PredictionResult` contains
   dataset metadata, not vectors; inspect with head/tail or save/export values.
 
-Not installed: binary/Poisson residuals, NB2 residuals, spatial_lag, posterior_predictive,
-std/interval/level()/saving() prediction, or count cutoffs beyond the bounded integer0..100000.
+Not installed for the other families: binary/Poisson residuals, NB2 residuals,
+spatial_lag, posterior_predictive, general std/interval/level()/saving()
+  prediction, or count cutoffs beyond the bounded integer 0..100000. Count PMF/CDF
+intervals are the bounded exception described above.
 `probabilities` is not an accepted option spelling. Discovery/parser breadth does not
 imply an installed workflow for other families.
 
@@ -139,24 +143,40 @@ Count distributional probabilities:
   predictors and fixed offsets/exposure are treated as known. This is parameter
   uncertainty for the conditional probability, not future-count variation or a
   confidence interval.
-- For cutoffs above99, a single prediction may add at most10,000,000 cutoff
+- Add `interval [level(95)]` to a PMF/CDF request to append the point estimate
+  and two columns named `<target>_lower` and `<target>_upper`. These are
+  pointwise logit-Wald intervals using an asymptotic normal critical value and
+  the same retained covariance as the SE. Current predictors and fixed
+  offsets/exposure are treated as known. Levels must be strictly between 0 and
+  100 and yield a finite normal critical value. Endpoints remain in [0,1]; separate
+  PMF intervals need not sum to one, and CDF intervals need not be monotone
+  across cutoffs. They are parameter-uncertainty intervals, not future-count
+  prediction intervals, simultaneous bands or a guarantee of the fitted law.
+  Zero means and zero transformed variance return the point estimate at both
+  endpoints. Name collisions among the point/lower/upper columns fail before
+  any of them are published.
+- For cutoffs above 99, a single prediction may add at most 10,000,000 cutoff
   increments across rows with usable model inputs. SE requests count recurrence
-  and gradient work; NB2 CDF SEs can charge up to four cutoff passes. Exceeding
-  the limit fails before adding the column. `estat countprob` keeps its separate1..100 tail limit.
+  and gradient work; NB2 CDF SEs can charge up to four cutoff passes. Intervals
+  can charge up to seven passes for NB2 CDFs. Exceeding
+  the limit fails before adding the column. `estat countprob` keeps its separate
+  1..100 tail limit.
 - These assume the full fitted law, not merely a valid conditional mean or
-  robust covariance. PMF/CDF SEs use that selected covariance but do not
-  establish the distributional law; probability intervals, calibration
-  guarantees and formal tests are not provided. `estat countprob` remains an ORIGINAL
+  robust covariance. PMF/CDF SEs and intervals use that selected covariance
+  but do not establish the distributional law; calibration guarantees and
+  formal tests are not provided. `estat countprob` remains an ORIGINAL
   retained-sample summary; these predictions apply to current rows, including
   rows excluded at fitting.
 - Current outcome/cluster columns are unnecessary; fitted offsets are required.
   Missing/nonfinite or overflowing indices/means produce NULL. Exponential
   underflow to zero uses a point mass at zero. Probability or gradient numerical
   failure aborts before publication, leaving data/labels/fit unchanged. Empty data works.
-- Example: `poisson visits age, offset(log_time)` then `predict p0, pmf(0)`
-  and `predict p0_se, pmf(0) se` for its parameter SE. Also try
-  `predict at_most_two, cdf(2)` and `predict at_most_two_se, cdf(2) se`.
-  For current cutoffs, generate a numeric integer column and use
-  `predict at_most_k_se, cdf(k) se` or `predict p_k_se, pmf(k) se`.
+- Example: `poisson visits age, offset(log_time)` then `predict p0, pmf(0)`,
+  `predict p0_se, pmf(0) se`, or `predict p0_interval, pmf(0) interval`.
+  Also try `predict at_most_two, cdf(2)` and
+  `predict at_most_two_interval, cdf(2) interval level(90)`. For current
+  cutoffs, generate a numeric integer column and use
+  `predict at_most_k_interval, cdf(k) interval` or
+  `predict p_k_interval, pmf(k) interval`.
   Inspect/export the appended DOUBLE columns.
   See examples/count-probability/README.md for a complete Poisson/NB2 workflow.

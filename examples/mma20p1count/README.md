@@ -628,7 +628,7 @@ executable values and leave the conflict as an explicit coverage gap pending
 new primary-source evidence.
 
 Exposure integrations beyond Poisson/NB2, weights, appropriate survey/multiway/panel methods,
-current-row probability intervals, other formal specification tests,
+future-count prediction intervals, other formal specification tests,
 richer counts and other remaining illustration/core/book work remain required.
 
 ### Current-row count probability prediction extension
@@ -640,14 +640,18 @@ the retained Table20.5 Poisson/NB2 ln-mean specifications with explicit
 keeps its tail cutoff1..100. This is a method
 extension of the documented RAND mean model, not a new replicated printed row.
 PMF means P(Y=k|current X, offset); CDF means P(Y<=k|current X, offset).
-Pointwise PMF/CDF SEs use the selected covariance, including NB2's joint
-beta/lnalpha block, with current predictors and fixed offsets/exposure treated
-as known. Covariance selection does not establish either distributional law;
-probability intervals and future-count uncertainty are not provided.
+Pointwise PMF/CDF SEs and logit-Wald intervals use the selected covariance,
+including NB2's joint beta/lnalpha block, with current predictors and fixed
+offsets/exposure treated as known. `interval [level(95)]` appends the point
+estimate and `<target>_lower`/`<target>_upper` atomically. These are pointwise
+parameter-uncertainty intervals, not future-count prediction intervals or
+simultaneous bands; separate PMF intervals need not sum to one and CDF intervals
+need not be monotone. Covariance selection does not establish either
+distributional law.
 Preserve bare xb, n, retained fit/sample, current row order, labels and atomic
 prediction failure. Missing/nonfinite/unrepresentable current indices yield NULL;
 exp-underflow zero means use their point-mass-at-zero limit. Current outcomes and
 cluster IDs are not required; fitted offsets are. Independent base-R checks
-cover direct probabilities, changed-current-row predictions and finite-difference
-PMF/CDF standard errors; runtime/CLI checks cover offsets, sample/fit reuse,
-atomic failures and export.
+cover direct probabilities, changed-current-row predictions, finite-difference
+PMF/CDF SEs and 44 logit-Wald interval endpoints. Runtime/CLI checks cover
+offsets, sample/fit reuse, atomic failures and export.
