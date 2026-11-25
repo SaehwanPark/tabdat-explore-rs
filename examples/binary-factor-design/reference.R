@@ -110,6 +110,7 @@ covariance_rows <- list()
 prediction_rows <- list()
 fit_summary_rows <- list()
 factor_contrast_rows <- list()
+continuous_marginal_effect_rows <- list()
 append_covariance <- function(model, design, type, covariance) {
   for (row in seq_len(nrow(covariance))) {
     for (column in seq_len(ncol(covariance))) {
@@ -184,6 +185,41 @@ append_factor_contrasts <- function(model, design, covariance_type, fit,
     )
   }
 }
+append_continuous_marginal_effects <- function(model, design, covariance_type,
+                                               fit, covariance, estimates) {
+  X <- model.matrix(fit)
+  eta <- drop(X %*% estimates)
+  if (model == "logit") {
+    probability <- plogis(eta)
+    first_derivative <- probability * (1 - probability)
+    second_derivative <- first_derivative * (1 - 2 * probability)
+  } else {
+    first_derivative <- dnorm(eta)
+    second_derivative <- -eta * first_derivative
+  }
+  for (variable in "x") {
+    index <- match(variable, colnames(X))
+    stopifnot(!is.na(index))
+    estimate <- estimates[index] * mean(first_derivative)
+    gradient <- estimates[index] * colMeans(sweep(X, 1L, second_derivative, `*`))
+    gradient[index] <- gradient[index] + mean(first_derivative)
+    standard_error <- sqrt(drop(gradient %*% covariance %*% gradient))
+    statistic <- estimate / standard_error
+    continuous_marginal_effect_rows[[length(continuous_marginal_effect_rows) + 1L]] <<-
+      data.frame(
+        model = model,
+        design = design,
+        covariance_type = covariance_type,
+        variable = variable,
+        estimate = estimate,
+        standard_error = standard_error,
+        statistic = statistic,
+        p_value = 2 * pnorm(-abs(statistic)),
+        confidence_lower = estimate - qnorm(0.975) * standard_error,
+        confidence_upper = estimate + qnorm(0.975) * standard_error
+      )
+  }
+}
 for (model in c("logit", "probit")) {
   family <- binomial(link = model)
   for (design in c("default", "west_reference", "noconstant",
@@ -214,6 +250,8 @@ for (model in c("logit", "probit")) {
     append_factor_contrasts(model, design, "model_based", fit, covariance,
                             estimates, family, factor_variable, factor_levels,
                             baseline_level)
+    append_continuous_marginal_effects(model, design, "model_based", fit,
+                                       covariance, estimates)
     for (index in seq_along(estimates)) {
       fit_rows[[length(fit_rows) + 1L]] <- data.frame(
         model = model,
@@ -241,6 +279,8 @@ for (model in c("logit", "probit")) {
       append_factor_contrasts(model, design, "robust", fit, robust_covariance,
                               estimates, family, factor_variable, factor_levels,
                               baseline_level)
+      append_continuous_marginal_effects(model, design, "robust", fit,
+                                         robust_covariance, estimates)
       retained_rows <- as.integer(rownames(model.frame(fit)))
       cluster_scores <- rowsum(
         score_matrix,
@@ -254,6 +294,8 @@ for (model in c("logit", "probit")) {
       append_factor_contrasts(model, design, "cluster", fit, cluster_covariance,
                               estimates, family, factor_variable, factor_levels,
                               baseline_level)
+      append_continuous_marginal_effects(model, design, "cluster", fit,
+                                         cluster_covariance, estimates)
     }
     eta_hat <- predict(fit, newdata = data, type = "link")
     probability <- predict(fit, newdata = data, type = "response")
@@ -287,3 +329,5 @@ write.csv(do.call(rbind, fit_summary_rows), "binary_factor_summary_reference.csv
           row.names = FALSE)
 write.csv(do.call(rbind, factor_contrast_rows),
           "binary_factor_contrast_reference.csv", row.names = FALSE)
+write.csv(do.call(rbind, continuous_marginal_effect_rows),
+          "binary_factor_marginal_effect_reference.csv", row.names = FALSE)

@@ -2262,7 +2262,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       ),
     ),
     ExecutionResult::LogitMarginalEffects(result) => format!(
-      "Logit continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives, not discrete changes or original-variable interaction chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}",
+      "Logit continuous average partial effects; retained estimation N = {}\nOriginal continuous predictor derivatives only, not discrete changes; factor levels and other covariates stay at their observed retained-row values.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}",
       result.observation_count,
       binary_covariance_note(
         result.robust,
@@ -2612,7 +2612,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       ),
     ),
     ExecutionResult::ProbitMarginalEffects(result) => format!(
-      "Probit continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives, not discrete changes or original-variable interaction chain rules.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}",
+      "Probit continuous average partial effects; retained estimation N = {}\nOriginal continuous predictor derivatives only, not discrete changes; factor levels and other covariates stay at their observed retained-row values.\nDelta-method uncertainty conditional on observed estimation X; {}, asymptotic normal 95% intervals.\n{}{}",
       result.observation_count,
       binary_covariance_note(
         result.robust,

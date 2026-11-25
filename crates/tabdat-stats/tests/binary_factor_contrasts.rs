@@ -1,7 +1,7 @@
 use tabdat_stats::{
   BinaryFactorContrastDesign, BinaryModel, EstimationProblem, EstimationSample,
-  binary_average_factor_contrasts, fit_binary_clustered, fit_binary_logit, fit_binary_probit,
-  fit_binary_robust,
+  binary_average_factor_contrasts, binary_average_marginal_effects_for_columns,
+  fit_binary_clustered, fit_binary_logit, fit_binary_probit, fit_binary_robust,
 };
 
 fn field<'a>(row: &[&'a str], index: usize) -> &'a str {
@@ -10,6 +10,19 @@ fn field<'a>(row: &[&'a str], index: usize) -> &'a str {
 
 fn reference_rows(model: &str, design: &str, covariance: &str) -> Vec<Vec<&'static str>> {
   include_str!("../../../examples/binary-factor-design/binary_factor_contrast_reference.csv")
+    .lines()
+    .skip(1)
+    .map(|line| line.split(',').collect::<Vec<_>>())
+    .filter(|row| field(row, 0) == model && field(row, 1) == design && field(row, 2) == covariance)
+    .collect()
+}
+
+fn marginal_effect_reference_rows(
+  model: &str,
+  design: &str,
+  covariance: &str,
+) -> Vec<Vec<&'static str>> {
+  include_str!("../../../examples/binary-factor-design/binary_factor_marginal_effect_reference.csv")
     .lines()
     .skip(1)
     .map(|line| line.split(',').collect::<Vec<_>>())
@@ -226,4 +239,52 @@ fn factor_probability_contrasts_reject_mismatched_or_malformed_designs() {
   let mut malformed = design;
   malformed.predictor_columns[0] = Some(0);
   assert!(binary_average_factor_contrasts(&problem, &fitted, &malformed).is_err());
+}
+
+#[test]
+fn selected_continuous_marginal_effects_match_base_r_with_factor_columns_in_the_gradient() {
+  for model in [BinaryModel::Logit, BinaryModel::Probit] {
+    let model_name = if model == BinaryModel::Logit {
+      "logit"
+    } else {
+      "probit"
+    };
+    for (design_name, covariance) in [
+      ("default", "model_based"),
+      ("default", "robust"),
+      ("default", "cluster"),
+      ("west_reference", "model_based"),
+      ("noconstant", "model_based"),
+    ] {
+      let (problem, _) = fixture(design_name, covariance == "cluster");
+      let fitted = fit(&problem, model, covariance);
+      let result = binary_average_marginal_effects_for_columns(&problem, &fitted, &[0]).unwrap();
+      let reference = marginal_effect_reference_rows(model_name, design_name, covariance);
+      assert_eq!(result.observation_count, 237);
+      assert_eq!(result.effects.len(), 1);
+      assert_eq!(result.effects[0].name, "x");
+      for (name, actual, index) in [
+        ("estimate", result.effects[0].value, 4),
+        ("standard_error", result.effects[0].standard_error, 5),
+        ("statistic", result.effects[0].statistic, 6),
+        ("p_value", result.effects[0].p_value, 7),
+        ("confidence_lower", result.effects[0].confidence_lower, 8),
+        ("confidence_upper", result.effects[0].confidence_upper, 9),
+      ] {
+        close(
+          actual,
+          field(&reference[0], index).parse().unwrap(),
+          &format!("{model_name}/{design_name}/{covariance}/{name}"),
+        );
+      }
+    }
+  }
+}
+
+#[test]
+fn selected_continuous_marginal_effects_reject_duplicate_or_unknown_columns() {
+  let (problem, _) = fixture("default", false);
+  let fitted = fit_binary_logit(&problem).unwrap();
+  assert!(binary_average_marginal_effects_for_columns(&problem, &fitted, &[0, 0]).is_err());
+  assert!(binary_average_marginal_effects_for_columns(&problem, &fitted, &[3]).is_err());
 }

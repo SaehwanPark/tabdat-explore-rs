@@ -451,6 +451,13 @@ rescan/refit the model. These are not discrete changes or interaction chain
 rules. `lincom` after logit remains unsupported. `test` uses the binary Wald
 chi-square contract above rather than linear Student-t/F inference.
 
+After an additive factor design, the result includes only original continuous
+predictor terms; expanded factor dummy columns are not reported as derivatives.
+Each continuous effect is evaluated at every retained row with that row's
+factor levels and other covariates unchanged. The full gradient still includes
+all factor coefficients and their covariance. A factor-only design fails
+because it has no continuous predictor. Interactions remain unsupported.
+
 `estat margins, discrete(variable)` after either family returns
 `BinaryDiscreteChangeResult`. It accepts one retained numeric predictor with
 exactly both 0 and 1 represented. For each retained row it changes that column

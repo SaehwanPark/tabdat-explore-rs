@@ -1,6 +1,7 @@
 use binary_factor_data.csv
 logit y x i.region
 estat gof, group(10)
+estat margins
 estat margins, factor(region)
 predict index, xb
 predict probability, pr
