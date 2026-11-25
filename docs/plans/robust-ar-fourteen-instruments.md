@@ -27,8 +27,8 @@ endogenous/covariance dimensions remain unsupported.
 ## Progress
 
 - [x] Scope and verification plan recorded.
-- [ ] Open draft PR #500 before substantive implementation.
-- [ ] Implement q=14 support and independent reference fixtures.
-- [ ] Update runtime/CLI coverage and specifications/examples.
-- [ ] Verify reference regeneration and affected checks.
+- [x] Open draft PR #500 before substantive implementation.
+- [x] Implement q=14 support and independent reference fixtures.
+- [x] Update runtime/CLI coverage and specifications/examples.
+- [x] Verify reference regeneration and affected checks.
 - [ ] Final PR review and merge.
