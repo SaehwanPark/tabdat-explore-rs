@@ -13,6 +13,14 @@ static NEXT: AtomicU64 = AtomicU64::new(0);
 struct Fixture(PathBuf);
 impl Fixture {
   fn new() -> Self {
+    Self::build(false)
+  }
+
+  fn with_fixed_terms() -> Self {
+    Self::build(true)
+  }
+
+  fn build(include_fixed_terms: bool) -> Self {
     let root = std::env::temp_dir().join(format!(
       "tabdat-count-residuals-{}-{}",
       std::process::id(),
@@ -23,15 +31,28 @@ impl Fixture {
       0, 0, 2, 0, 0, 3, 0, 3, 1, 3, 8, 3, 0, 0, 0, 2, 1, 2, 0, 0, 2, 1, 1, 2, 0, 5, 4, 1, 1, 0, 0,
       2, 2, 0, 1, 0,
     ];
-    let mut csv = "id,y,x,z,person\n".to_owned();
+    let mut csv = if include_fixed_terms {
+      "id,y,x,z,person,log_time,exposure\n"
+    } else {
+      "id,y,x,z,person\n"
+    }
+    .to_owned();
     for (i, y) in y.iter().enumerate() {
+      let x = -2. + 4. * i as f64 / 35.;
+      let log_time = 0.2 * x;
+      let fixed_terms = if include_fixed_terms {
+        format!(",{log_time},{}", log_time.exp())
+      } else {
+        String::new()
+      };
       csv.push_str(&format!(
-        "{},{},{},{},{}\n",
+        "{},{},{},{},{}{}\n",
         i + 1,
         y,
-        -2. + 4. * i as f64 / 35.,
+        x,
         [0., 1., 0.4][i % 3],
-        i % 6
+        i % 6,
+        fixed_terms
       ));
     }
     fs::write(root.join("data.csv"), csv).unwrap();
@@ -87,6 +108,36 @@ fn reference() -> HashMap<u64, [Option<f64>; 4]> {
           parse(fields[3]),
           parse(fields[4]),
           parse(fields[5]),
+        ],
+      )
+    })
+    .collect()
+}
+
+fn diagnostic_reference() -> HashMap<(String, String, u64), [Option<f64>; 4]> {
+  include_str!("../../../examples/count-residuals/count_residual_reference.csv")
+    .lines()
+    .skip(1)
+    .map(|line| {
+      let fields: Vec<_> = line.split(',').collect();
+      let parse = |field: &str| {
+        if field == "NA" {
+          None
+        } else {
+          Some(field.parse().unwrap())
+        }
+      };
+      (
+        (
+          fields[0].to_owned(),
+          fields[1].to_owned(),
+          fields[2].parse().unwrap(),
+        ),
+        [
+          parse(fields[4]),
+          parse(fields[5]),
+          parse(fields[6]),
+          parse(fields[7]),
         ],
       )
     })
@@ -184,26 +235,117 @@ fn raw_response_residuals_match_base_r_on_current_rows_and_ignore_covariance() {
 }
 
 #[test]
-fn response_residuals_validate_current_outcomes_and_fail_atomically() {
+fn pearson_and_deviance_residuals_match_independent_r_for_count_laws_and_fixed_terms() {
+  let fixture = Fixture::with_fixed_terms();
+  let expected = diagnostic_reference();
+  assert_eq!(expected.len(), 4 * 36);
+
+  for family in ["poisson", "nbreg"] {
+    for fixed_term in ["offset", "exposure"] {
+      let mut covariance_results = Vec::new();
+      for covariance in ["", " robust", " cluster(person)"] {
+        let mut session = fixture.session();
+        let fixed_option = if fixed_term == "offset" {
+          "offset(log_time)"
+        } else {
+          "exposure(exposure)"
+        };
+        run(
+          &mut session,
+          &format!("{family} y x z, {fixed_option}{covariance}"),
+        );
+        let retained = session.state().estimation;
+
+        run(&mut session, "replace x = x + .2");
+        run(&mut session, "replace log_time = log_time - .3");
+        run(
+          &mut session,
+          "replace exposure = exposure * .7408182206817179",
+        );
+        run(&mut session, "replace y = y + 1");
+        run(&mut session, "replace y = NULL if id == 1");
+        run(&mut session, "replace x = NULL if id == 2");
+        if fixed_term == "offset" {
+          run(&mut session, "replace log_time = NULL if id == 3");
+        } else {
+          run(&mut session, "replace exposure = NULL if id == 3");
+        }
+        run(&mut session, "predict current_mean, n");
+        run(&mut session, "predict response_residual, residuals");
+        run(&mut session, "predict pearson_residual, pearson");
+        run(&mut session, "predict deviance_residual, deviance");
+        let ExecutionResult::Head(table) = run(&mut session, "head 100") else {
+          panic!("head")
+        };
+        let index = |name: &str| {
+          table
+            .columns
+            .iter()
+            .position(|column| column == name)
+            .unwrap()
+        };
+        let (id_index, mean_index, response_index, pearson_index, deviance_index) = (
+          index("id"),
+          index("current_mean"),
+          index("response_residual"),
+          index("pearson_residual"),
+          index("deviance_residual"),
+        );
+        assert_eq!(table.rows.len(), 36);
+        let mut rows = Vec::new();
+        for (position, row) in table.rows.iter().enumerate() {
+          let id = number(&row[id_index]).unwrap() as u64;
+          assert_eq!(id as usize, position + 1);
+          let reference = expected[&(family.to_owned(), fixed_term.to_owned(), id)];
+          let actual = [
+            number(&row[mean_index]),
+            number(&row[response_index]),
+            number(&row[pearson_index]),
+            number(&row[deviance_index]),
+          ];
+          for (index, (actual, expected)) in actual.into_iter().zip(reference).enumerate() {
+            match (actual, expected) {
+              (Some(actual), Some(expected)) => close(actual, expected),
+              (None, None) => {}
+              mismatch => {
+                panic!("{family} {fixed_term} output {index} differs at id={id}: {mismatch:?}")
+              }
+            }
+          }
+          rows.push(actual);
+        }
+        assert_eq!(session.state().estimation, retained);
+        covariance_results.push(rows);
+      }
+      assert_eq!(covariance_results[0], covariance_results[1]);
+      assert_eq!(covariance_results[0], covariance_results[2]);
+    }
+  }
+}
+
+#[test]
+fn count_residuals_validate_current_outcomes_and_fail_atomically() {
   let fixture = Fixture::new();
   for (family, mutation) in [
     ("poisson", "replace y = .5 if id == 1"),
     ("nbreg", "replace y = 100001 if id == 1"),
   ] {
-    let mut session = fixture.session();
-    run(&mut session, "generate log_time = .2 * x");
-    run(&mut session, &format!("{family} y x z, offset(log_time)"));
-    run(&mut session, mutation);
-    let before = session.state();
-    let error = session
-      .execute(parse_command("predict invalid_residual, residuals").unwrap())
-      .unwrap_err();
-    assert!(
-      error
-        .to_string()
-        .contains("current outcome must be an exact nonnegative integer")
-    );
-    assert_eq!(session.state(), before);
+    for kind in ["residuals", "pearson", "deviance"] {
+      let mut session = fixture.session();
+      run(&mut session, "generate log_time = .2 * x");
+      run(&mut session, &format!("{family} y x z, offset(log_time)"));
+      run(&mut session, mutation);
+      let before = session.state();
+      let error = session
+        .execute(parse_command(&format!("predict invalid_residual, {kind}")).unwrap())
+        .unwrap_err();
+      assert!(
+        error
+          .to_string()
+          .contains("current outcome must be an exact nonnegative integer")
+      );
+      assert_eq!(session.state(), before);
+    }
   }
 
   let mut collision = fixture.session();
@@ -226,26 +368,30 @@ fn response_residuals_validate_current_outcomes_and_fail_atomically() {
     r#"sql """SELECT * REPLACE (CAST(y AS VARCHAR) AS y) FROM active""" into string_outcome"#,
   );
   let before = non_numeric_outcome.state();
-  let error = non_numeric_outcome
-    .execute(parse_command("predict invalid_residual, residuals").unwrap())
-    .unwrap_err();
-  assert!(
-    error
-      .to_string()
-      .contains("prediction requires numeric current outcome: y")
-  );
-  assert_eq!(non_numeric_outcome.state(), before);
+  for kind in ["residuals", "pearson", "deviance"] {
+    let error = non_numeric_outcome
+      .execute(parse_command(&format!("predict invalid_residual, {kind}")).unwrap())
+      .unwrap_err();
+    assert!(
+      error
+        .to_string()
+        .contains("prediction requires numeric current outcome: y")
+    );
+    assert_eq!(non_numeric_outcome.state(), before);
+  }
 
   let mut missing_outcome = fixture.session();
   run(&mut missing_outcome, "generate log_time = .2 * x");
   run(&mut missing_outcome, "poisson y x z, offset(log_time)");
   run(&mut missing_outcome, "drop y");
   let before = missing_outcome.state();
-  let error = missing_outcome
-    .execute(parse_command("predict no_outcome, residuals").unwrap())
-    .unwrap_err();
-  assert!(matches!(error, RuntimeError::PredictUnknownVariable { .. }));
-  assert_eq!(missing_outcome.state(), before);
+  for kind in ["residuals", "pearson", "deviance"] {
+    let error = missing_outcome
+      .execute(parse_command(&format!("predict no_outcome, {kind}")).unwrap())
+      .unwrap_err();
+    assert!(matches!(error, RuntimeError::PredictUnknownVariable { .. }));
+    assert_eq!(missing_outcome.state(), before);
+  }
 }
 
 #[test]
@@ -289,21 +435,63 @@ fn response_residuals_use_the_current_exposure() {
 }
 
 #[test]
-fn response_residuals_support_empty_current_data() {
+fn count_residuals_support_empty_current_data() {
   let fixture = Fixture::new();
-  let mut session = fixture.session();
-  run(&mut session, "generate log_time = .2 * x");
-  run(&mut session, "poisson y x z, offset(log_time)");
-  run(&mut session, "drop if id >= 1");
-  run(&mut session, "predict empty_residual, residuals");
-  let ExecutionResult::Head(table) = run(&mut session, "head 10") else {
-    panic!("head")
-  };
-  assert!(table.rows.is_empty());
-  assert!(
-    table
-      .columns
-      .iter()
-      .any(|column| column == "empty_residual")
-  );
+  for kind in ["residuals", "pearson", "deviance"] {
+    let mut session = fixture.session();
+    run(&mut session, "generate log_time = .2 * x");
+    run(&mut session, "poisson y x z, offset(log_time)");
+    run(&mut session, "drop if id >= 1");
+    run(&mut session, &format!("predict empty_residual, {kind}"));
+    let ExecutionResult::Head(table) = run(&mut session, "head 10") else {
+      panic!("head")
+    };
+    assert!(table.rows.is_empty());
+    assert!(
+      table
+        .columns
+        .iter()
+        .any(|column| column == "empty_residual")
+    );
+  }
+}
+
+#[test]
+fn diagnostic_residuals_define_the_zero_mean_boundary() {
+  let fixture = Fixture::new();
+  for family in ["poisson", "nbreg"] {
+    let mut session = fixture.session();
+    run(&mut session, "generate log_time = .2 * x");
+    run(&mut session, &format!("{family} y x z, offset(log_time)"));
+    run(&mut session, "replace log_time = -1000 if id == 1");
+    run(&mut session, "replace log_time = -1000 if id == 3");
+    run(&mut session, "predict current_mean, n");
+    run(&mut session, "predict response_residual, residuals");
+    run(&mut session, "predict pearson_residual, pearson");
+    run(&mut session, "predict deviance_residual, deviance");
+    let ExecutionResult::Head(table) = run(&mut session, "head 3") else {
+      panic!("head")
+    };
+    let index = |name: &str| {
+      table
+        .columns
+        .iter()
+        .position(|column| column == name)
+        .unwrap()
+    };
+    let (mean, response, pearson, deviance) = (
+      index("current_mean"),
+      index("response_residual"),
+      index("pearson_residual"),
+      index("deviance_residual"),
+    );
+    assert_eq!(number(&table.rows[0][mean]), Some(0.0));
+    assert_eq!(number(&table.rows[0][response]), Some(0.0));
+    assert_eq!(table.rows[0][pearson], CellValue::Null);
+    assert_eq!(number(&table.rows[0][deviance]), Some(0.0));
+    assert_eq!(number(&table.rows[2][mean]), Some(0.0));
+    assert_eq!(number(&table.rows[2][response]), Some(2.0));
+    assert_eq!(table.rows[2][pearson], CellValue::Null);
+    assert_eq!(table.rows[2][deviance], CellValue::Null);
+  }
 }

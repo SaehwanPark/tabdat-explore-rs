@@ -28,6 +28,8 @@ Example workflow:
 - `estat countgof, max(10)`
 - `predict nb_mean_visits, n`
 - `predict response_residual, residuals`
+- `predict pearson_residual, pearson`
+- `predict deviance_residual, deviance`
 - `predict nb_index, xb`
 - `head 8`
 - `export nb_visits_predictions.csv`
@@ -98,9 +100,16 @@ Inference and interpretation:
 - NB residual deviance at fitted alpha and Pearson/(N-K-1) dispersion are
   descriptive, not formal specification/panel tests or covariance multipliers.
 - `predict residual, residuals` returns current numeric y minus the current
-  conditional mean. Missing/nonfinite outcomes or model inputs produce NULL;
-  finite outcomes must be exact counts in 0..100000. It is a raw response
-  residual, not Pearson, deviance or standardized, and does not use covariance.
+  conditional mean. `predict pearson, pearson` returns the unscaled
+  `(y-mu)/sqrt(mu+alpha*mu^2)` residual; `predict deviance, deviance` returns
+  the signed square root of
+  `2*(y*log(y/mu)-(y+1/alpha)*log((1+alpha*y)/(1+alpha*mu)))`, using the
+  zero-count limit. Both use current rows with retained mean coefficients,
+  alpha and current fixed terms. Missing/nonfinite inputs or undefined residuals
+  produce NULL; finite outcomes must be exact counts in 0..100000 or prediction
+  fails atomically. They do not use covariance, Pearson scale corrections,
+  studentization or leverage. At mu=0, Pearson is undefined; deviance is zero for
+  y=0 and undefined for positive y.
 - `predict ..., n` is the current-row conditional mean, not a probability or
   integer draw; no clipping at one. Bare predict stays xb. `estat margins` uses
   retained X and full selected joint covariance for continuous column derivatives

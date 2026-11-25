@@ -317,7 +317,7 @@ fn packaged_count_help_examples_execute_on_their_advertised_columns() {
     .lines()
     .filter_map(|line| line.strip_prefix("- `").and_then(|s| s.strip_suffix('`')))
     .collect();
-  assert_eq!(examples.len(), 9);
+  assert_eq!(examples.len(), 11);
   let out = f.batch(&examples);
   success(&out);
   assert!(f.0.join("visits_predictions.csv").is_file());
@@ -335,7 +335,7 @@ fn packaged_count_help_examples_execute_on_their_advertised_columns() {
       .lines()
       .filter_map(|line| line.strip_prefix("- `").and_then(|s| s.strip_suffix('`'))),
   );
-  assert_eq!(examples.len(), 12);
+  assert_eq!(examples.len(), 14);
   success(&f.batch(&examples));
 }
 
@@ -377,7 +377,7 @@ fn no_constant_and_zero_variance_json_never_claim_unavailable_inference() {
 }
 
 #[test]
-fn count_response_residuals_render_current_values_in_json_and_text() {
+fn count_residuals_render_current_values_in_json_and_text() {
   let source = sample();
   for family in ["poisson", "nbreg"] {
     let commands = [
@@ -388,6 +388,8 @@ fn count_response_residuals_render_current_values_in_json_and_text() {
       "replace MDU = NULL if prepared_row == 8".to_owned(),
       "predict current_mean, n".to_owned(),
       "predict response_residual, residuals".to_owned(),
+      "predict pearson_residual, pearson".to_owned(),
+      "predict deviance_residual, deviance".to_owned(),
       "head 10".to_owned(),
     ];
     let commands: Vec<_> = commands.iter().map(String::as_str).collect();
@@ -398,26 +400,37 @@ fn count_response_residuals_render_current_values_in_json_and_text() {
     let results = envelopes(&output);
     assert_eq!(results.len(), commands.len());
     assert_eq!(results[2]["data"]["observation_count"], 80);
-    let prediction = &results[6]["data"]["dataset"]["columns"];
-    assert_eq!(
-      prediction[prediction.as_array().unwrap().len() - 1]["name"],
-      "response_residual"
-    );
-    assert_eq!(
-      prediction[prediction.as_array().unwrap().len() - 1]["data_type"],
-      "DOUBLE"
-    );
-    let table = &results[7]["data"];
+    for (result, name) in [
+      (6, "response_residual"),
+      (7, "pearson_residual"),
+      (8, "deviance_residual"),
+    ] {
+      let prediction = &results[result]["data"]["dataset"]["columns"];
+      assert_eq!(
+        prediction[prediction.as_array().unwrap().len() - 1]["name"],
+        name
+      );
+      assert_eq!(
+        prediction[prediction.as_array().unwrap().len() - 1]["data_type"],
+        "DOUBLE"
+      );
+    }
+    let table = &results[9]["data"];
     let columns = table["columns"].as_array().unwrap();
     assert_eq!(
       columns
         .iter()
         .rev()
-        .take(2)
+        .take(4)
         .rev()
         .map(|column| column.as_str().unwrap())
         .collect::<Vec<_>>(),
-      ["current_mean", "response_residual"]
+      [
+        "current_mean",
+        "response_residual",
+        "pearson_residual",
+        "deviance_residual"
+      ]
     );
     let index = |name: &str| {
       columns
@@ -425,25 +438,31 @@ fn count_response_residuals_render_current_values_in_json_and_text() {
         .position(|column| column.as_str() == Some(name))
         .unwrap()
     };
-    let (id, y, mean, residual) = (
+    let (id, y, mean, response, pearson, deviance) = (
       index("prepared_row"),
       index("MDU"),
       index("current_mean"),
       index("response_residual"),
+      index("pearson_residual"),
+      index("deviance_residual"),
     );
     let rows = table["rows"].as_array().unwrap();
     let missing = rows.iter().find(|row| row[id].as_i64() == Some(8)).unwrap();
     assert!(missing[y].is_null());
     assert!(missing[mean].as_f64().unwrap().is_finite());
-    assert!(missing[residual].is_null());
+    assert!(missing[response].is_null());
+    assert!(missing[pearson].is_null());
+    assert!(missing[deviance].is_null());
     for row in rows.iter().filter(|row| row[id].as_i64() != Some(8)) {
       let actual_y = row[y]
         .as_f64()
         .or_else(|| row[y].as_str().and_then(|value| value.parse().ok()))
         .unwrap();
       let actual_mean = row[mean].as_f64().unwrap();
-      let actual_residual = row[residual].as_f64().unwrap();
+      let actual_residual = row[response].as_f64().unwrap();
       assert!((actual_residual - (actual_y - actual_mean)).abs() < 1e-12);
+      assert!(row[pearson].as_f64().unwrap().is_finite());
+      assert!(row[deviance].as_f64().unwrap().is_finite());
     }
 
     let text = Fixture::new(&source);
@@ -453,7 +472,7 @@ fn count_response_residuals_render_current_values_in_json_and_text() {
     let lines: Vec<_> = rendered.lines().collect();
     let header = lines
       .iter()
-      .find(|line| line.split('\t').any(|column| column == "response_residual"))
+      .find(|line| line.split('\t').any(|column| column == "deviance_residual"))
       .unwrap();
     let columns: Vec<_> = header.split('\t').collect();
     let index = |name: &str| columns.iter().position(|column| *column == name).unwrap();
@@ -465,7 +484,14 @@ fn count_response_residuals_render_current_values_in_json_and_text() {
       .collect::<Vec<_>>();
     assert_eq!(missing[index("MDU")], "NA");
     assert_eq!(missing[index("response_residual")], "NA");
-    for phrase in ["current_mean", "response_residual"] {
+    assert_eq!(missing[index("pearson_residual")], "NA");
+    assert_eq!(missing[index("deviance_residual")], "NA");
+    for phrase in [
+      "current_mean",
+      "response_residual",
+      "pearson_residual",
+      "deviance_residual",
+    ] {
       assert!(rendered.contains(phrase), "{phrase}");
     }
   }
@@ -475,28 +501,30 @@ fn count_response_residuals_render_current_values_in_json_and_text() {
 fn invalid_current_count_residuals_fail_without_changing_cli_data() {
   let source = sample();
   for (family, bad_outcome) in [("poisson", "0.5"), ("nbreg", "100001")] {
-    let fixture = Fixture::new(&source);
-    let input = format!(
-      "use mma20p1count.csv\ngenerate log_time = .05 * LC\n{family} MDU LC IDP, offset(log_time)\nreplace MDU = {bad_outcome} if prepared_row == 8\nhead 1\npredict invalid_residual, residuals\nhead 1\nexit\n"
-    );
-    let output = fixture.interactive(&input);
-    assert!(output.status.success(), "{output:?}");
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(
-      stderr.contains("current outcome must be an exact nonnegative integer"),
-      "{stderr}"
-    );
-    assert!(!stdout.contains("invalid_residual"));
-    let lines: Vec<_> = stdout.lines().collect();
-    let headers: Vec<_> = lines
-      .iter()
-      .enumerate()
-      .filter(|(_, line)| line.split('\t').next() == Some("prepared_row"))
-      .collect();
-    assert_eq!(headers.len(), 2, "{stdout}");
-    assert_eq!(headers[0].1, headers[1].1);
-    assert_eq!(lines[headers[0].0 + 1], lines[headers[1].0 + 1]);
+    for kind in ["residuals", "pearson", "deviance"] {
+      let fixture = Fixture::new(&source);
+      let input = format!(
+        "use mma20p1count.csv\ngenerate log_time = .05 * LC\n{family} MDU LC IDP, offset(log_time)\nreplace MDU = {bad_outcome} if prepared_row == 8\nhead 1\npredict invalid_residual, {kind}\nhead 1\nexit\n"
+      );
+      let output = fixture.interactive(&input);
+      assert!(output.status.success(), "{output:?}");
+      let stdout = String::from_utf8(output.stdout).unwrap();
+      let stderr = String::from_utf8(output.stderr).unwrap();
+      assert!(
+        stderr.contains("current outcome must be an exact nonnegative integer"),
+        "{stderr}"
+      );
+      assert!(!stdout.contains("invalid_residual"));
+      let lines: Vec<_> = stdout.lines().collect();
+      let headers: Vec<_> = lines
+        .iter()
+        .enumerate()
+        .filter(|(_, line)| line.split('\t').next() == Some("prepared_row"))
+        .collect();
+      assert_eq!(headers.len(), 2, "{stdout}");
+      assert_eq!(headers[0].1, headers[1].1);
+      assert_eq!(lines[headers[0].0 + 1], lines[headers[1].0 + 1]);
+    }
   }
 }
 

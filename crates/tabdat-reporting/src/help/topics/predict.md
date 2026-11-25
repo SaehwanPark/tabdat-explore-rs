@@ -1,7 +1,7 @@
 # predict
 
 Installed syntax:
-`predict newvar [, xb | xbu | u | residuals | pr | mean | mills | ycond | yexpected | n | n interval | hazard | cumhaz | survival | pmf(k) | pmf(k) se | pmf(k) interval | cdf(k) | cdf(k) se | cdf(k) interval | pmf(cutoff_variable) | pmf(cutoff_variable) se | pmf(cutoff_variable) interval | cdf(cutoff_variable) | cdf(cutoff_variable) se | cdf(cutoff_variable) interval]`
+`predict newvar [, xb | xbu | u | residuals | pearson | deviance | pr | mean | mills | ycond | yexpected | n | n interval | hazard | cumhaz | survival | pmf(k) | pmf(k) se | pmf(k) interval | cdf(k) | cdf(k) se | cdf(k) interval | pmf(cutoff_variable) | pmf(cutoff_variable) se | pmf(cutoff_variable) interval | cdf(cutoff_variable) | cdf(cutoff_variable) se | cdf(cutoff_variable) interval]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
 - Explicit-formula NLS: default/xb/mean is the nonlinear formula mean on current
@@ -70,10 +70,20 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   missing/nonfinite inputs yield NULL. Baseline reference is all retained
   predictor means, including dummy means. No baseline/prediction uncertainty,
   count/binary/mean/residual meanings or auxiliaries. See help stcox.
-- Poisson: n (conditional mean exp(xb)), xb (log conditional mean), or
-  residuals (current outcome minus the current conditional mean).
-- NB2: n (conditional mean exp(xb)), xb (log conditional mean), or raw response
-  residuals, using mean-model coefficients and not lnalpha as a predictor.
+- Poisson and NB2: n (conditional mean exp(xb)), xb (log conditional mean),
+  residuals (current outcome minus the current conditional mean), pearson
+  (unscaled Pearson residual), or deviance (signed square root of the family
+  unit deviance). Pearson uses `(y-mu)/sqrt(mu)` for Poisson and
+  `(y-mu)/sqrt(mu+alpha*mu^2)` for NB2, with retained alpha. Deviance uses the
+  Poisson unit deviance `2*(y*log(y/mu)-(y-mu))` or NB2 unit deviance
+  `2*(y*log(y/mu)-(y+1/alpha)*log((1+alpha*y)/(1+alpha*mu)))`; the `y=0`
+  terms use their zero-count limits. These are scored on current rows using
+  retained mean coefficients, current outcome/predictors and any current fixed
+  offset/exposure. Missing/nonfinite inputs and undefined residuals give NULL;
+  a present outcome outside the exact supported count domain fails atomically.
+  A zero fitted mean gives NULL Pearson, zero deviance when y is zero, and NULL
+  deviance when y is positive. Covariance selection does not change residuals;
+  they are not standardized/studentized residuals or leverage diagnostics.
 
 **Bare predict remains xb for every installed family.** Request probabilities
 with `, pr` or count means with `, n` explicitly. Count means are not probabilities
@@ -92,6 +102,8 @@ Count example:
 - `poisson visits age income, robust`
 - `predict expected_visits, n`
 - `predict response_residual, residuals`
+- `predict pearson_residual, pearson`
+- `predict deviance_residual, deviance`
 - `predict log_mean, xb`
 - `predict p0, pmf(0)`
 - `predict p0_se, pmf(0) se`

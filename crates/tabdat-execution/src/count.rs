@@ -341,11 +341,17 @@ impl Session {
         | PredictKind::CountPmfVariable
         | PredictKind::CountCdfVariable
     ) || command.kind == PredictKind::MeanCount;
+    let current_residual = matches!(
+      command.kind,
+      PredictKind::Residuals | PredictKind::PearsonResiduals | PredictKind::DevianceResiduals
+    );
     if !matches!(
       command.kind,
       PredictKind::Xb
         | PredictKind::MeanCount
         | PredictKind::Residuals
+        | PredictKind::PearsonResiduals
+        | PredictKind::DevianceResiduals
         | PredictKind::CountPmf(_)
         | PredictKind::CountPmfStandardError(_)
         | PredictKind::CountCdf(_)
@@ -443,7 +449,7 @@ impl Session {
     if let Some(name) = exposure_variable {
       required_variables.push(name.clone());
     }
-    if command.kind == PredictKind::Residuals {
+    if current_residual {
       required_variables.push(problem.outcome.clone());
     }
     let missing: Vec<_> = required_variables
@@ -467,7 +473,7 @@ impl Session {
       selected_columns.push(name.clone());
       index
     });
-    let outcome_index = if command.kind == PredictKind::Residuals {
+    let outcome_index = if current_residual {
       let index = selected_columns.len();
       selected_columns.push(problem.outcome.clone());
       Some(index)
@@ -485,7 +491,7 @@ impl Session {
         .iter()
         .any(|c| c.name == *name && !is_numeric_data_type(&c.data_type))
       {
-        let role = if command.kind == PredictKind::Residuals && name == &problem.outcome {
+        let role = if current_residual && name == &problem.outcome {
           "current outcome"
         } else {
           "predictor"
@@ -708,10 +714,9 @@ impl Session {
         dataset: next,
       }));
     }
-    if command.kind == PredictKind::Residuals {
-      let outcome_index = outcome_index.ok_or_else(|| {
-        family.error("current outcome is required for response residual prediction")
-      })?;
+    if current_residual {
+      let outcome_index = outcome_index
+        .ok_or_else(|| family.error("current outcome is required for count residual prediction"))?;
       let columns = selected_columns
         .iter()
         .map(|name| quote_identifier(name))
@@ -769,8 +774,25 @@ impl Session {
               values.push(None);
               return Ok(());
             }
-            let residual = outcome - mean;
-            values.push(residual.is_finite().then_some(residual));
+            let residual = match command.kind {
+              PredictKind::Residuals => Some(outcome - mean),
+              PredictKind::PearsonResiduals => tabdat_stats::count_diagnostic_residual(
+                law,
+                outcome as i128,
+                mean,
+                tabdat_stats::CountResidualKind::Pearson,
+              )
+              .map_err(|error| family.error(error.to_string()))?,
+              PredictKind::DevianceResiduals => tabdat_stats::count_diagnostic_residual(
+                law,
+                outcome as i128,
+                mean,
+                tabdat_stats::CountResidualKind::Deviance,
+              )
+              .map_err(|error| family.error(error.to_string()))?,
+              _ => unreachable!("residual mode checked before execution"),
+            };
+            values.push(residual.filter(|value| value.is_finite()));
             Ok(())
           },
           |message| family.error(message),

@@ -1076,6 +1076,10 @@ pub enum PredictKind {
   Xb,
   /// Residuals ($y - X\hat{\beta}$), including unit intercepts after within FE.
   Residuals,
+  /// Unscaled Pearson residuals for fitted Poisson/NB2 count models.
+  PearsonResiduals,
+  /// Deviance residuals for fitted Poisson/NB2 count models.
+  DevianceResiduals,
   /// Conditional FE response including the retained unit intercept (`xbu`).
   FixedEffectsResponse,
   /// Retained normalized unit deviation (`u`) after within FE.

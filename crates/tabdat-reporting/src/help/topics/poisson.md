@@ -26,6 +26,8 @@ Example workflow:
 - `estat margins`
 - `predict mean_visits, n`
 - `predict response_residual, residuals`
+- `predict pearson_residual, pearson`
+- `predict deviance_residual, deviance`
 - `predict index, xb`
 - `head 8`
 - `export visits_predictions.csv`
@@ -92,9 +94,15 @@ Inference and interpretation:
   despite data edits; derivatives do not apply a chain rule through the fixed
   term even if its source variable is also a predictor.
 - `predict residual, residuals` returns current numeric y minus the current
-  conditional mean. Missing/nonfinite outcomes or model inputs produce NULL;
-  finite outcomes must be exact counts in 0..2^53-1. It is a raw response
-  residual, not Pearson, deviance or standardized, and does not use covariance.
+  conditional mean. `predict pearson, pearson` returns the unscaled
+  `(y-mu)/sqrt(mu)` residual; `predict deviance, deviance` returns the signed
+  square root of `2*(y*log(y/mu)-(y-mu))`, using the zero-count limit. These
+  diagnostics use current rows with retained coefficients and current fixed
+  terms. Missing/nonfinite inputs or undefined residuals produce NULL; finite
+  outcomes must be exact counts in 0..2^53-1 or the prediction fails atomically.
+  They do not use covariance, Pearson scale corrections, studentization or
+  leverage. At mu=0, Pearson is undefined; deviance is zero for y=0 and undefined
+  for positive y.
 
 `estat countprob [, max(10)]` compares observed and fitted count frequencies on
 retained y/means (exact0..9 plus >=10 by default). It assumes the full Poisson
