@@ -52,9 +52,30 @@ fit_one <- function(data, family, design) {
   }
 }
 
+# Polish Base R glm starts with R's own link, matrix and QR/solve operations so
+# all references use a score norm below 1e-13 rather than glm's stopping delta.
+logit_polished_reference <- function(fit) {
+  X <- model.matrix(fit)
+  y <- fit$y
+  beta <- coef(fit)
+  for (iteration in seq_len(30L)) {
+    eta <- drop(X %*% beta)
+    probability <- plogis(eta)
+    variance <- probability * (1 - probability)
+    score <- drop(crossprod(X, y - probability))
+    if (sqrt(sum(score^2)) < 1e-13) break
+    beta <- beta + solve(crossprod(X, X * variance), score)
+  }
+  eta <- drop(X %*% beta)
+  probability <- plogis(eta)
+  score <- drop(crossprod(X, y - probability))
+  stopifnot(sqrt(sum(score^2)) < 1e-12)
+  list(beta = beta, covariance = solve(crossprod(X, X * probability * (1 - probability))))
+}
+
 # Base R glm's probit covariance is Fisher/IRLS information, while the
 # executable's documented probit contract uses inverse observed information.
-# Polish the glm start with R's own pnorm/dnorm and QR/solve operations, then
+# Polish the glm start with R's pnorm/dnorm and matrix operations, then
 # independently assemble the converged observed-information covariance.
 probit_observed_reference <- function(fit) {
   X <- model.matrix(fit)
@@ -88,6 +109,7 @@ fit_rows <- list()
 covariance_rows <- list()
 prediction_rows <- list()
 fit_summary_rows <- list()
+factor_contrast_rows <- list()
 append_covariance <- function(model, design, type, covariance) {
   for (row in seq_len(nrow(covariance))) {
     for (column in seq_len(ncol(covariance))) {
@@ -102,6 +124,66 @@ append_covariance <- function(model, design, type, covariance) {
     }
   }
 }
+set_factor_level <- function(data, variable, values, levels) {
+  if (variable == "region") {
+    data$region <- factor(values, levels = levels)
+  } else if (variable == "group_code") {
+    data$group_code <- factor(as.numeric(values),
+                              levels = as.numeric(levels))
+  } else if (variable == "is_west") {
+    data$is_west <- factor(values == "true",
+                           levels = c(FALSE, TRUE))
+  } else {
+    stop("unknown factor variable")
+  }
+  data
+}
+append_factor_contrasts <- function(model, design, covariance_type, fit,
+                                    covariance, estimates, family, factor_variable,
+                                    factor_levels, baseline_level) {
+  retained_rows <- as.integer(rownames(model.frame(fit)))
+  retained_data <- data[retained_rows, , drop = FALSE]
+  contrast_matrix <- function(level) {
+    support <- retained_data[rep(1L, length(factor_levels)), , drop = FALSE]
+    newdata <- rbind(retained_data, support)
+    values <- c(rep(level, nrow(retained_data)), factor_levels)
+    newdata <- set_factor_level(newdata, factor_variable, values, factor_levels)
+    matrix <- model.matrix(delete.response(terms(fit)), data = newdata,
+                           contrasts.arg = fit$contrasts)
+    matrix[seq_len(nrow(retained_data)), , drop = FALSE]
+  }
+  baseline_matrix <- contrast_matrix(baseline_level)
+  baseline_eta <- drop(baseline_matrix %*% estimates)
+  baseline_probability <- family$linkinv(baseline_eta)
+  baseline_derivative <- family$mu.eta(baseline_eta)
+  for (level in factor_levels[factor_levels != baseline_level]) {
+    target_matrix <- contrast_matrix(level)
+    target_eta <- drop(target_matrix %*% estimates)
+    target_probability <- family$linkinv(target_eta)
+    target_derivative <- family$mu.eta(target_eta)
+    gradient <- colMeans(
+      sweep(target_matrix, 1L, target_derivative, `*`) -
+        sweep(baseline_matrix, 1L, baseline_derivative, `*`)
+    )
+    estimate <- mean(target_probability - baseline_probability)
+    standard_error <- sqrt(drop(gradient %*% covariance %*% gradient))
+    statistic <- estimate / standard_error
+    factor_contrast_rows[[length(factor_contrast_rows) + 1L]] <<- data.frame(
+      model = model,
+      design = design,
+      covariance_type = covariance_type,
+      factor_variable = factor_variable,
+      baseline_level = baseline_level,
+      comparison_level = level,
+      estimate = estimate,
+      standard_error = standard_error,
+      statistic = statistic,
+      p_value = 2 * pnorm(-abs(statistic)),
+      confidence_lower = estimate - qnorm(0.975) * standard_error,
+      confidence_upper = estimate + qnorm(0.975) * standard_error
+    )
+  }
+}
 for (model in c("logit", "probit")) {
   family <- binomial(link = model)
   for (design in c("default", "west_reference", "noconstant",
@@ -112,9 +194,26 @@ for (model in c("logit", "probit")) {
       estimates <- reference$beta
       covariance <- reference$covariance
     } else {
-      estimates <- coef(fit)
-      covariance <- vcov(fit)
+      reference <- logit_polished_reference(fit)
+      estimates <- reference$beta
+      covariance <- reference$covariance
     }
+    factor_variable <- switch(
+      design,
+      numeric_factor = "group_code",
+      boolean_factor = "is_west",
+      "region"
+    )
+    factor_levels <- switch(
+      design,
+      numeric_factor = c("1", "2", "3"),
+      boolean_factor = c("false", "true"),
+      c("East", "North", "West")
+    )
+    baseline_level <- if (design == "west_reference") "West" else factor_levels[1L]
+    append_factor_contrasts(model, design, "model_based", fit, covariance,
+                            estimates, family, factor_variable, factor_levels,
+                            baseline_level)
     for (index in seq_along(estimates)) {
       fit_rows[[length(fit_rows) + 1L]] <- data.frame(
         model = model,
@@ -139,6 +238,9 @@ for (model in c("logit", "probit")) {
       robust_covariance <- covariance %*% crossprod(score_matrix) %*% covariance *
         nrow(X) / (nrow(X) - 1L)
       append_covariance(model, design, "robust", robust_covariance)
+      append_factor_contrasts(model, design, "robust", fit, robust_covariance,
+                              estimates, family, factor_variable, factor_levels,
+                              baseline_level)
       retained_rows <- as.integer(rownames(model.frame(fit)))
       cluster_scores <- rowsum(
         score_matrix,
@@ -149,6 +251,9 @@ for (model in c("logit", "probit")) {
       cluster_covariance <- covariance %*% crossprod(cluster_scores) %*% covariance *
         cluster_count / (cluster_count - 1L)
       append_covariance(model, design, "cluster", cluster_covariance)
+      append_factor_contrasts(model, design, "cluster", fit, cluster_covariance,
+                              estimates, family, factor_variable, factor_levels,
+                              baseline_level)
     }
     eta_hat <- predict(fit, newdata = data, type = "link")
     probability <- predict(fit, newdata = data, type = "response")
@@ -180,3 +285,5 @@ write.csv(do.call(rbind, prediction_rows), "binary_factor_prediction_reference.c
           row.names = FALSE, na = "")
 write.csv(do.call(rbind, fit_summary_rows), "binary_factor_summary_reference.csv",
           row.names = FALSE)
+write.csv(do.call(rbind, factor_contrast_rows),
+          "binary_factor_contrast_reference.csv", row.names = FALSE)

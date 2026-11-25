@@ -7,7 +7,6 @@ fn remaining_no_option_estat_forms_parse_without_a_backend() {
     "ovtest",
     "margins",
     "overdispersion",
-    "gof",
     "did",
     "drdid",
     "dml",
@@ -41,6 +40,28 @@ fn binary_discrete_margins_parse_only_one_named_predictor() {
     "estat margins, discrete(x y)",
     "estat margins, discrete(x) discrete(y)",
     "estat margins, discrete(x) robust",
+  ] {
+    assert!(
+      parse_command(invalid).is_err(),
+      "unexpectedly parsed {invalid}"
+    );
+  }
+}
+
+#[test]
+fn binary_factor_margins_parse_only_one_named_factor() {
+  let command = parse_command("estat margins, factor(region)").unwrap();
+  let value = serde_json::to_value(command).unwrap();
+  assert_eq!(
+    value["payload"]["command"]["subcommand"]["factor_margins"]["variable"],
+    "region"
+  );
+
+  for invalid in [
+    "estat margins, factor",
+    "estat margins, factor(region district)",
+    "estat margins, factor(region) robust",
+    "estat margins, factor(region) discrete(treated)",
   ] {
     assert!(
       parse_command(invalid).is_err(),

@@ -98,10 +98,11 @@ pub use truncated_gaussian::{
 pub mod ttest;
 
 pub use binary::{
-  BinaryCluster, BinaryDiscreteChange, BinaryHosmerLemeshowGroup, BinaryHosmerLemeshowResult,
-  BinaryLogitResult, BinaryMleResult, BinaryModel, BinaryOmnibusWald, LogitEstimate,
-  LogitMarginalEffects, LogitOptions, MAX_BINARY_GOODNESS_OF_FIT_GROUPS,
-  MIN_BINARY_GOODNESS_OF_FIT_GROUPS, ProbitOptions, binary_average_discrete_change,
+  BinaryCluster, BinaryDiscreteChange, BinaryFactorContrast, BinaryFactorContrastDesign,
+  BinaryFactorContrasts, BinaryHosmerLemeshowGroup, BinaryHosmerLemeshowResult, BinaryLogitResult,
+  BinaryMleResult, BinaryModel, BinaryOmnibusWald, LogitEstimate, LogitMarginalEffects,
+  LogitOptions, MAX_BINARY_GOODNESS_OF_FIT_GROUPS, MIN_BINARY_GOODNESS_OF_FIT_GROUPS,
+  ProbitOptions, binary_average_discrete_change, binary_average_factor_contrasts,
   binary_average_marginal_effects, binary_hosmer_lemeshow_test, binary_wald_test,
   fit_binary_clustered, fit_binary_logit, fit_binary_logit_with_options, fit_binary_probit,
   fit_binary_probit_with_options, fit_binary_robust, logit_average_marginal_effects,

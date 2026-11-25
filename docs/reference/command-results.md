@@ -463,12 +463,31 @@ normal inference object. The full delta method includes every coefficient and
 covariance cross term; inference is conditional on observed X and
 asymptotic-normal. `causal_interpretation` is false. Current-data edits do not
 change the stored-design result. Unknown/nonbinary/single-level predictors and
-calls without a retained logit/probit fit fail without changing the fit. This is
-a numeric binary probability-contrast slice; factor-specific contrasts,
-interactions, multiway/weighted inference and causal effects remain unsupported.
-The independent synthetic R
-reference and runnable scripts are in
+calls without a retained logit/probit fit fail without changing the fit. This
+is a numeric binary probability-contrast slice; `factor(variable)` provides
+the separate retained-category method described below. Interactions,
+multiway/weighted inference and causal effects remain unsupported. The
+independent synthetic R reference and runnable scripts are in
 [`examples/binary-discrete-change`](../../examples/binary-discrete-change/README.md).
+
+`estat margins, factor(variable)` returns `BinaryFactorContrastsResult` after a
+logit/probit fit with the named retained factor. It reports an average fitted
+probability difference for each other level against the fit-time omitted
+reference; for `noconstant`, it uses the first sorted retained level. Each
+contrast changes only that factor on each retained design row, leaving all
+other continuous and factor terms at their observed values. Current-data edits
+do not rescan or change the estimand.
+
+The full contrast gradient uses the fitted model-based, row-robust or one-way
+cluster covariance, including coefficient cross terms. Output includes ordered
+`contrasts` with level labels and normal-inference `effect` estimates,
+`baseline_level`, `sample: "retained_estimation_design"`, covariance metadata,
+N, and `causal_interpretation: false`. Inference is conditional on observed X
+with a two-sided asymptotic-normal z test and 95% interval. Interactions,
+weighted/multiway inference and simultaneous intervals are unsupported. A
+missing fit, absent factor, malformed design or unavailable variance fails
+without mutating the fit. See the independent synthetic reference in
+[`examples/binary-factor-design`](../../examples/binary-factor-design/README.md).
 
 `probit y x1 ... [, robust cluster(group) noconstant]` shares the contract with these
 family deltas. The engine fits Newton steps against the per-observation observed
@@ -487,12 +506,13 @@ probabilities bit-identical to engine probabilities under the same index; `, xb`
 appends the finite linear index, and unsupported predict forms fail with the
 probit wording. Continuous `estat margins` returns
 `ProbitMarginalEffectsResult`; `discrete()` returns the shared
-`BinaryDiscreteChangeResult`. With no supported binary/Poisson/NB2 fit, bare
+`BinaryDiscreteChangeResult`, while `factor()` returns
+`BinaryFactorContrastsResult`. With no supported binary/Poisson/NB2 fit, bare
 `estat margins` keeps the established prior-logit message.
 
 See the [exact fishing-mode contract and R reference](../../examples/mma14p1binary/README.md).
-Weighted/survey/multiway binary inference, interactions and factor-specific
-probability contrasts remain required work where applicable. The bounded Figure14.1 SVG
+Weighted/survey/multiway binary inference and interactions remain required work
+where applicable. The bounded Figure14.1 SVG
 workflow below does not complete broader illustration graphics.
 
 ## Bounded Heckman two-step selection
@@ -1314,7 +1334,8 @@ current data rather than looking for columns named like expanded coefficients.
 For OLS it supports xb/residuals; for logit/probit it supports xb/pr. A missing
 factor cell, or a level absent from the estimation sample, produces a NULL
 prediction for that row; no new level is folded into the reference. Binary
-factor-specific margins and probability contrasts remain unsupported.
+factor probability contrasts are available through
+`estat margins, factor(variable)` as described above.
 
 Factor terms are supported in `regress`, `logit` and `probit`; `summarize`,
 `bootstrap` and other model commands keep rejecting `i.var`. OLS coefficients,

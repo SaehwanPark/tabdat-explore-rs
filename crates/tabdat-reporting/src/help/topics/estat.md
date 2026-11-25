@@ -10,6 +10,7 @@ How to invoke:
 `estat endogenous`
 `estat margins` (after logit, probit, Poisson, NB2, Gaussian Tobit or truncreg)
 `estat margins, discrete(variable)` (after logit or probit)
+`estat margins, factor(variable)` (after logit or probit with a factor term)
 `estat overdispersion` (after Poisson)
 `estat countprob [, max(10)]` (after Poisson or NB2)
 `estat countgof [, max(10)]` (after a model-based unclustered or one-way
@@ -34,7 +35,7 @@ Notes:
 - A supplied `mean_vif` aggregate row follows predictor rows when values are available. Labels are not unique identifiers; a predictor can itself be called `mean_vif`. Undefined factors appear as missing cells; the aggregate is absent if no values are available. An auxiliary-fit failure is an execution error.
 - A lone predictor without an intercept uses the zero-column auxiliary model: its fitted values are zero, so SSR equals uncentered TSS and VIF/mean-VIF are 1 for a nonzero finite predictor. The library returns an undefined factor for an all-zero predictor; ordinary regression rank and zero-parameter validation are unchanged. This corrects the former diagnostic failure, allowing batches/scripts to continue normally (MIG-0011).
 - Terminal output remains the ordered `Variable`/`VIF` table. CLI-v1 JSON returns `result_type: "TableResult"`, `data.headers` and ordered `data.rows`. Cells use the existing scalar policy: unavailable/non-finite numbers become `null`, finite zero remains numeric. JSON null does not distinguish unavailable values from infinity. No VIF-specific result type or extra model arrays are included; parent-fit metadata is in the preceding `RegressionResult`.
-- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, classical panel `hausman`, `endogenous`, binary/count/Tobit/truncated-Gaussian continuous `margins`, binary numeric-0/1 discrete `margins`, grouped binary `gof`, the Poisson NB2-direction score test `overdispersion`, descriptive count `countprob`, and the model-based NB2 grouped distribution test `countgof` (described below). Bare `estat gof` remains outside this slice, as do other binary specification tests. Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, classical panel `hausman`, `endogenous`, binary/count/Tobit/truncated-Gaussian continuous `margins`, binary numeric-0/1 discrete changes and retained-factor probability contrasts, grouped binary `gof`, the Poisson NB2-direction score test `overdispersion`, descriptive count `countprob`, and the model-based NB2 grouped distribution test `countgof` (described below). Bare `estat gof` remains outside this slice, as do other binary specification tests. Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
 
 ## Classical panel FE–RE Hausman comparison
 
@@ -202,8 +203,8 @@ predictor column excluding the intercept, the family-specific average derivative
 The average uses the **retained complete-finite estimation design**, not current
 rows. Current-data edits do not rescan, refit or change the estimand.
 This continuous-column formula is currently available only for binary fits
-without factor predictors; factor-specific effects and their uncertainty are
-not implemented in this slice.
+without factor predictors. Use `factor(variable)` below for retained-factor
+probability contrasts and their uncertainty.
 
 Uncertainty is the full delta method using the fit's selected covariance:
 model-based (logit: inverse Fisher information; probit: inverse observed
@@ -231,7 +232,7 @@ estimation attempt; see `help logit`, `help probit`, `help poisson` and `help pr
 After logit or probit, run `estat margins, discrete(variable)` for one predictor
 whose values in the retained sample are exactly 0 and 1, with both levels
 present. The predictor must be a numeric column in a continuous-only design;
-factor fits are rejected until categorical probability contrasts are defined.
+use `factor(variable)` for a retained categorical predictor.
 It reports the average fitted probability difference after setting that
 predictor to 1 versus 0 for every retained row; all other predictor values stay
 at their observed row values. The result is a finite change, not a continuous
@@ -249,6 +250,31 @@ multilevel changes, or a causal interpretation. CLI-v1 JSON returns
 `BinaryDiscreteChangeResult` with the estimand, predictor, covariance and sample
 count. See `examples/binary-discrete-change/README.md` for the independent Base R
 reference and runnable logit/probit scripts.
+
+## Binary factor probability contrasts
+
+After a logit or probit fit containing `i.variable` or `ib(level).variable`,
+run `estat margins, factor(variable)`. The command returns one average fitted
+probability difference for each non-baseline level versus a single baseline.
+With an intercept, the baseline is the retained fit-time omitted reference.
+With `noconstant`, it is the first sorted retained level. Every contrast
+averages over the original retained sample and changes only the selected factor;
+all other continuous and categorical terms stay at their observed row values.
+Current data edits do not change the estimand.
+
+For level `l` and baseline `b`, the estimate is
+`N^-1 sum_i [F(x_i, l) - F(x_i, b)]`. The full gradient is the average
+difference in link-density-weighted design rows. Delta-method uncertainty uses
+the fitted model-based, row-robust or one-way clustered covariance, including
+all coefficient cross terms. Output includes a two-sided asymptotic-normal z
+test and 95% interval; the contrast is conditional on observed X and is not a
+causal effect. JSON returns `BinaryFactorContrastsResult` with the factor,
+baseline and ordered level contrasts.
+
+The selected term must be a retained factor. Interactions, weights, multiway
+clustering, simultaneous intervals and factor effects after a nonbinary family
+remain unsupported. A missing fit, absent factor term, invalid retained layout
+or unavailable delta variance fails without changing the fit.
 
 ## Poisson continuous average partial effects
 

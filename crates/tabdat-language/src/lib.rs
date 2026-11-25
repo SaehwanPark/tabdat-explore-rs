@@ -7325,28 +7325,34 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
       .unwrap_or_default();
     let [option] = options.as_slice() else {
       return Err(ParseError::new(
-        "estat margins supports only discrete(variable)",
+        "estat margins supports only discrete(variable) or factor(variable)",
       ));
     };
-    if option.name != "discrete" {
+    if !matches!(option.name.as_str(), "discrete" | "factor") {
       return Err(ParseError::new("estat margins does not support options"));
     }
     let variable = match &option.value {
       UseOptionValue::Identifiers(values) if values.len() == 1 => values[0].clone(),
       UseOptionValue::Identifiers(_) => {
-        return Err(ParseError::new(
-          "estat margins discrete() requires exactly one predictor",
-        ));
+        return Err(ParseError::new(format!(
+          "estat margins {}() requires exactly one predictor",
+          option.name
+        )));
       }
       _ => {
-        return Err(ParseError::new(
-          "estat margins discrete() requires one predictor name",
-        ));
+        return Err(ParseError::new(format!(
+          "estat margins {}() requires one predictor name",
+          option.name
+        )));
       }
     };
     return Ok(Command::Estat {
       command: EstatCommand {
-        subcommand: EstatSubcommand::DiscreteMargins { variable },
+        subcommand: if option.name == "discrete" {
+          EstatSubcommand::DiscreteMargins { variable }
+        } else {
+          EstatSubcommand::FactorMargins { variable }
+        },
       },
     });
   }

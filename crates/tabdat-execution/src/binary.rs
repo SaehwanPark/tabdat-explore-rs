@@ -373,6 +373,32 @@ impl Session {
     Ok(ExecutionResult::BinaryDiscreteChange(Box::new(result)))
   }
 
+  pub(crate) fn execute_binary_factor_margins(
+    &self,
+    variable: &str,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let Some((problem, result, design_terms)) = (match &self.estimation {
+      Some(EstimationState::Logit(state)) => {
+        Some((&state.problem, &state.result, &state.design_terms))
+      }
+      Some(EstimationState::Probit(state)) => {
+        Some((&state.problem, &state.result, &state.design_terms))
+      }
+      _ => None,
+    }) else {
+      return Err(RuntimeError::EstatMarginsFailed {
+        message: "requires a prior logit or probit fit".into(),
+      });
+    };
+    let design = binary_factor_contrast_design(problem, design_terms, variable)
+      .map_err(|message| RuntimeError::EstatMarginsFailed { message })?;
+    let contrasts = tabdat_stats::binary_average_factor_contrasts(problem, result, &design)
+      .map_err(|error| RuntimeError::EstatMarginsFailed {
+        message: error.to_string(),
+      })?;
+    Ok(ExecutionResult::BinaryFactorContrasts(Box::new(contrasts)))
+  }
+
   pub(crate) fn execute_logit_prediction(
     &mut self,
     command: &PredictCommand,
@@ -658,6 +684,81 @@ impl Session {
       dataset: next_dataset,
     }))
   }
+}
+
+fn binary_factor_contrast_design(
+  problem: &tabdat_stats::EstimationProblem,
+  design_terms: &[LinearDesignTerm],
+  variable: &str,
+) -> Result<tabdat_stats::BinaryFactorContrastDesign, String> {
+  let mut predictor_column = 0usize;
+  let mut selected = None;
+  for term in design_terms {
+    match term {
+      LinearDesignTerm::Continuous { .. } => predictor_column += 1,
+      LinearDesignTerm::Factor {
+        variable: term_variable,
+        reference,
+        levels,
+      } => {
+        let omitted_index = if problem.include_intercept {
+          let reference = reference.as_deref().ok_or_else(|| {
+            "retained factor design does not record an intercept reference".to_owned()
+          })?;
+          Some(
+            levels
+              .iter()
+              .position(|level| level.label() == reference)
+              .ok_or_else(|| "retained factor reference is absent from its levels".to_owned())?,
+          )
+        } else {
+          None
+        };
+        if term_variable == variable {
+          if selected.is_some() {
+            return Err(format!(
+              "factor '{variable}' appears more than once in the retained model"
+            ));
+          }
+          let baseline_index = omitted_index.unwrap_or(0);
+          let baseline_level = levels
+            .get(baseline_index)
+            .ok_or_else(|| format!("factor '{variable}' has no retained levels"))?
+            .label()
+            .to_owned();
+          let mut column = predictor_column;
+          let predictor_columns = levels
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+              if Some(index) == omitted_index {
+                None
+              } else {
+                let current = column;
+                column += 1;
+                Some(current)
+              }
+            })
+            .collect::<Vec<_>>();
+          selected = Some(tabdat_stats::BinaryFactorContrastDesign {
+            variable: variable.to_owned(),
+            baseline_level,
+            levels: levels
+              .iter()
+              .map(|level| level.label().to_owned())
+              .collect(),
+            predictor_columns,
+          });
+        }
+        predictor_column += levels.len() - usize::from(omitted_index.is_some());
+      }
+    }
+  }
+  if predictor_column != problem.predictor_names.len() {
+    return Err("retained factor metadata does not match the binary design".into());
+  }
+  selected
+    .ok_or_else(|| format!("factor '{variable}' is not a categorical term in the retained model"))
 }
 
 fn binary_probability(model: BinaryModel, xb: f64) -> f64 {

@@ -460,6 +460,36 @@ pub struct BinaryDiscreteChange {
   pub observation_count: usize,
 }
 
+/// One factor level's average fitted-probability difference from the baseline.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryFactorContrast {
+  pub level: String,
+  pub effect: LogitEstimate,
+}
+
+/// Retained-design average probability contrasts for one categorical term.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryFactorContrasts {
+  pub model: BinaryModel,
+  pub factor_variable: String,
+  pub baseline_level: String,
+  pub contrasts: Vec<BinaryFactorContrast>,
+  pub robust: bool,
+  pub cluster: Option<BinaryCluster>,
+  pub observation_count: usize,
+}
+
+/// Treatment-coded retained factor layout passed to the binary contrast method.
+/// `predictor_columns` is ordered like `levels`; an intercept-model baseline
+/// uses `None`, while every included level maps to a design-matrix column.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BinaryFactorContrastDesign {
+  pub variable: String,
+  pub baseline_level: String,
+  pub levels: Vec<String>,
+  pub predictor_columns: Vec<Option<usize>>,
+}
+
 fn invalid(model: BinaryModel, message: &str) -> StatsError {
   StatsError::InvalidEstimation(format!("{}: {message}", model.label()))
 }
@@ -1410,6 +1440,227 @@ pub fn binary_average_discrete_change(
     from_value: 0,
     to_value: 1,
     effect,
+    robust: result.robust,
+    cluster: result.cluster.clone(),
+    observation_count: n,
+  })
+}
+
+/// Estimate the retained-sample average fitted-probability contrast for every
+/// non-baseline level of one factor. All other design terms remain at their
+/// observed values. The full gradient is evaluated against the fitted model,
+/// robust or clustered covariance; inference is conditional on observed X.
+pub fn binary_average_factor_contrasts(
+  problem: &EstimationProblem,
+  result: &BinaryMleResult,
+  design: &BinaryFactorContrastDesign,
+) -> Result<BinaryFactorContrasts, StatsError> {
+  problem.validate()?;
+  let model = result.model;
+  let n = problem.observation_count();
+  let k = problem.parameter_count();
+  if result.outcome != problem.outcome
+    || result.predictor_names != problem.predictor_names
+    || result.include_intercept != problem.include_intercept
+    || result.sample != problem.sample
+    || result.observation_count != n
+    || result
+      .coefficients
+      .iter()
+      .map(|coefficient| coefficient.name.clone())
+      .collect::<Vec<_>>()
+      != problem.parameter_names()
+    || result.covariance.len() != k
+    || result.covariance.iter().any(|row| row.len() != k)
+    || result.fitted_probabilities.len() != n
+  {
+    return Err(invalid(
+      model,
+      "factor contrasts require the exact retained fit/design/sample",
+    ));
+  }
+  if result
+    .coefficients
+    .iter()
+    .any(|coefficient| !coefficient.value.is_finite())
+    || result
+      .covariance
+      .iter()
+      .flatten()
+      .any(|value| !value.is_finite())
+    || result
+      .fitted_probabilities
+      .iter()
+      .any(|probability| !probability.is_finite() || !(0.0..=1.0).contains(probability))
+  {
+    return Err(failed(
+      model,
+      "factor contrasts require finite fit quantities",
+    ));
+  }
+
+  if design.variable.trim().is_empty()
+    || design.levels.len() < 2
+    || design.levels.len() != design.predictor_columns.len()
+  {
+    return Err(invalid(model, "factor contrast design is incomplete"));
+  }
+  let Some(baseline_index) = design
+    .levels
+    .iter()
+    .position(|level| level == &design.baseline_level)
+  else {
+    return Err(invalid(
+      model,
+      "factor contrast baseline is absent from retained levels",
+    ));
+  };
+  if design
+    .levels
+    .iter()
+    .enumerate()
+    .any(|(index, level)| design.levels[..index].contains(level))
+  {
+    return Err(invalid(model, "factor contrast levels must be unique"));
+  }
+  if design
+    .predictor_columns
+    .iter()
+    .flatten()
+    .any(|column| *column >= problem.predictor_names.len())
+    || design
+      .predictor_columns
+      .iter()
+      .flatten()
+      .copied()
+      .collect::<std::collections::HashSet<_>>()
+      .len()
+      != design.predictor_columns.iter().flatten().count()
+  {
+    return Err(invalid(
+      model,
+      "factor contrast columns do not match the retained design",
+    ));
+  }
+  for (index, column) in design.predictor_columns.iter().enumerate() {
+    let omitted_baseline = problem.include_intercept && index == baseline_index;
+    if column.is_none() != omitted_baseline {
+      return Err(invalid(
+        model,
+        "factor contrast columns do not match the intercept convention",
+      ));
+    }
+  }
+
+  let design_rows = full_design(problem);
+  for row in &problem.design_matrix {
+    let matching_levels = (0..design.levels.len())
+      .filter(|candidate| {
+        design
+          .predictor_columns
+          .iter()
+          .enumerate()
+          .all(|(level_index, column)| {
+            column.is_none_or(|column| row[column] == f64::from(level_index == *candidate))
+          })
+      })
+      .count();
+    if matching_levels != 1 {
+      return Err(invalid(
+        model,
+        "factor contrast columns do not encode one retained level per row",
+      ));
+    }
+  }
+
+  let coefficients = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.value)
+    .collect::<Vec<_>>();
+  let parameter_offset = usize::from(problem.include_intercept);
+  let evaluate_level = |row: &[f64], level_index: usize| {
+    let mut design_row = row.to_vec();
+    for (index, column) in design.predictor_columns.iter().enumerate() {
+      if let Some(column) = column {
+        design_row[column + parameter_offset] = f64::from(index == level_index);
+      }
+    }
+    let eta = design_row
+      .iter()
+      .zip(&coefficients)
+      .map(|(value, coefficient)| value * coefficient)
+      .sum::<f64>();
+    (design_row, eta)
+  };
+
+  let mut contrasts = Vec::with_capacity(design.levels.len() - 1);
+  for (target_index, target_level) in design.levels.iter().enumerate() {
+    if target_index == baseline_index {
+      continue;
+    }
+    let mut effect_sum = 0.0;
+    let mut gradient_sum = vec![0.0; k];
+    for row in &design_rows {
+      let (baseline_design, baseline_eta) = evaluate_level(row, baseline_index);
+      let (target_design, target_eta) = evaluate_level(row, target_index);
+      if !baseline_eta.is_finite() || !target_eta.is_finite() {
+        return Err(failed(model, "factor contrast linear index is non-finite"));
+      }
+      let (baseline_probability, baseline_derivative) =
+        binary_link_and_derivative(model, baseline_eta);
+      let (target_probability, target_derivative) = binary_link_and_derivative(model, target_eta);
+      if [
+        baseline_probability,
+        baseline_derivative,
+        target_probability,
+        target_derivative,
+      ]
+      .iter()
+      .any(|value| !value.is_finite())
+      {
+        return Err(failed(model, "factor contrast probability is non-finite"));
+      }
+      effect_sum += target_probability - baseline_probability;
+      for column in 0..k {
+        gradient_sum[column] +=
+          target_derivative * target_design[column] - baseline_derivative * baseline_design[column];
+      }
+    }
+    let effect_value = effect_sum / n as f64;
+    let gradient = gradient_sum
+      .into_iter()
+      .map(|value| value / n as f64)
+      .collect::<Vec<_>>();
+    let variance = (0..k)
+      .map(|i| {
+        (0..k)
+          .map(|j| gradient[i] * result.covariance[i][j] * gradient[j])
+          .sum::<f64>()
+      })
+      .sum::<f64>();
+    if !effect_value.is_finite() || !variance.is_finite() || variance <= 0.0 {
+      return Err(failed(
+        model,
+        "factor contrast delta variance is non-finite or nonpositive",
+      ));
+    }
+    let name = format!(
+      "{}: {} vs {}",
+      design.variable, target_level, design.baseline_level
+    );
+    let effect = inference(model, name, effect_value, variance.sqrt())?;
+    contrasts.push(BinaryFactorContrast {
+      level: target_level.clone(),
+      effect,
+    });
+  }
+
+  Ok(BinaryFactorContrasts {
+    model,
+    factor_variable: design.variable.clone(),
+    baseline_level: design.baseline_level.clone(),
+    contrasts,
     robust: result.robust,
     cluster: result.cluster.clone(),
     observation_count: n,
