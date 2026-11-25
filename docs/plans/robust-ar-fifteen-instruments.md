@@ -31,4 +31,4 @@ q>=16 and other endogenous/covariance dimensions remain unsupported.
 - [x] Implement q=15 support and independent reference fixtures.
 - [x] Update runtime/CLI coverage and specifications/examples.
 - [x] Verify reference regeneration and affected checks.
-- [ ] Final PR review and merge.
+- [x] Final PR review and merge; PR #501 merged to `main` as `f5e9ca5`.
