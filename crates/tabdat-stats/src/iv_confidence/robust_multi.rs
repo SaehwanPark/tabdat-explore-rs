@@ -7,7 +7,7 @@ use crate::{CovarianceType, InstrumentalVariablesProblem, StatsError};
 use super::{ArConfidenceInterval, ArConfidenceSetShape, interval, invalid, residualize};
 
 /// HC1/one-way CR1 AR confidence set for one endogenous regressor and two through
-/// nineteen excluded instruments. The joint-null degrees of freedom
+/// twenty excluded instruments. The joint-null degrees of freedom
 /// equal the number of excluded instruments.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RobustMultipleInstrumentAndersonRubinConfidenceSet {
@@ -942,10 +942,8 @@ fn confidence_set_from_boundary(
   let normalized = polynomial_scale(polynomial, 1.0 / maximum);
   let (scaled, variable_scale) = scaled_polynomial(&normalized)?;
   let roots_in_scale = roots_on_unit_interval(&scaled)?;
-  if roots_in_scale.len() > 38 {
-    return Err(invalid(
-      "robust AR boundary has more than thirty-eight real roots",
-    ));
+  if roots_in_scale.len() > 40 {
+    return Err(invalid("robust AR boundary has more than forty real roots"));
   }
   let derivative = polynomial_derivative(&scaled);
   let mut roots = Vec::with_capacity(roots_in_scale.len());
@@ -1006,9 +1004,9 @@ fn confidence_set_from_boundary(
   if sign_to_left < 0 {
     intervals.push(interval(lower, None));
   }
-  if intervals.len() > 20 {
+  if intervals.len() > 21 {
     return Err(invalid(
-      "robust AR confidence set has more than twenty components",
+      "robust AR confidence set has more than twenty-one components",
     ));
   }
   for pair in intervals.windows(2) {
@@ -1237,7 +1235,7 @@ fn confidence_set_probes(intervals: &[ArConfidenceInterval], center: f64) -> (Ve
 }
 
 /// Invert the HC1/one-way CR1 joint AR Wald test for one endogenous regressor
-/// and two through nineteen excluded instruments. The confidence boundary has
+/// and two through twenty excluded instruments. The confidence boundary has
 /// degree at most twice the instrument count; every real root is isolated by
 /// recursive derivative partitioning, without evaluating a finite beta grid.
 /// HC1 assumes independent rows. Cluster inference assumes independent groups
@@ -1253,9 +1251,9 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     ));
   }
   let instrument_count = problem.instrument_names.len();
-  if problem.endogenous_names.len() != 1 || !(2..=19).contains(&instrument_count) {
+  if problem.endogenous_names.len() != 1 || !(2..=20).contains(&instrument_count) {
     return Err(invalid(
-      "robust multi-instrument AR confidence sets require one endogenous regressor and two to nineteen excluded instruments",
+      "robust multi-instrument AR confidence sets require one endogenous regressor and two to twenty excluded instruments",
     ));
   }
   if !level.is_finite() || level <= 0.0 || level >= 100.0 {
@@ -2270,6 +2268,13 @@ mod tests {
     })
   }
 
+  fn polynomial_with_symmetric_roots(count: usize, denominator: f64, leading: f64) -> Polynomial {
+    (1..=count).fold(vec![leading], |polynomial, root| {
+      let root = root as f64 / denominator;
+      polynomial_multiply(&polynomial, &[-root * root, 0.0, 1.0])
+    })
+  }
+
   fn assert_intervals_close(actual: &[ArConfidenceInterval], expected: &[ArConfidenceInterval]) {
     assert_intervals_close_with_tolerance(actual, expected, 1e-10);
   }
@@ -2759,6 +2764,26 @@ mod tests {
     assert_eq!(expected.len(), 20);
     // The degree-38 synthetic product amplifies coefficient rounding; applied
     // HC1/CR1 reference endpoints are separately checked within 3e-8.
+    assert_intervals_close_with_tolerance(&intervals, &expected, 5e-7);
+  }
+
+  #[test]
+  fn degree_forty_boundary_supports_forty_roots_and_twenty_one_components() {
+    let roots = (-20..=-1)
+      .chain(1..=20)
+      .map(|root| root as f64 / 32.0)
+      .collect::<Vec<_>>();
+    let polynomial = polynomial_with_symmetric_roots(20, 32.0, -1.0);
+    let (shape, intervals) = confidence_set_from_boundary(&polynomial, 0.0).unwrap();
+    assert_eq!(shape, ArConfidenceSetShape::Multiple);
+    let mut expected = vec![interval(None, Some(roots[0]))];
+    for index in (1..39).step_by(2) {
+      expected.push(interval(Some(roots[index]), Some(roots[index + 1])));
+    }
+    expected.push(interval(Some(*roots.last().unwrap()), None));
+    assert_eq!(expected.len(), 21);
+    // The degree-40 product amplifies coefficient rounding; applied reference
+    // endpoints are checked separately against direct robust-Wald inversion.
     assert_intervals_close_with_tolerance(&intervals, &expected, 5e-7);
   }
 
