@@ -420,7 +420,7 @@ correction, auxiliary K/DF, optional G and asymptotic reference metadata; the
 classical `AndersonRubinResult` contract remains unchanged. See
 `examples/robust-ar/README.md` for an independently validated complete workflow.
 Endogenous-subvector inference is not implemented. Robust confidence sets are
-limited to one endogenous regressor and at most eight excluded instruments, as
+limited to one endogenous regressor and at most nine excluded instruments, as
 described below.
 Ordinary coefficient p-values and `test` remain conventional, not weak-IV-robust
 inference.
@@ -498,7 +498,7 @@ covariance failures are explicit errors. CLI-v1 JSON returns the distinct
 cluster count, critical value, shape and intervals; the homoskedastic JSON
 contract is unchanged.
 
-With two through eight excluded instruments, `estat ar, ci` tests their
+With two through nine excluded instruments, `estat ar, ci` tests their
 coefficients jointly using an **asymptotic chi-square(q)** reference, where q is the number of
 excluded instruments:
 
@@ -519,21 +519,23 @@ ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7) robust
 estat ar, ci
 ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8) robust
 estat ar, ci
+ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9) robust
+estat ar, ci
 ```
 
 The auxiliary regression includes the retained controls, intercept and all
 excluded instruments. HC1 uses N/(N−K_aux); CR1 uses
 G/(G−1)*(N−1)/(N−K_aux), where K_aux counts all auxiliary regressors. The
 confidence boundary has degree at most four, six, eight, ten, twelve,
-fourteen or sixteen for two through eight instruments, respectively.
+fourteen, sixteen or eighteen for two through nine instruments, respectively.
 The implementation isolates every real root by recursively partitioning at
 derivative roots, then checks the sign of each region; it does not use a finite
 grid. Sets may be bounded, disjoint, rays, all-real, empty, or `multiple` sets
-with up to nine components. Repeated/ambiguous roots and singular or
+with up to ten components. Repeated/ambiguous roots and singular or
 ill-conditioned score covariance are explicit errors. The distinct
 `RobustMultipleInstrumentAndersonRubinConfidenceSet` JSON result identifies the
-instruments, reports two through eight degrees of freedom and follows the same
-null-infinity convention. More than eight excluded instruments, multiple endogenous
+instruments, reports two through nine degrees of freedom and follows the same
+null-infinity convention. More than nine excluded instruments, multiple endogenous
 regressors outside the robust projected two-by-two slice, robust projection
 outside that slice, and HAC/survey covariance remain unsupported.
 
