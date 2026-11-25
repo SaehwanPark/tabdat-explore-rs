@@ -309,15 +309,23 @@ impl Session {
     &mut self,
     command: &PredictCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
-    let (family, problem, estimates) = match &self.estimation {
+    let (family, problem, estimates, covariance, law) = match &self.estimation {
       Some(EstimationState::PoissonFit(state)) => (
         CountFamily::Poisson,
         &state.problem,
         &state.result.coefficients,
+        &state.result.covariance,
+        tabdat_stats::CountProbabilityLaw::Poisson,
       ),
-      Some(EstimationState::NegativeBinomialFit(state)) => {
-        (CountFamily::Nb2, &state.problem, &state.result.coefficients)
-      }
+      Some(EstimationState::NegativeBinomialFit(state)) => (
+        CountFamily::Nb2,
+        &state.problem,
+        &state.result.coefficients,
+        &state.result.covariance,
+        tabdat_stats::CountProbabilityLaw::Nb2 {
+          alpha: state.result.dispersion.alpha,
+        },
+      ),
       _ => return Err(RuntimeError::PredictRequiresPriorRegression),
     };
     if !matches!(
@@ -325,8 +333,10 @@ impl Session {
       PredictKind::Xb
         | PredictKind::MeanCount
         | PredictKind::CountPmf(_)
+        | PredictKind::CountPmfStandardError(_)
         | PredictKind::CountCdf(_)
         | PredictKind::CountPmfVariable
+        | PredictKind::CountPmfVariableStandardError
         | PredictKind::CountCdfVariable
     ) || command.interval
       || command.std
@@ -336,7 +346,9 @@ impl Session {
     }
     let variable_cutoff = matches!(
       command.kind,
-      PredictKind::CountPmfVariable | PredictKind::CountCdfVariable
+      PredictKind::CountPmfVariable
+        | PredictKind::CountPmfVariableStandardError
+        | PredictKind::CountCdfVariable
     );
     if variable_cutoff != command.count_cutoff_variable.is_some() {
       return Err(
@@ -425,22 +437,15 @@ impl Session {
       residuals: false,
     };
     let probability_request = match command.kind {
-      PredictKind::CountPmf(count) => Some((true, Some(count))),
-      PredictKind::CountCdf(count) => Some((false, Some(count))),
-      PredictKind::CountPmfVariable => Some((true, None)),
-      PredictKind::CountCdfVariable => Some((false, None)),
+      PredictKind::CountPmf(count) => Some((true, Some(count), false)),
+      PredictKind::CountPmfStandardError(count) => Some((true, Some(count), true)),
+      PredictKind::CountCdf(count) => Some((false, Some(count), false)),
+      PredictKind::CountPmfVariable => Some((true, None, false)),
+      PredictKind::CountPmfVariableStandardError => Some((true, None, true)),
+      PredictKind::CountCdfVariable => Some((false, None, false)),
       _ => None,
     };
-    if let Some((is_pmf, fixed_cutoff)) = probability_request {
-      let law = match &self.estimation {
-        Some(EstimationState::PoissonFit(_)) => tabdat_stats::CountProbabilityLaw::Poisson,
-        Some(EstimationState::NegativeBinomialFit(state)) => {
-          tabdat_stats::CountProbabilityLaw::Nb2 {
-            alpha: state.result.dispersion.alpha,
-          }
-        }
-        _ => unreachable!(),
-      };
+    if let Some((is_pmf, fixed_cutoff, standard_error)) = probability_request {
       // Validate direct API commands even on empty data, before publication.
       if let Some(count) = fixed_cutoff {
         tabdat_stats::count_point_probabilities(law, 0.0, count)
@@ -494,6 +499,10 @@ impl Session {
               }
             };
             let mut xb = prediction.intercept.unwrap_or(0.0);
+            let mut design = Vec::with_capacity(estimates.len());
+            if problem.include_intercept {
+              design.push(1.0);
+            }
             for (j, coefficient) in coefficients.iter().enumerate() {
               let Some(x) = cell_to_f64(
                 row
@@ -505,6 +514,9 @@ impl Session {
                 return Ok(());
               };
               xb += coefficient * x;
+              if j < problem.predictor_names.len() {
+                design.push(x);
+              }
             }
             if let Some(index) = exposure_index {
               let exposure = cell_to_f64(
@@ -526,6 +538,9 @@ impl Session {
             }
             let expansion = count.saturating_sub(tabdat_stats::MAX_COUNT_PROBABILITY_TAIL - 1);
             if mean > 0.0 && expansion > 0 {
+              let expansion = expansion
+                .checked_mul(if standard_error { 2 } else { 1 })
+                .ok_or_else(|| family.error("expanded cutoff work overflowed"))?;
               expanded_cutoff_work = expanded_cutoff_work
                 .checked_add(expansion)
                 .ok_or_else(|| family.error("expanded cutoff work overflowed"))?;
@@ -535,9 +550,15 @@ impl Session {
                 )));
               }
             }
-            let (pmf, cdf) = tabdat_stats::count_point_probabilities(law, mean, count)
-              .map_err(|e| family.error(e.to_string()))?;
-            values.push(Some(if is_pmf { pmf } else { cdf }));
+            let value = if standard_error {
+              tabdat_stats::count_point_pmf_standard_error(law, mean, count, &design, covariance)
+                .map_err(|e| family.error(e.to_string()))?
+            } else {
+              let (pmf, cdf) = tabdat_stats::count_point_probabilities(law, mean, count)
+                .map_err(|e| family.error(e.to_string()))?;
+              if is_pmf { pmf } else { cdf }
+            };
+            values.push(Some(value));
             Ok(())
           },
           |message| family.error(message),

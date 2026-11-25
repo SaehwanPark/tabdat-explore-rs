@@ -5438,6 +5438,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
           | "interval"
           | "level"
           | "std"
+          | "se"
           | "saving"
       )
     })
@@ -5472,6 +5473,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         | "posterior_predictive"
         | "interval"
         | "std"
+        | "se"
     ) && option.value != UseOptionValue::Flag
     {
       return Err(ParseError::new(format!(
@@ -5537,7 +5539,13 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     .iter()
     .filter(|o| matches!(o.name.as_str(), "pmf" | "cdf"))
     .collect();
-  let (probability_kind, count_cutoff_variable) = match probability_options.as_slice() {
+  let se_options: Vec<_> = options.iter().filter(|o| o.name == "se").collect();
+  if se_options.len() > 1 {
+    return Err(ParseError::new(
+      "predict option se may only be supplied once",
+    ));
+  }
+  let (mut probability_kind, count_cutoff_variable) = match probability_options.as_slice() {
     [] => (None, None),
     [option] => match &option.value {
       UseOptionValue::Number(value) => {
@@ -5579,6 +5587,18 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
       ));
     }
   };
+  if !se_options.is_empty() {
+    probability_kind = Some(match probability_kind {
+      Some(PredictKind::CountPmf(count)) => PredictKind::CountPmfStandardError(count),
+      Some(PredictKind::CountPmfVariable) => PredictKind::CountPmfVariableStandardError,
+      Some(PredictKind::CountCdf(_) | PredictKind::CountCdfVariable) => {
+        return Err(ParseError::new(
+          "predict option se is supported only with pmf()",
+        ));
+      }
+      _ => return Err(ParseError::new("predict option se requires pmf()")),
+    });
+  }
   let mut kind = if let Some(kind) = probability_kind {
     kind
   } else if options.iter().any(|opt| opt.name == "xbu") {
