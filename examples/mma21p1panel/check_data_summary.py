@@ -18,7 +18,7 @@ VARIABLES = SOURCE_FIELDS + [f"dyear{i}" for i in range(1, 11)]
 NUMERIC_SUMMARY = ["mean", "std_dev", "minimum", "maximum"]
 XT_FIELDS = [
   "overall_mean", "overall_sd", "overall_min", "overall_max", "between_sd",
-  "between_min", "between_max", "within_mean", "within_sd", "within_min", "within_max",
+  "between_min", "between_max", "within_sd", "within_min", "within_max",
 ]
 
 
@@ -130,7 +130,8 @@ def check(native_path, reference_dir, mom_dat, mom_csv, author_do, author_log):
   counts = Counter(event.get("result_type") for event in events)
   for kind, expected in {
     "LoadResult": 1, "IsidResult": 2, "TabulateResult": 1, "DropResult": 1,
-    "GenerateResult": 10, "DescribeResult": 1, "SummarizeResult": 1, "TableResult": 4,
+    "GenerateResult": 10, "DescribeResult": 1, "SummarizeResult": 1, "TableResult": 3,
+    "XtSumResult": 1,
   }.items():
     require(counts[kind] == expected, f"expected {expected} {kind}, got {counts[kind]}")
 
@@ -173,11 +174,9 @@ def check(native_path, reference_dir, mom_dat, mom_csv, author_do, author_log):
   source_header = ("validated_source_rows", "people", "first_year", "last_year")
   structure_header = ("observations", "people", "first_id", "last_id", "first_year", "last_year", "min_T", "mean_T", "max_T", "min_delta", "max_delta")
   t_header = ("T_i", "pattern", "people", "percent", "cumulative_percent")
-  xt_header = ("variable", "overall_N", "overall_mean", "overall_sd", "overall_min", "overall_max", "between_n", "between_sd", "between_min", "between_max", "within_observations", "mean_T", "within_mean", "within_sd", "within_min", "within_max")
   require(source_header in tables and len(tables[source_header]) == 1, "source guard result missing")
   require(structure_header in tables and len(tables[structure_header]) == 1, "panel structure table missing")
   require(t_header in tables and len(tables[t_header]) == len(ref_t), "panel T distribution missing")
-  require(xt_header in tables and len(tables[xt_header]) == 6, "native xtsum table missing")
   for actual, field in zip(tables[source_header][0], ["observations", "people", "first_year", "last_year"]):
     close(actual, ref_structure[field], f"source guard {field}", 0.0)
   for actual, field in zip(tables[structure_header][0], structure_header):
@@ -189,18 +188,25 @@ def check(native_path, reference_dir, mom_dat, mom_csv, author_do, author_log):
     close(actual[3], expected["percent"], "panel percent")
     close(actual[4], expected["cumulative_percent"], "panel cumulative percent")
 
-  native_xt = tables[xt_header]
+  native_xtsum = find_one(events, "XtSumResult")
+  require(native_xtsum["id_variable"] == "id", "native xtsum panel identifier changed")
+  native_xt = native_xtsum["rows"]
+  require([row["variable"] for row in native_xt] == XT_VARIABLES, "native xtsum order differs from R")
   max_error = 0.0
   for actual, expected in zip(native_xt, ref_xtsum):
-    require(actual[0] == expected["variable"], "native xtsum order differs from R")
-    for index, field in [(1, "overall_N"), (6, "between_n"), (10, "within_observations")]:
-      require(int(actual[index]) == int(expected[field]), f"{actual[0]} {field} differs from R")
-    for index, field in [(11, "mean_T")]:
-      close(actual[index], expected[field], f"{actual[0]} {field}")
-    for index, field in zip([2, 3, 4, 5, 7, 8, 9, 12, 13, 14, 15], XT_FIELDS):
-      error = abs(float(actual[index]) - float(expected[field]))
+    variable = actual["variable"]
+    for field, expected_field in [
+      ("overall_n", "overall_N"),
+      ("between_n", "between_n"),
+      ("within_n", "within_observations"),
+    ]:
+      require(int(actual[field]) == int(expected[expected_field]), f"{variable} {field} differs from R")
+    close(actual["mean_t"], expected["mean_T"], f"{variable} mean_t")
+    close(expected["within_mean"], expected["overall_mean"], f"{variable} Base R within mean")
+    for field in XT_FIELDS:
+      error = abs(float(actual[field]) - float(expected[field]))
       max_error = max(max_error, error)
-      close(actual[index], expected[field], f"{actual[0]} {field}")
+      close(actual[field], expected[field], f"{variable} {field}")
 
   log_lines = Path(author_log).read_text(encoding="utf-8", errors="strict").splitlines()
   summary_author = author_summary(log_lines)

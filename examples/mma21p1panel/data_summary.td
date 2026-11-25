@@ -84,47 +84,4 @@ SELECT T_i, pattern, people,
 FROM frequencies ORDER BY T_i, pattern
 """
 
-# Stata xtsum centers within values by person, then shifts them to the overall mean.
-sql """
-WITH long AS (
-  SELECT 'lnhr' AS variable, id, lnhr AS value FROM active
-  UNION ALL SELECT 'lnwg', id, lnwg FROM active
-  UNION ALL SELECT 'kids', id, kids FROM active
-  UNION ALL SELECT 'ageh', id, ageh FROM active
-  UNION ALL SELECT 'agesq', id, agesq FROM active
-  UNION ALL SELECT 'disab', id, disab FROM active
-), overall AS (
-  SELECT variable, COUNT(*) AS observations, AVG(value) AS overall_mean,
-    STDDEV_SAMP(value) AS overall_sd, MIN(value) AS overall_min, MAX(value) AS overall_max
-  FROM long GROUP BY variable
-), person_means AS (
-  SELECT variable, id, AVG(value) AS person_mean, COUNT(*) AS person_observations
-  FROM long GROUP BY variable, id
-), between_stats AS (
-  SELECT variable, COUNT(*) AS people, STDDEV_SAMP(person_mean) AS between_sd,
-    MIN(person_mean) AS between_min, MAX(person_mean) AS between_max,
-    AVG(person_observations) AS mean_T
-  FROM person_means GROUP BY variable
-), within_stats AS (
-  SELECT x.variable, COUNT(*) AS within_observations,
-    AVG(x.value - p.person_mean + o.overall_mean) AS within_mean,
-    STDDEV_SAMP(x.value - p.person_mean + o.overall_mean) AS within_sd,
-    MIN(x.value - p.person_mean + o.overall_mean) AS within_min,
-    MAX(x.value - p.person_mean + o.overall_mean) AS within_max
-  FROM long AS x
-  JOIN person_means AS p USING (variable, id)
-  JOIN overall AS o USING (variable)
-  GROUP BY x.variable
-)
-SELECT o.variable, o.observations AS overall_N, o.overall_mean, o.overall_sd,
-  o.overall_min, o.overall_max, b.people AS between_n, b.between_sd,
-  b.between_min, b.between_max, w.within_observations, b.mean_T,
-  w.within_mean, w.within_sd, w.within_min, w.within_max
-FROM overall AS o
-JOIN between_stats AS b USING (variable)
-JOIN within_stats AS w USING (variable)
-ORDER BY CASE o.variable
-  WHEN 'lnhr' THEN 1 WHEN 'lnwg' THEN 2 WHEN 'kids' THEN 3
-  WHEN 'ageh' THEN 4 WHEN 'agesq' THEN 5 WHEN 'disab' THEN 6
-END
-"""
+xtsum lnhr lnwg kids ageh agesq disab, i(id)
