@@ -2149,11 +2149,11 @@ offset-fit probabilities, including changed predictors/offsets, reversed order
 and three covariance choices. CLI exports match across text/JSON and covariance
 choices. Raw state/sample/labels, missing/overflow/zero-mean limits and atomic
 failures, including the expanded-work guard, are covered; no distributional
-guarantee follows from robust covariance. Pointwise current-row PMF delta SEs use
-the covariance selected by the retained fit (including joint beta/lnalpha for NB2);
-base-R finite differences and runtime covariance/offset/exposure controls are
-recorded in the [workflow](../../examples/count-probability/README.md). CDF SEs,
-probability intervals, future-count uncertainty, formal calibration, and printed
+guarantee follows from robust covariance. Pointwise current-row PMF/CDF delta SEs
+use the covariance selected by the retained fit (including joint beta/lnalpha for
+NB2); base-R finite differences and runtime covariance/offset/exposure controls
+are recorded in the [workflow](../../examples/count-probability/README.md).
+Probability intervals, future-count uncertainty, formal calibration, and printed
 Table20.6 NB2 reconciliation remain unresolved. Underlying count-fit contracts
 are preserved.
 

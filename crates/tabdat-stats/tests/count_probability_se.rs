@@ -1,5 +1,6 @@
 use tabdat_stats::{
-  CountProbabilityLaw as Law, count_point_pmf_standard_error, count_point_probabilities,
+  CountProbabilityLaw as Law, count_point_cdf_standard_error, count_point_pmf_standard_error,
+  count_point_probabilities,
 };
 
 fn covariance_poisson() -> Vec<Vec<f64>> {
@@ -103,4 +104,8 @@ fn pointwise_delta_se_keeps_representable_derivative_when_pmf_underflows() {
   let expected = (-mean + mean.ln()).exp();
   assert!(standard_error > 0.0);
   assert_eq!(standard_error, expected);
+  assert_eq!(
+    count_point_cdf_standard_error(Law::Poisson, mean, 0, &[1.0], &[vec![1.0]]).unwrap(),
+    expected
+  );
 }

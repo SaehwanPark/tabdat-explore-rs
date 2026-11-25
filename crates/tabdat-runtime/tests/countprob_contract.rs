@@ -271,7 +271,7 @@ fn current_probabilities_preserve_retained_fit_labels_and_failure_state() {
 }
 
 #[test]
-fn pmf_standard_errors_use_retained_covariance_and_current_design() {
+fn count_probability_standard_errors_use_retained_covariance_and_current_design() {
   let fixture = Fixture::new(true);
   for family in ["poisson", "nbreg"] {
     let mut estimates = Vec::new();
@@ -286,24 +286,36 @@ fn pmf_standard_errors_use_retained_covariance_and_current_design() {
       run(&mut session, "predict p2, pmf(2)");
       run(&mut session, "predict p2_se, pmf(2) se");
       run(&mut session, "predict row_se, pmf(cutoff) se");
+      run(&mut session, "predict c2, cdf(2)");
+      run(&mut session, "predict c2_se, cdf(2) se");
+      run(&mut session, "predict row_cdf_se, cdf(cutoff) se");
       let ExecutionResult::Head(table) = run(&mut session, "head 100") else {
         panic!("head")
       };
-      let point = match table.rows[0].get(table.rows[0].len() - 3) {
-        Some(tabdat_domain::CellValue::Float(value)) => *value,
-        other => panic!("expected point probability, got {other:?}"),
+      let value = |name: &str| {
+        let column = table
+          .columns
+          .iter()
+          .position(|column| column == name)
+          .unwrap();
+        match &table.rows[0][column] {
+          tabdat_domain::CellValue::Float(value) => *value,
+          other => panic!("expected numeric prediction {name}, got {other:?}"),
+        }
       };
-      let standard_error = match table.rows[0].get(table.rows[0].len() - 2) {
-        Some(tabdat_domain::CellValue::Float(value)) => *value,
-        other => panic!("expected PMF standard error, got {other:?}"),
-      };
-      let row_specific_se = match table.rows[0].last() {
-        Some(tabdat_domain::CellValue::Float(value)) => *value,
-        other => panic!("expected current-cutoff PMF standard error, got {other:?}"),
-      };
+      let point = value("p2");
+      let standard_error = value("p2_se");
+      let row_specific_se = value("row_se");
+      let cdf = value("c2");
+      let cdf_standard_error = value("c2_se");
+      let row_specific_cdf_se = value("row_cdf_se");
       assert!(point > 0.0 && point < 1.0);
       assert!(standard_error.is_finite() && standard_error > 0.0);
       assert!((standard_error - row_specific_se).abs() < 1e-12);
+      assert!(cdf > 0.0 && cdf < 1.0);
+      assert!(cdf_standard_error.is_finite() && cdf_standard_error > 0.0);
+      assert!(row_specific_cdf_se.is_finite() && row_specific_cdf_se > 0.0);
+      assert!((row_specific_cdf_se - cdf_standard_error).abs() < 1e-12);
       // Row zero has a missing fitted outcome but usable current x; row 37 has
       // a missing predictor and therefore no point probability or SE.
       assert!(matches!(
@@ -318,19 +330,35 @@ fn pmf_standard_errors_use_retained_covariance_and_current_design() {
           .execute(parse_command("predict p2_se, pmf(2) se").unwrap())
           .is_err()
       );
+      assert!(
+        session
+          .execute(parse_command("predict c2_se, cdf(2) se").unwrap())
+          .is_err()
+      );
       assert_eq!(session.state(), before);
-      estimates.push((point, standard_error));
+      estimates.push((point, standard_error, cdf, cdf_standard_error));
     }
     let point = estimates[0].0;
     assert!(
       estimates
         .iter()
-        .all(|(value, _)| (value - point).abs() < 1e-12)
+        .all(|(value, _, _, _)| (value - point).abs() < 1e-12)
     );
     assert!(
       estimates
         .windows(2)
         .any(|pair| (pair[0].1 - pair[1].1).abs() > 1e-8)
+    );
+    let cdf = estimates[0].2;
+    assert!(
+      estimates
+        .iter()
+        .all(|(_, _, value, _)| (value - cdf).abs() < 1e-12)
+    );
+    assert!(
+      estimates
+        .windows(2)
+        .any(|pair| (pair[0].3 - pair[1].3).abs() > 1e-8)
     );
   }
 
@@ -348,11 +376,12 @@ fn pmf_standard_errors_use_retained_covariance_and_current_design() {
     run(&mut session, &format!("{family} y x z, {term}"));
     run(&mut session, "drop y person");
     run(&mut session, "predict p0_se, pmf(0) se");
+    run(&mut session, "predict cdf0_se, cdf(0) se");
     let ExecutionResult::Head(table) = run(&mut session, "head 100") else {
       panic!("head")
     };
     assert!(matches!(
-      table.rows[0].last(),
+      table.rows[0].get(table.columns.iter().position(|name| name == "cdf0_se").unwrap()),
       Some(tabdat_domain::CellValue::Float(value)) if *value > 0.0
     ));
     assert_eq!(table.rows[37].last(), Some(&tabdat_domain::CellValue::Null));
@@ -425,6 +454,12 @@ fn row_specific_cutoffs_match_scalar_predictions_and_invalid_rows_publish_nothin
           .is_err()
       );
       assert_eq!(invalid.state(), before);
+      assert!(
+        invalid
+          .execute(parse_command("predict invalid_cdf_se, cdf(cutoff) se").unwrap())
+          .is_err()
+      );
+      assert_eq!(invalid.state(), before);
       assert_eq!(run(&mut invalid, "head 100"), rows);
     }
 
@@ -443,6 +478,12 @@ fn row_specific_cutoffs_match_scalar_predictions_and_invalid_rows_publish_nothin
         .execute(
           parse_command("predict invalid_probability_se, pmf(fractional_cutoff) se").unwrap()
         )
+        .is_err()
+    );
+    assert_eq!(fractional.state(), before);
+    assert!(
+      fractional
+        .execute(parse_command("predict invalid_cdf_se, cdf(fractional_cutoff) se").unwrap())
         .is_err()
     );
     assert_eq!(fractional.state(), before);
@@ -465,12 +506,19 @@ fn row_specific_cutoffs_match_scalar_predictions_and_invalid_rows_publish_nothin
         .is_err()
     );
     assert_eq!(masked_invalid.state(), before);
+    assert!(
+      masked_invalid
+        .execute(parse_command("predict invalid_cdf_se, cdf(cutoff) se").unwrap())
+        .is_err()
+    );
+    assert_eq!(masked_invalid.state(), before);
 
     let mut missing = f.session();
     run(&mut missing, &format!("{family} y x z"));
     run(&mut missing, "replace cutoff = NULL");
     run(&mut missing, "predict missing_probability, cdf(cutoff)");
     run(&mut missing, "predict missing_se, pmf(cutoff) se");
+    run(&mut missing, "predict missing_cdf_se, cdf(cutoff) se");
     let ExecutionResult::Head(missing_table) = run(&mut missing, "head 100") else {
       panic!("head")
     };
@@ -496,6 +544,17 @@ fn row_specific_cutoffs_match_scalar_predictions_and_invalid_rows_publish_nothin
         .iter()
         .all(|row| row[se_index] == tabdat_domain::CellValue::Null)
     );
+    let cdf_se_index = missing_table
+      .columns
+      .iter()
+      .position(|name| name == "missing_cdf_se")
+      .unwrap();
+    assert!(
+      missing_table
+        .rows
+        .iter()
+        .all(|row| row[cdf_se_index] == tabdat_domain::CellValue::Null)
+    );
   }
 }
 
@@ -514,6 +573,7 @@ fn large_current_row_cutoffs_match_r_and_expansion_budget_fails_atomically() {
   run(&mut s, &format!("replace log_time = {offset:.17}"));
   run(&mut s, "predict high_pmf, pmf(100000)");
   run(&mut s, "predict high_cdf, cdf(cutoff)");
+  run(&mut s, "predict high_cdf_se, cdf(cutoff) se");
   assert_eq!(s.state().estimation, retained);
   let ExecutionResult::Head(table) = run(&mut s, "head 1") else {
     panic!("head")
@@ -546,6 +606,7 @@ fn large_current_row_cutoffs_match_r_and_expansion_budget_fails_atomically() {
       "{name}: {actual} != {reference}"
     );
   }
+  assert!(value("high_cdf_se").is_finite() && value("high_cdf_se") > 0.0);
 
   let mut too_wide = f.session();
   run(&mut too_wide, "poisson y, offset(log_time)");
@@ -557,6 +618,11 @@ fn large_current_row_cutoffs_match_r_and_expansion_budget_fails_atomically() {
   assert_eq!(too_wide.state(), before);
   let error = too_wide
     .execute(parse_command("predict too_wide_se, pmf(cutoff) se").unwrap())
+    .unwrap_err();
+  assert!(error.to_string().contains("expanded cutoff work exceeds"));
+  assert_eq!(too_wide.state(), before);
+  let error = too_wide
+    .execute(parse_command("predict too_wide_cdf_se, cdf(cutoff) se").unwrap())
     .unwrap_err();
   assert!(error.to_string().contains("expanded cutoff work exceeds"));
   assert_eq!(too_wide.state(), before);

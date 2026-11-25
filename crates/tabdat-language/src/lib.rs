@@ -5591,12 +5591,9 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     probability_kind = Some(match probability_kind {
       Some(PredictKind::CountPmf(count)) => PredictKind::CountPmfStandardError(count),
       Some(PredictKind::CountPmfVariable) => PredictKind::CountPmfVariableStandardError,
-      Some(PredictKind::CountCdf(_) | PredictKind::CountCdfVariable) => {
-        return Err(ParseError::new(
-          "predict option se is supported only with pmf()",
-        ));
-      }
-      _ => return Err(ParseError::new("predict option se requires pmf()")),
+      Some(PredictKind::CountCdf(count)) => PredictKind::CountCdfStandardError(count),
+      Some(PredictKind::CountCdfVariable) => PredictKind::CountCdfVariableStandardError,
+      _ => return Err(ParseError::new("predict option se requires pmf() or cdf()")),
     });
   }
   let mut kind = if let Some(kind) = probability_kind {

@@ -335,9 +335,11 @@ impl Session {
         | PredictKind::CountPmf(_)
         | PredictKind::CountPmfStandardError(_)
         | PredictKind::CountCdf(_)
+        | PredictKind::CountCdfStandardError(_)
         | PredictKind::CountPmfVariable
         | PredictKind::CountPmfVariableStandardError
         | PredictKind::CountCdfVariable
+        | PredictKind::CountCdfVariableStandardError
     ) || command.interval
       || command.std
       || command.saving.is_some()
@@ -349,6 +351,7 @@ impl Session {
       PredictKind::CountPmfVariable
         | PredictKind::CountPmfVariableStandardError
         | PredictKind::CountCdfVariable
+        | PredictKind::CountCdfVariableStandardError
     );
     if variable_cutoff != command.count_cutoff_variable.is_some() {
       return Err(
@@ -440,9 +443,11 @@ impl Session {
       PredictKind::CountPmf(count) => Some((true, Some(count), false)),
       PredictKind::CountPmfStandardError(count) => Some((true, Some(count), true)),
       PredictKind::CountCdf(count) => Some((false, Some(count), false)),
+      PredictKind::CountCdfStandardError(count) => Some((false, Some(count), true)),
       PredictKind::CountPmfVariable => Some((true, None, false)),
       PredictKind::CountPmfVariableStandardError => Some((true, None, true)),
       PredictKind::CountCdfVariable => Some((false, None, false)),
+      PredictKind::CountCdfVariableStandardError => Some((false, None, true)),
       _ => None,
     };
     if let Some((is_pmf, fixed_cutoff, standard_error)) = probability_request {
@@ -538,8 +543,15 @@ impl Session {
             }
             let expansion = count.saturating_sub(tabdat_stats::MAX_COUNT_PROBABILITY_TAIL - 1);
             if mean > 0.0 && expansion > 0 {
+              let work_multiplier = if !standard_error {
+                1
+              } else if is_pmf || matches!(law, tabdat_stats::CountProbabilityLaw::Poisson) {
+                2
+              } else {
+                4
+              };
               let expansion = expansion
-                .checked_mul(if standard_error { 2 } else { 1 })
+                .checked_mul(work_multiplier)
                 .ok_or_else(|| family.error("expanded cutoff work overflowed"))?;
               expanded_cutoff_work = expanded_cutoff_work
                 .checked_add(expansion)
@@ -551,8 +563,12 @@ impl Session {
               }
             }
             let value = if standard_error {
-              tabdat_stats::count_point_pmf_standard_error(law, mean, count, &design, covariance)
-                .map_err(|e| family.error(e.to_string()))?
+              let standard_error = if is_pmf {
+                tabdat_stats::count_point_pmf_standard_error(law, mean, count, &design, covariance)
+              } else {
+                tabdat_stats::count_point_cdf_standard_error(law, mean, count, &design, covariance)
+              };
+              standard_error.map_err(|e| family.error(e.to_string()))?
             } else {
               let (pmf, cdf) = tabdat_stats::count_point_probabilities(law, mean, count)
                 .map_err(|e| family.error(e.to_string()))?;

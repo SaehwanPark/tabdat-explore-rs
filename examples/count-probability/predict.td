@@ -5,9 +5,11 @@ generate cutoff = id - 1
 predict poisson_p0, pmf(0)
 predict poisson_p0_se, pmf(0) se
 predict poisson_cdf2, cdf(2)
+predict poisson_cdf2_se, cdf(2) se
 predict poisson_row_pmf, pmf(cutoff)
 predict poisson_row_pmf_se, pmf(cutoff) se
 predict poisson_row_cdf, cdf(cutoff)
+predict poisson_row_cdf_se, cdf(cutoff) se
 export poisson_probabilities.csv
 nbreg y x z, offset(log_time) cluster(person)
 # Retained fit, with changed current predictors/offsets and no outcome/group columns.
@@ -20,7 +22,9 @@ predict nb2_p0, pmf(0)
 predict nb2_p2, pmf(2)
 predict nb2_p2_se, pmf(2) se
 predict nb2_cdf2, cdf(2)
+predict nb2_cdf2_se, cdf(2) se
 predict nb2_row_pmf, pmf(cutoff)
 predict nb2_row_pmf_se, pmf(cutoff) se
 predict nb2_row_cdf, cdf(cutoff)
+predict nb2_row_cdf_se, cdf(cutoff) se
 export nb2_probabilities.csv

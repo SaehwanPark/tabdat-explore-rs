@@ -316,7 +316,7 @@ fn packaged_count_help_examples_execute_on_their_advertised_columns() {
       .lines()
       .filter_map(|line| line.strip_prefix("- `").and_then(|s| s.strip_suffix('`'))),
   );
-  assert_eq!(examples.len(), 6);
+  assert_eq!(examples.len(), 8);
   success(&f.batch(&examples));
 }
 
