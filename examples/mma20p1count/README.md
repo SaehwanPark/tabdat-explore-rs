@@ -598,6 +598,27 @@ This workflow validates the specified native/author-program design/laws, **not
 literal whole Table20.6 reproduction**; the printed NB2 row remains visible
 unresolved required coverage. Source book/program/data are not redistributed.
 
+The stale year-2 comment is not evidence of an applied year-2 filter. The
+authors' official [October 24, 2005 program bundle](https://cameron.econ.ucdavis.edu/mmabook/mma10252005.zip)
+(SHA-256 `22f62b083ce1e9a287c20814c9cad5c18173b9a4088e3276a4ce3f504eb37734`)
+contains a May 20, 2005 `mma20p1count.do` (SHA-256
+`0992963d42923affdfe992c0e89f93a54e429d4e7fe5bf3ed07fc5862a8b017e`). It
+retains the stale year-2 comment, then explicitly says the analysis uses all
+years; the only sample deletion is missing `educdec`. Its accompanying log fits
+NB2 on 20,186 observations (`alpha=1.182251`, log likelihood `-42777.611`),
+but predates the Table20.6 probability calculations added in November 2006.
+
+The simpler hypothesis that the printed row came from a year-2-only NB2 fit
+also fails. On the checksum-verified original DTA, filtering to year 2 and
+excluding missing `educdec` leaves 5,574 rows. A converged independent
+`MASS::glm.nb` fit with the documented 17 regressors gives average NB2
+probabilities for counts 0, 1, and 2 of **33.528317%, 19.016655%, and
+12.441741%**. This calculation used R 4.6.2 and MASS 7.3.66 and is far from
+the printed **30.9%, 19.6%, and 13.6%**. It rules out that sample-filter
+explanation; it does not explain the printed row. Preserve the book and
+executable values and leave the conflict as an explicit coverage gap pending
+new primary-source evidence.
+
 Exposure integrations beyond Poisson/NB2, weights, appropriate survey/multiway/panel methods,
 uncertainty for current-row probabilities, other formal specification tests,
 richer counts and other remaining illustration/core/book work remain required.
