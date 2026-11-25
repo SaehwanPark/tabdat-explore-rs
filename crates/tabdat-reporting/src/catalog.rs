@@ -87,6 +87,8 @@ pub const COMMAND_NAMES: &[&str] = &[
   "use",
   "xtabond",
   "xtdata",
+  "xtdes",
+  "xtdescribe",
   "xtgee",
   "xtlogit",
   "xtpoisson",
@@ -485,6 +487,14 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
       name: "xtsum".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "xtdes".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "xtdescribe".to_string(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
@@ -2077,6 +2087,26 @@ fn get_command_schema(
       }],
       syntax: "xtsum [varlist], i(panelvar)".to_string(),
     }),
+    "xtdes" | "xtdescribe" => Ok(CommandSchemaResult {
+      arguments: vec![],
+      help_topic,
+      name: name.to_owned(),
+      options: vec![
+        OptionDescriptor {
+          name: "i(panelvar)".to_string(),
+          required: true,
+        },
+        OptionDescriptor {
+          name: "t(timevar)".to_string(),
+          required: true,
+        },
+        OptionDescriptor {
+          name: "patterns(#)".to_string(),
+          required: false,
+        },
+      ],
+      syntax: format!("{name}, i(panelvar) t(timevar) [patterns(#)]"),
+    }),
     "xtlogit" => Ok(CommandSchemaResult {
       arguments: vec![
         ArgumentDescriptor {
@@ -2264,7 +2294,7 @@ mod tests {
   #[test]
   fn test_catalog_counts_and_sorting() {
     let catalog = command_catalog_result();
-    assert_eq!(catalog.commands.len(), 91);
+    assert_eq!(catalog.commands.len(), 93);
     assert_eq!(
       catalog
         .commands
@@ -2342,12 +2372,26 @@ mod tests {
     assert_eq!(xtsum_schema.syntax, "xtsum [varlist], i(panelvar)");
     assert_eq!(xtsum_schema.options.len(), 1);
     assert_eq!(xtsum_schema.options[0].name, "i(panelvar)");
+    for name in ["xtdes", "xtdescribe"] {
+      let entry = catalog
+        .commands
+        .iter()
+        .find(|entry| entry.name == name)
+        .unwrap();
+      assert_eq!(entry.help_topic.as_deref(), Some(name));
+      let schema = describe_command_result(name).unwrap();
+      assert_eq!(
+        schema.syntax,
+        format!("{name}, i(panelvar) t(timevar) [patterns(#)]")
+      );
+      assert_eq!(schema.options.len(), 3);
+    }
   }
 
   #[test]
   fn test_command_effects_coverage() {
     let effects = command_effect_catalog_result();
-    assert_eq!(effects.commands.len(), 91);
+    assert_eq!(effects.commands.len(), 93);
     assert_eq!(
       effects
         .commands

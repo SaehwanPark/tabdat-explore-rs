@@ -130,8 +130,8 @@ def check(native_path, reference_dir, mom_dat, mom_csv, author_do, author_log):
   counts = Counter(event.get("result_type") for event in events)
   for kind, expected in {
     "LoadResult": 1, "IsidResult": 2, "TabulateResult": 1, "DropResult": 1,
-    "GenerateResult": 10, "DescribeResult": 1, "SummarizeResult": 1, "TableResult": 3,
-    "XtSumResult": 1,
+    "GenerateResult": 10, "DescribeResult": 1, "SummarizeResult": 1, "TableResult": 1,
+    "XtDesResult": 1, "XtSumResult": 1,
   }.items():
     require(counts[kind] == expected, f"expected {expected} {kind}, got {counts[kind]}")
 
@@ -172,21 +172,40 @@ def check(native_path, reference_dir, mom_dat, mom_csv, author_do, author_log):
     for event in events if event.get("result_type") == "TableResult"
   }
   source_header = ("validated_source_rows", "people", "first_year", "last_year")
-  structure_header = ("observations", "people", "first_id", "last_id", "first_year", "last_year", "min_T", "mean_T", "max_T", "min_delta", "max_delta")
-  t_header = ("T_i", "pattern", "people", "percent", "cumulative_percent")
   require(source_header in tables and len(tables[source_header]) == 1, "source guard result missing")
-  require(structure_header in tables and len(tables[structure_header]) == 1, "panel structure table missing")
-  require(t_header in tables and len(tables[t_header]) == len(ref_t), "panel T distribution missing")
   for actual, field in zip(tables[source_header][0], ["observations", "people", "first_year", "last_year"]):
     close(actual, ref_structure[field], f"source guard {field}", 0.0)
-  for actual, field in zip(tables[structure_header][0], structure_header):
-    close(actual, ref_structure[field], f"panel structure {field}")
-  for actual, expected in zip(tables[t_header], ref_t):
-    require(int(actual[0]) == int(expected["T_i"]), "T_i distribution differs from R")
-    require(actual[1] == expected["pattern"], "panel pattern differs from R")
-    require(int(actual[2]) == int(expected["people"]), "panel frequency differs from R")
-    close(actual[3], expected["percent"], "panel percent")
-    close(actual[4], expected["cumulative_percent"], "panel cumulative percent")
+
+  panel = find_one(events, "XtDesResult")
+  for field in [
+    "observation_count", "panel_count", "duplicate_key_pairs",
+    "extra_pair_observations", "missing_panel_periods", "period_count",
+  ]:
+    require(int(panel[field]) == int(ref_structure[field]), f"xtdes {field} differs from R")
+  for field in ["panel_min", "panel_max", "time_min", "time_max"]:
+    close(panel[field], ref_structure[field], f"xtdes {field}", 0.0)
+  require(panel["balanced"] is True and ref_structure["balanced"].lower() == "true", "xtdes balanced flag differs from R")
+  require(panel["time_values"] == [float(year) for year in range(1979, 1989)], "xtdes time values/order differ from R")
+  require(panel["distinct_pattern_count"] == len(ref_t), "xtdes distinct pattern count differs from R")
+  require(panel["requested_patterns"] == 9, "xtdes requested pattern limit changed")
+  require(panel["omitted_pattern_count"] == 0, "xtdes unexpectedly omitted a source pattern")
+  require(len(panel["patterns"]) == len(ref_t), "xtdes returned pattern count differs from R")
+  for distribution, prefix, minimum_ref, maximum_ref in [
+    (panel["observations_per_panel"], "observations", "min_T", "max_T"),
+    (panel["periods_per_panel"], "periods", "min_periods", "max_periods"),
+  ]:
+    close(distribution["minimum"], ref_structure[minimum_ref], f"xtdes {prefix} minimum", 0.0)
+    close(distribution["maximum"], ref_structure[maximum_ref], f"xtdes {prefix} maximum", 0.0)
+    for percentile in ["p5", "p25", "p50", "p75", "p95"]:
+      close(distribution[percentile], ref_structure[f"{prefix}_{percentile}"], f"xtdes {prefix} {percentile}")
+  for actual, expected in zip(panel["patterns"], ref_t):
+    counts = [int(count) for count in expected["pattern"].split(",")]
+    require(actual["counts_by_period"] == counts, "xtdes pattern counts differ from R")
+    require(int(actual["panel_count"]) == int(expected["people"]), "xtdes pattern frequency differs from R")
+    require(int(actual["periods_observed"]) == sum(count > 0 for count in counts), "xtdes pattern period count differs from R")
+    require(int(actual["observations_per_panel"]) == sum(counts), "xtdes pattern row count differs from R")
+    close(actual["percent"], expected["percent"], "xtdes pattern percent")
+    close(actual["cumulative_percent"], expected["cumulative_percent"], "xtdes cumulative percent")
 
   native_xtsum = find_one(events, "XtSumResult")
   require(native_xtsum["id_variable"] == "id", "native xtsum panel identifier changed")
@@ -235,8 +254,9 @@ def check(native_path, reference_dir, mom_dat, mom_csv, author_do, author_log):
   require(any("XXXXXXXXXX" in line and "532" in line for line in log_lines), "author xtdes all-observed pattern changed")
   print(
     "Matched checksum-pinned 5,320-row MOM source, ten year counts, all 18 "
-    "summary rows, 532 complete ten-year panels, and six overall/between/within "
-    f"rows against Base R and the author log; max native/R xtsum error={max_error:.3g}."
+    "summary rows, 532 complete ten-year panels, common participation patterns, "
+    "and six overall/between/within rows against Base R and the author log; "
+    f"max native/R xtsum error={max_error:.3g}."
   )
 
 

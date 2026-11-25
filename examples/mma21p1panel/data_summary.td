@@ -49,39 +49,7 @@ generate dyear10 = year == 1988
 describe
 summarize
 
-# xtdes facts are explicit because this workflow does not set persistent panel state.
-sql """
-WITH people AS (
-  SELECT id, COUNT(*) AS observations, MIN(year) AS first_year, MAX(year) AS last_year,
-    STRING_AGG('1', '' ORDER BY year) AS pattern
-  FROM active GROUP BY id
-), steps AS (
-  SELECT year - LAG(year) OVER (PARTITION BY id ORDER BY year) AS delta
-  FROM active
-)
-SELECT (SELECT COUNT(*) FROM active) AS observations,
-  COUNT(*) AS people, MIN(id) AS first_id, MAX(id) AS last_id,
-  MIN(first_year) AS first_year, MAX(last_year) AS last_year,
-  MIN(observations) AS min_T, AVG(observations) AS mean_T,
-  MAX(observations) AS max_T,
-  (SELECT MIN(delta) FROM steps WHERE delta IS NOT NULL) AS min_delta,
-  (SELECT MAX(delta) FROM steps WHERE delta IS NOT NULL) AS max_delta
-FROM people
-"""
-
-sql """
-WITH people AS (
-  SELECT id, COUNT(*) AS observations, STRING_AGG('1', '' ORDER BY year) AS pattern
-  FROM active GROUP BY id
-), frequencies AS (
-  SELECT observations AS T_i, pattern, COUNT(*) AS people
-  FROM people GROUP BY observations, pattern
-)
-SELECT T_i, pattern, people,
-  100.0 * people / SUM(people) OVER () AS percent,
-  100.0 * SUM(people) OVER (ORDER BY T_i, pattern ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
-    / SUM(people) OVER () AS cumulative_percent
-FROM frequencies ORDER BY T_i, pattern
-"""
+# Explicit keys keep this diagnostic read-only and do not retain panel state.
+xtdes, i(id) t(year)
 
 xtsum lnhr lnwg kids ageh agesq disab, i(id)

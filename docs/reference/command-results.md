@@ -1175,6 +1175,19 @@ use equally weighted contributing panel means, and within values are shifted by
 the pooled mean. This is read-only descriptive output with no retained panel
 declaration or time-key check. See the [full command contract](../commands/xtsum.md).
 
+`xtdes, i(panelvar) t(timevar) [patterns(#)]` (also `xtdescribe`) returns
+`result_type: "XtDesResult"`. Its data includes the explicit key names, row/panel/
+period counts, typed panel and time extrema, duplicate-key and missing-period
+counts, an optional balance flag, type-7 `T_i` and distinct-period distributions,
+the sorted observed time values, and bounded common-pattern rows. Each pattern's
+`counts_by_period` aligns with `time_values`; zero means no row at that key and a
+value above one preserves duplicate multiplicity. Pattern rows are ordered by
+panel frequency descending, then dense numeric count vector ascending. Decimal
+and wide integer key extrema use the same lossless scalar policy as previews.
+Empty datasets have zero counts, NULL extrema/distributions and undefined
+balance. This result is read-only and does not infer time spacing or retain panel
+state. See the [full command contract](../commands/xtdes.md).
+
 ## Frequencies and conditional cohorts
 
 Bounded one/two-way `tabulate` uses `result_type: "TabulateResult"` with

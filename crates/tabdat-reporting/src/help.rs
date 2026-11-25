@@ -86,6 +86,8 @@ pub const AVAILABLE_HELP_TOPICS: &[&str] = &[
   "use",
   "xtabond",
   "xtdata",
+  "xtdes",
+  "xtdescribe",
   "xtgee",
   "xtlogit",
   "xtpoisson",
@@ -186,6 +188,7 @@ pub fn load_help_topic_text(topic: &str) -> Option<&'static str> {
     "use" => Some(include_str!("help/topics/use.md")),
     "xtabond" => Some(include_str!("help/topics/xtabond.md")),
     "xtdata" => Some(include_str!("help/topics/xtdata.md")),
+    "xtdes" | "xtdescribe" => Some(include_str!("help/topics/xtdes.md")),
     "xtgee" => Some(include_str!("help/topics/xtgee.md")),
     "xtlogit" => Some(include_str!("help/topics/xtlogit.md")),
     "xtreg" => Some(include_str!("help/topics/xtreg.md")),
@@ -203,7 +206,7 @@ mod tests {
 
   #[test]
   fn test_all_help_topics_loadable() {
-    assert_eq!(available_help_topics().len(), 92);
+    assert_eq!(available_help_topics().len(), 94);
     assert!(available_help_topics().contains(&"xtgee"));
     assert!(available_help_topics().contains(&"xtpoisson"));
     assert!(available_help_topics().contains(&"stcox"));

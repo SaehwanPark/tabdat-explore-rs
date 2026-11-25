@@ -410,6 +410,8 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
     "panel" => parse_panel_command(body),
     "xtdata" => parse_xtdata_command(body),
     "xtsum" => parse_xtsum_command(body),
+    "xtdes" => parse_xtdes_command(body, "xtdes"),
+    "xtdescribe" => parse_xtdes_command(body, "xtdescribe"),
     "ivregress" => parse_ivregress_command(body),
     "xtreg" => parse_xtreg_command(body),
     "xtabond" => parse_xtabond_command(body),
@@ -2535,6 +2537,87 @@ fn parse_xtsum_command(body: &str) -> Result<Command, ParseError> {
         .map(|argument| argument.text)
         .collect(),
       id_variable,
+    },
+  })
+}
+
+fn parse_xtdes_command(body: &str, command_name: &str) -> Result<Command, ParseError> {
+  let syntax =
+    format!("{command_name} expects syntax: {command_name}, i(panelvar) t(timevar) [patterns(#)]");
+  let Some(comma) = first_unquoted_comma(body) else {
+    return Err(ParseError::new(syntax));
+  };
+  let (argument_body, option_body) = (&body[..comma], &body[comma + 1..]);
+  let parts = parse_simple_body(argument_body, false)?;
+  if !parts.arguments.is_empty()
+    || parts.has_condition
+    || parts.has_options
+    || parts.has_assignment
+    || parts.missing_condition_expression
+  {
+    return Err(ParseError::new(syntax));
+  }
+
+  let options = parse_use_options(option_body)?;
+  let mut unsupported = options
+    .iter()
+    .filter(|option| !matches!(option.name.as_str(), "i" | "t" | "patterns"))
+    .map(|option| option.name.as_str())
+    .collect::<Vec<_>>();
+  unsupported.sort_unstable();
+  unsupported.dedup();
+  if !unsupported.is_empty() {
+    return Err(ParseError::new(format!(
+      "{command_name} unsupported option: {}",
+      unsupported.join(", ")
+    )));
+  }
+
+  let id_variables = parse_identifier_option(command_name, &options, "i")?;
+  let Some(id_variables) = id_variables.filter(|variables| variables.len() == 1) else {
+    return Err(ParseError::new(format!(
+      "{command_name} expects exactly one i(panelvar) option"
+    )));
+  };
+  let time_variables = parse_identifier_option(command_name, &options, "t")?;
+  let Some(time_variables) = time_variables.filter(|variables| variables.len() == 1) else {
+    return Err(ParseError::new(format!(
+      "{command_name} expects exactly one t(timevar) option"
+    )));
+  };
+
+  let pattern_options = options
+    .iter()
+    .filter(|option| option.name == "patterns")
+    .collect::<Vec<_>>();
+  if pattern_options.len() > 1 {
+    return Err(ParseError::new(format!(
+      "{command_name} option patterns may only be supplied once"
+    )));
+  }
+  let patterns = match pattern_options.first().map(|option| &option.value) {
+    None => 9,
+    Some(UseOptionValue::Number(value)) => value
+      .parse::<usize>()
+      .ok()
+      .filter(|value| (1..=100).contains(value))
+      .ok_or_else(|| {
+        ParseError::new(format!(
+          "{command_name} patterns() must be an integer from 1 through 100"
+        ))
+      })?,
+    Some(_) => {
+      return Err(ParseError::new(format!(
+        "{command_name} patterns() must be an integer from 1 through 100"
+      )));
+    }
+  };
+
+  Ok(Command::XtDes {
+    command: XtDesCommand {
+      id_variable: id_variables[0].clone(),
+      time_variable: time_variables[0].clone(),
+      patterns,
     },
   })
 }
@@ -9541,6 +9624,7 @@ fn parse_use_parenthesized_value(
       | "seed"
       | "reps"
       | "rseed"
+      | "patterns"
       | "folds"
       | "level"
       | "draws"

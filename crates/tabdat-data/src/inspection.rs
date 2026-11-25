@@ -238,6 +238,142 @@ FROM overall AS o CROSS JOIN between_stats AS b CROSS JOIN within_stats AS w
       mean_t,
     })
   }
+  pub fn xtdes_invalid_keys(
+    &self,
+    id_variable: &str,
+    time_variable: &str,
+    id_numeric: bool,
+  ) -> Result<(bool, bool), DataError> {
+    let id = quote_identifier(id_variable);
+    let time = quote_identifier(time_variable);
+    let invalid_id = if id_numeric {
+      format!("{id} IS NULL OR NOT isfinite(CAST({id} AS DOUBLE))")
+    } else {
+      format!("{id} IS NULL")
+    };
+    let invalid_time = format!("{time} IS NULL OR NOT isfinite(CAST({time} AS DOUBLE))");
+    self
+      .connection
+      .query_row(
+        &format!(
+          "SELECT COUNT(*) FILTER (WHERE {invalid_id}) > 0, COUNT(*) FILTER (WHERE {invalid_time}) > 0 FROM {ACTIVE_TABLE}"
+        ),
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+      )
+      .map_err(|_| DataError)
+  }
+  pub fn xtdes_key_summary(
+    &self,
+    id_variable: &str,
+    time_variable: &str,
+  ) -> Result<XtDesKeySummary, DataError> {
+    let id = quote_identifier(id_variable);
+    let time = quote_identifier(time_variable);
+    let mut statement = self
+      .connection
+      .prepare(&format!(
+        r#"
+WITH pair_counts AS (
+  SELECT {id} AS panel_id, {time} AS time_value, COUNT(*) AS pair_n
+  FROM {ACTIVE_TABLE}
+  GROUP BY {id}, {time}
+)
+SELECT
+  (SELECT COUNT(*) FROM {ACTIVE_TABLE}),
+  (SELECT COUNT(DISTINCT {id}) FROM {ACTIVE_TABLE}),
+  COUNT(*) FILTER (WHERE pair_n > 1),
+  COALESCE(SUM(pair_n - 1) FILTER (WHERE pair_n > 1), 0),
+  MIN(panel_id),
+  MAX(panel_id)
+FROM pair_counts
+"#
+      ))
+      .map_err(|_| DataError)?;
+    let mut rows = statement.query([]).map_err(|_| DataError)?;
+    let row = rows.next().map_err(|_| DataError)?.ok_or(DataError)?;
+    let observation_count =
+      u64::try_from(row.get::<_, i64>(0).map_err(|_| DataError)?).map_err(|_| DataError)?;
+    let panel_count =
+      u64::try_from(row.get::<_, i64>(1).map_err(|_| DataError)?).map_err(|_| DataError)?;
+    let duplicate_key_pairs =
+      u64::try_from(row.get::<_, i64>(2).map_err(|_| DataError)?).map_err(|_| DataError)?;
+    let extra_pair_observations =
+      u64::try_from(row.get::<_, i64>(3).map_err(|_| DataError)?).map_err(|_| DataError)?;
+    let panel_min = match row.get_ref(4).map_err(|_| DataError)? {
+      ValueRef::Null => None,
+      value => Some(cell_value_from_ref(value)?),
+    };
+    let panel_max = match row.get_ref(5).map_err(|_| DataError)? {
+      ValueRef::Null => None,
+      value => Some(cell_value_from_ref(value)?),
+    };
+
+    let mut statement = self
+      .connection
+      .prepare(&format!(
+        "SELECT DISTINCT {time} FROM {ACTIVE_TABLE} ORDER BY {time} LIMIT 513"
+      ))
+      .map_err(|_| DataError)?;
+    let mut rows = statement.query([]).map_err(|_| DataError)?;
+    let mut time_values = Vec::new();
+    while let Some(row) = rows.next().map_err(|_| DataError)? {
+      time_values.push(cell_value_from_ref(row.get_ref(0).map_err(|_| DataError)?)?);
+    }
+    Ok(XtDesKeySummary {
+      observation_count,
+      panel_count,
+      panel_min,
+      panel_max,
+      duplicate_key_pairs,
+      extra_pair_observations,
+      time_values,
+    })
+  }
+  pub fn xtdes_pair_counts(
+    &self,
+    id_variable: &str,
+    time_variable: &str,
+  ) -> Result<Vec<XtDesPairCount>, DataError> {
+    let id = quote_identifier(id_variable);
+    let time = quote_identifier(time_variable);
+    let mut statement = self
+      .connection
+      .prepare(&format!(
+        r#"
+WITH pair_counts AS (
+  SELECT {id} AS panel_id, {time} AS time_value, COUNT(*) AS pair_n
+  FROM {ACTIVE_TABLE}
+  GROUP BY {id}, {time}
+), panel_index AS (
+  SELECT panel_id, ROW_NUMBER() OVER (ORDER BY panel_id) - 1 AS panel_ix
+  FROM (SELECT DISTINCT {id} AS panel_id FROM {ACTIVE_TABLE})
+), period_index AS (
+  SELECT time_value, ROW_NUMBER() OVER (ORDER BY time_value) - 1 AS period_ix
+  FROM (SELECT DISTINCT {time} AS time_value FROM {ACTIVE_TABLE})
+)
+SELECT panel_ix, period_ix, pair_n
+FROM pair_counts
+JOIN panel_index USING (panel_id)
+JOIN period_index USING (time_value)
+ORDER BY panel_ix, period_ix
+"#
+      ))
+      .map_err(|_| DataError)?;
+    let mut rows = statement.query([]).map_err(|_| DataError)?;
+    let mut pair_counts = Vec::new();
+    while let Some(row) = rows.next().map_err(|_| DataError)? {
+      pair_counts.push(XtDesPairCount {
+        panel_index: u64::try_from(row.get::<_, i64>(0).map_err(|_| DataError)?)
+          .map_err(|_| DataError)?,
+        period_index: u64::try_from(row.get::<_, i64>(1).map_err(|_| DataError)?)
+          .map_err(|_| DataError)?,
+        observations: u64::try_from(row.get::<_, i64>(2).map_err(|_| DataError)?)
+          .map_err(|_| DataError)?,
+      });
+    }
+    Ok(pair_counts)
+  }
   pub fn codebook_variable(
     &self,
     variable: &str,

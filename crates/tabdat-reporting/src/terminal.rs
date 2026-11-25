@@ -1,6 +1,9 @@
 use std::fmt::Write;
 
-use tabdat_domain::{CellValue, DatasetInfo, ExecutionResult, SummaryRow, XtSumResult};
+use tabdat_domain::{
+  CellValue, DatasetInfo, ExecutionResult, SummaryRow, XtDesCountDistribution, XtDesResult,
+  XtSumResult,
+};
 
 fn nls_expression(model: &tabdat_domain::NlsModel, node: &tabdat_domain::NlsExpression) -> String {
   use tabdat_domain::NlsExpression::*;
@@ -1109,6 +1112,7 @@ pub fn render_interactive_help(topic: Option<&str>) -> Result<String, String> {
       "  Transform: generate, replace, rename, sort/gsort, keep/drop/select, recode, encode/decode, label\n",
       "  Cohorts/layouts: sql ... into <name>, use <name>, join, append, reshape, collapse\n",
       "  Grouped EDA: by <keys>: count; by <keys>: summarize uses native means\n",
+      "  Panel diagnostics: xtdes/xtdescribe, xtsum\n",
       "  Linear analysis: regress, predict, lincom, test\n",
       "  Mean comparisons: ttest x == 0; ttest x == y; ttest x, by(group) [welch]\n",
       "  Scripts/files: run <script.td>, save <file.parquet>, export <file.csv>\n",
@@ -1184,6 +1188,96 @@ fn render_xtsum_rows(result: &XtSumResult) -> String {
       optional_number(row.within_sd),
       optional_number(row.within_min),
       optional_number(row.within_max),
+    )
+    .unwrap();
+  }
+  output
+}
+
+fn render_xtdes_distribution(distribution: &XtDesCountDistribution) -> String {
+  format!(
+    "min={} p5={} p25={} p50={} p75={} p95={} max={}",
+    distribution
+      .minimum
+      .map_or_else(|| "NA".to_owned(), |value| value.to_string()),
+    optional_number(distribution.p5),
+    optional_number(distribution.p25),
+    optional_number(distribution.p50),
+    optional_number(distribution.p75),
+    optional_number(distribution.p95),
+    distribution
+      .maximum
+      .map_or_else(|| "NA".to_owned(), |value| value.to_string()),
+  )
+}
+
+fn render_xtdes(result: &XtDesResult) -> String {
+  let mut output = format!(
+    "Panel identifier: {}\nPanel range: {} to {}\nTime variable: {}\nObservations={} panels={} periods={}\nTime range: {} to {}\nBalanced on observed time grid: {}\nDuplicate panel-time pairs={} extra rows={} missing panel-periods={}\nT_i (rows): {}\nDistinct periods per panel: {}\nTime values: [{}]\n",
+    result.id_variable.escape_debug(),
+    result
+      .panel_min
+      .as_ref()
+      .map(cell)
+      .unwrap_or_else(|| "NA".to_owned()),
+    result
+      .panel_max
+      .as_ref()
+      .map(cell)
+      .unwrap_or_else(|| "NA".to_owned()),
+    result.time_variable.escape_debug(),
+    result.observation_count,
+    result.panel_count,
+    result.period_count,
+    result
+      .time_min
+      .as_ref()
+      .map(cell)
+      .unwrap_or_else(|| "NA".to_owned()),
+    result
+      .time_max
+      .as_ref()
+      .map(cell)
+      .unwrap_or_else(|| "NA".to_owned()),
+    result
+      .balanced
+      .map_or("undefined", |balanced| if balanced { "yes" } else { "no" }),
+    result.duplicate_key_pairs,
+    result.extra_pair_observations,
+    result.missing_panel_periods,
+    render_xtdes_distribution(&result.observations_per_panel),
+    render_xtdes_distribution(&result.periods_per_panel),
+    result
+      .time_values
+      .iter()
+      .map(cell)
+      .collect::<Vec<_>>()
+      .join(","),
+  );
+  writeln!(
+    output,
+    "Participation patterns: {} distinct; returned {}; omitted {}",
+    result.distinct_pattern_count,
+    result.patterns.len(),
+    result.omitted_pattern_count
+  )
+  .unwrap();
+  output.push_str("Pattern counts-by-period\tPanels\tPercent\tCumulative %\tPeriods\tRows/panel\n");
+  for pattern in &result.patterns {
+    writeln!(
+      output,
+      "[{}]\t{}\t{}\t{}\t{}\t{}",
+      pattern
+        .counts_by_period
+        .iter()
+        .map(u64::to_string)
+        .collect::<Vec<_>>()
+        .join(","),
+      pattern.panel_count,
+      optional_number(Some(pattern.percent)),
+      optional_number(Some(pattern.cumulative_percent)),
+      pattern.periods_observed,
+      pattern.observations_per_panel,
     )
     .unwrap();
   }
@@ -1954,6 +2048,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     ExecutionResult::Count(count) => format!("{} rows\n", count.row_count),
     ExecutionResult::Summarize(summary) => render_summary_rows(&summary.rows),
     ExecutionResult::XtSum(result) => render_xtsum_rows(result),
+    ExecutionResult::XtDes(result) => render_xtdes(result),
     ExecutionResult::SummarizeDetail(result) => {
       let mut output = String::from("Detailed finite summary: type-7 linear DOUBLE percentiles\n");
       for row in &result.rows {
