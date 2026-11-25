@@ -155,10 +155,23 @@ contracts are recorded in the count workflow and coverage ledger. These are
 parameter SEs for conditional probabilities, not probability intervals or
 future-count uncertainty.
 
-The next bounded count-uncertainty action is a pointwise interval for a current-row
-PMF or CDF. Before implementation, define its scale, coverage convention,
-probability-bound behavior, retained-covariance use and behavior at degenerate
-probabilities; validate the resulting interval against an independent reference.
+The next bounded count-uncertainty action is a pointwise two-sided logit-Wald
+interval for a current-row PMF or CDF. Use the selected retained covariance,
+including joint beta/lnalpha covariance for NB2, and asymptotic normal coverage
+with default `level(95)` and any level strictly between 0 and 100, using
+`logit(p) ± z * SE_delta(logit(p))`. Treat current predictors and fixed
+offsets/exposure as known. `predict target, pmf(k) interval` and its
+CDF/current-cutoff forms append the point estimate plus
+`target_lower`/`target_upper` atomically. Compute log probabilities,
+complements and transformed delta SEs without first rounding a tiny probability
+to 0 or a near-one probability to 1. Zero means and zero transformed variance
+yield degenerate intervals at the point estimate; fail closed on invalid arithmetic.
+Validate endpoints against independent base-R finite differences and runtime
+contracts for covariance selection, offsets/exposure, missingness, invalid
+cutoffs/levels, work limits and all-or-nothing column publication. These are
+pointwise parameter-uncertainty intervals, not simultaneous bands, future-count
+prediction intervals, or a distributional-law guarantee; separate intervals
+need not sum to one or be monotone across cutoffs.
 
 Do not turn the entire textbook inventory into a prerequisite for one bounded
 analysis. Preserve the assumptions and unresolved source differences in the ledger.
