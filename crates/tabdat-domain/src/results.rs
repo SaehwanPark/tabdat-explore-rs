@@ -817,6 +817,15 @@ pub struct BinaryGoodnessOfFitResult {
   pub test: tabdat_stats::BinaryHosmerLemeshowResult,
 }
 
+/// Descriptive retained-sample classification table after logit or probit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryClassificationReport {
+  pub model: tabdat_stats::BinaryModel,
+  pub outcome: String,
+  pub sample: Option<tabdat_stats::EstimationSample>,
+  pub metrics: tabdat_stats::BinaryClassificationMetrics,
+}
+
 /// Results currently exposed by the bounded runtime slice.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
@@ -967,6 +976,8 @@ pub enum ExecutionResult {
   CountGoodnessOfFit(Box<CountGoodnessOfFitResult>),
   /// Quantile-grouped binary Hosmer–Lemeshow calibration test.
   BinaryGoodnessOfFit(Box<BinaryGoodnessOfFitResult>),
+  /// Descriptive binary classification metrics at a retained-fit probability cutoff.
+  BinaryClassification(Box<BinaryClassificationReport>),
   /// The result of appending fitted values, probabilities or residuals.
   Prediction(PredictionResult),
   /// The result of estimating an affine linear combination of regression coefficients.

@@ -1225,6 +1225,43 @@ The synthetic four-pattern, 160-row fixture leaves 159 complete observations.
 Base R 4.6.2 independently validates the tied-group logit/probit paths; see the
 [reference script and numerical evidence](../../examples/binary-hosmer-lemeshow/README.md).
 
+## Retained binary classification
+
+`estat classification[, cutoff(#)]` is a descriptive read-only result after a
+retained logit or probit fit. The default cutoff is 0.5, and a finite cutoff in
+[0, 1] classifies probabilities greater than or equal to the cutoff as positive.
+The event is exactly `outcome == 1`. The response and probabilities come from
+the retained estimation sample, even after current-data edits.
+
+CLI-v1 returns `BinaryClassificationResult` with estimator, outcome, exact
+retained sample and `sample_role: "retained_estimation_sample"`,
+`observation_count`, `cutoff`, event and inclusive classification-rule labels,
+`confusion` counts, `metrics_percent`, `metric_units: "percent_0_to_100"` and
+`uncertainty: "not_computed"`. The confusion counts include actual/predicted
+class totals and TP/FP/FN/TN. `metrics_percent` contains sensitivity,
+specificity, positive/negative predictive values, false-positive and
+false-negative rates among actual classes and predicted classes, and
+`correctly_classified`. Each rate uses its named class total as denominator;
+undefined zero-denominator values are JSON `null`.
+
+The formulas are `sensitivity = TP/(TP+FN)`, `specificity = TN/(TN+FP)`,
+`positive_predictive_value = TP/(TP+FP)`, and
+`negative_predictive_value = TN/(TN+FN)`. The rates conditional on actual
+classes are `false_positive_rate_given_negative = FP/(FP+TN)` and
+`false_negative_rate_given_positive = FN/(FN+TP)`. The rates conditional on
+predicted classes are `false_positive_rate_given_positive = FP/(TP+FP)` and
+`false_negative_rate_given_negative = FN/(FN+TN)`. Correct classification is
+`(TP+TN)/N`; all defined values are multiplied by 100.
+
+This table measures in-sample classification under one chosen cutoff. It does
+not select a cutoff, provide ROC analysis, measure calibration, or test model
+specification. It computes no uncertainty and uses the same fit-retained
+probabilities for model-based, robust and one-way clustered fits. `all`, row
+qualifiers and weights are unsupported. On the synthetic mixed-factor fixture,
+Base R 4.6.2 independently checks both links at cutoffs 0.5 and 0.35; runtime
+checks cover current-data edits, boundary cutoffs, zero denominators and no-fit
+failure. See the [fixture and reference](../../examples/binary-classification/README.md).
+
 ## Summaries and percentiles
 
 A summary uses `schema_version: 1`,

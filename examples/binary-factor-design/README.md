@@ -142,9 +142,17 @@ outside {0,1}, an absent explicit reference and a factor-margin request for an
 absent term fail clearly;
 failed fits clear stale estimation state. Interactions remain unsupported.
 
+`estat classification[, cutoff(#)]` is checked separately against the default
+design's independent R fit for logit/probit at cutoffs 0.5 and 0.35, including
+all class totals/counts and percentages. The classification result uses the
+same retained sample after edits; zero-denominator and boundary-cutoff behavior
+is covered without extending the textbook illustration claim. See the
+[classification contract](../binary-classification/README.md).
+
 Run the executable workflows from this directory with
 `tabdat-explore-rs --json -f logit.td` or `tabdat-explore-rs --json -f probit.td`;
-use `--text` for terminal reports. The scripts include grouped GOF, continuous
-and factor probability effects, affine linear-index combinations, current-row
-`xb`/`pr` predictions and named estimate reports. These synthetic method
+use `--text` for terminal reports. The scripts include grouped GOF and
+classification, continuous and factor probability effects, affine linear-index
+combinations, current-row `xb`/`pr` predictions and named estimate reports.
+These synthetic method
 contracts do not claim a Cameron–Trivedi illustration replication.

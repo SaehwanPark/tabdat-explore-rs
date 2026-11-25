@@ -3085,6 +3085,61 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       );
       text
     }
+    ExecutionResult::BinaryClassification(result) => {
+      let model = match result.model {
+        tabdat_stats::BinaryModel::Logit => "Logit",
+        tabdat_stats::BinaryModel::Probit => "Probit",
+      };
+      let metrics = &result.metrics;
+      let mut text = format!(
+        "{model} retained-sample classification\nOutcome: {}; N = {}; cutoff = {}\nPredicted\\Actual\tPositive (y=1)\tNegative (y=0)\tTotal\nPositive (p >= cutoff)\t{}\t{}\t{}\nNegative (p < cutoff)\t{}\t{}\t{}\nTotal\t{}\t{}\t{}\nMeasure\tPercent\n",
+        result.outcome.escape_debug(),
+        metrics.observation_count,
+        metrics.cutoff,
+        metrics.true_positive,
+        metrics.false_positive,
+        metrics.predicted_positive_count,
+        metrics.false_negative,
+        metrics.true_negative,
+        metrics.predicted_negative_count,
+        metrics.actual_positive_count,
+        metrics.actual_negative_count,
+        metrics.observation_count,
+      );
+      for (name, value) in [
+        ("Sensitivity (TP / actual positive)", metrics.sensitivity),
+        ("Specificity (TN / actual negative)", metrics.specificity),
+        (
+          "Positive predictive value (TP / predicted positive)",
+          metrics.positive_predictive_value,
+        ),
+        (
+          "Negative predictive value (TN / predicted negative)",
+          metrics.negative_predictive_value,
+        ),
+        (
+          "False positive rate (FP / actual negative)",
+          metrics.false_positive_rate_given_negative,
+        ),
+        (
+          "False negative rate (FN / actual positive)",
+          metrics.false_negative_rate_given_positive,
+        ),
+        (
+          "False positive rate (FP / predicted positive)",
+          metrics.false_positive_rate_given_positive,
+        ),
+        (
+          "False negative rate (FN / predicted negative)",
+          metrics.false_negative_rate_given_negative,
+        ),
+        ("Correctly classified", metrics.correctly_classified),
+      ] {
+        writeln!(text, "{name}\t{}", optional_inference(value)).unwrap();
+      }
+      text.push_str("Percentages use 0–100 units; NA means the denominator is zero. Classification uses the retained fit's probabilities and outcome; no uncertainty or hypothesis test is computed.\n");
+      text
+    }
     ExecutionResult::Nbreg(result) => nb2_report(result),
     ExecutionResult::NbregMarginalEffects(result) => format!(
       "NB2 continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed X; {}, asymptotic normal 95% intervals. Uses beta block of FULL joint beta/lnalpha covariance.\n{}{}{}{}",

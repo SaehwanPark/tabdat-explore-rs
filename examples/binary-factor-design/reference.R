@@ -135,6 +135,7 @@ factor_contrast_rows <- list()
 continuous_marginal_effect_rows <- list()
 discrete_change_rows <- list()
 binary_lincom_rows <- list()
+binary_classification_rows <- list()
 append_covariance <- function(model, design, type, covariance) {
   for (row in seq_len(nrow(covariance))) {
     for (column in seq_len(ncol(covariance))) {
@@ -148,6 +149,42 @@ append_covariance <- function(model, design, type, covariance) {
       )
     }
   }
+}
+append_classification <- function(model, fit, estimates, family, cutoff) {
+  X <- model.matrix(fit)
+  probability <- family$linkinv(drop(X %*% estimates))
+  actual <- fit$y == 1
+  predicted <- probability >= cutoff
+  tp <- sum(actual & predicted)
+  fp <- sum(!actual & predicted)
+  fn <- sum(actual & !predicted)
+  tn <- sum(!actual & !predicted)
+  percent <- function(numerator, denominator) {
+    if (denominator == 0) NA_real_ else 100 * numerator / denominator
+  }
+  binary_classification_rows[[length(binary_classification_rows) + 1L]] <<-
+    data.frame(
+      model = model,
+      cutoff = cutoff,
+      observation_count = length(actual),
+      actual_positive_count = sum(actual),
+      actual_negative_count = sum(!actual),
+      predicted_positive_count = sum(predicted),
+      predicted_negative_count = sum(!predicted),
+      true_positive = tp,
+      false_positive = fp,
+      false_negative = fn,
+      true_negative = tn,
+      sensitivity = percent(tp, tp + fn),
+      specificity = percent(tn, tn + fp),
+      positive_predictive_value = percent(tp, tp + fp),
+      negative_predictive_value = percent(tn, tn + fn),
+      false_positive_rate_given_negative = percent(fp, fp + tn),
+      false_negative_rate_given_positive = percent(fn, tp + fn),
+      false_positive_rate_given_positive = percent(fp, tp + fp),
+      false_negative_rate_given_negative = percent(fn, tn + fn),
+      correctly_classified = percent(tp + tn, length(actual))
+    )
 }
 set_factor_level <- function(data, variable, values, levels) {
   if (variable == "region") {
@@ -325,6 +362,11 @@ for (model in c("logit", "probit")) {
       estimates <- reference$beta
       covariance <- reference$covariance
     }
+    if (design == "default") {
+      for (cutoff in c(0.5, 0.35)) {
+        append_classification(model, fit, estimates, family, cutoff)
+      }
+    }
     factor_variable <- switch(
       design,
       numeric_factor = "group_code",
@@ -474,3 +516,5 @@ write.csv(do.call(rbind, discrete_change_rows),
           "binary_factor_discrete_change_reference.csv", row.names = FALSE)
 write.csv(do.call(rbind, binary_lincom_rows),
           "binary_factor_lincom_reference.csv", row.names = FALSE)
+write.csv(do.call(rbind, binary_classification_rows),
+          "binary_factor_classification_reference.csv", row.names = FALSE)

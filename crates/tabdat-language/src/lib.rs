@@ -7092,7 +7092,7 @@ fn parse_cfregress_command(body: &str) -> Result<Command, ParseError> {
 }
 
 fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
-  let syntax = "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|overdispersion|countprob|countgof|gof|did|drdid|dml|bayes|spatial|report>";
+  let syntax = "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|overdispersion|classification|countprob|countgof|gof|did|drdid|dml|bayes|spatial|report>";
   let parts = parse_simple_body(body, false)?;
   if parts.missing_condition_expression {
     return Err(ParseError::new("missing expression after if"));
@@ -7113,6 +7113,55 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
 
   let argument = &parts.arguments[0];
   let normalized_subcommand = argument.text.to_ascii_lowercase();
+  if !argument.backtick_quoted && normalized_subcommand == "classification" {
+    let cutoff = match first_unquoted_comma(body) {
+      None => "0.5".to_owned(),
+      Some(index) => {
+        let tokens = tokenize_use_options(&body[index + 1..])?;
+        match tokens.as_slice() {
+          [
+            UseToken {
+              kind: UseTokenKind::Identifier { quoted: false },
+              text: name,
+              ..
+            },
+            UseToken {
+              kind: UseTokenKind::Symbol,
+              text: open,
+              ..
+            },
+            UseToken {
+              kind: UseTokenKind::Number,
+              text: value,
+              ..
+            },
+            UseToken {
+              kind: UseTokenKind::Symbol,
+              text: close,
+              ..
+            },
+          ] if name == "cutoff" && open == "(" && close == ")" => value
+            .parse::<f64>()
+            .ok()
+            .filter(|cutoff| cutoff.is_finite() && (0.0..=1.0).contains(cutoff))
+            .map(|_| value.clone())
+            .ok_or_else(|| {
+              ParseError::new("estat classification cutoff must be a finite number from 0 to 1")
+            })?,
+          _ => {
+            return Err(ParseError::new(
+              "estat classification supports only cutoff(#), a finite number from 0 to 1",
+            ));
+          }
+        }
+      }
+    };
+    return Ok(Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::BinaryClassification { cutoff },
+      },
+    });
+  }
   if !argument.backtick_quoted && normalized_subcommand == "countprob" {
     let options = first_unquoted_comma(body)
       .map(|index| parse_use_options(&body[index + 1..]))
@@ -7385,7 +7434,7 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
     ("hausman", false) => EstatSubcommand::Hausman,
     _ => {
       return Err(ParseError::new(
-        "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, overdispersion, countprob, countgof, gof, did, drdid, dml, bayes, spatial, or report",
+        "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, overdispersion, classification, countprob, countgof, gof, did, drdid, dml, bayes, spatial, or report",
       ));
     }
   };

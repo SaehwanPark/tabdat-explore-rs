@@ -3205,23 +3205,56 @@ fn estat_vif_is_recognized_by_the_parser() {
 }
 
 #[test]
+fn estat_classification_parses_default_and_explicit_cutoffs() {
+  assert_eq!(
+    parse_command("estat classification").unwrap(),
+    Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::BinaryClassification {
+          cutoff: "0.5".into(),
+        },
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("estat classification, cutoff(.35)").unwrap(),
+    Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::BinaryClassification {
+          cutoff: ".35".into(),
+        },
+      },
+    }
+  );
+  for command in [
+    "estat classification, all",
+    "estat classification, cutoff(-0.1)",
+    "estat classification, cutoff(1.01)",
+    "estat classification, cutoff(NaN)",
+    "estat classification, cutoff(0.5) all",
+  ] {
+    assert!(parse_command(command).is_err(), "{command}");
+  }
+}
+
+#[test]
 fn estat_preserves_bounded_parser_diagnostics() {
   let cases = [
     (
       "estat",
-      "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|overdispersion|countprob|countgof|gof|did|drdid|dml|bayes|spatial|report>",
+      "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|overdispersion|classification|countprob|countgof|gof|did|drdid|dml|bayes|spatial|report>",
     ),
     (
       "estat firststage extra",
-      "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|overdispersion|countprob|countgof|gof|did|drdid|dml|bayes|spatial|report>",
+      "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|overdispersion|classification|countprob|countgof|gof|did|drdid|dml|bayes|spatial|report>",
     ),
     (
       "estat, firststage",
-      "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|overdispersion|countprob|countgof|gof|did|drdid|dml|bayes|spatial|report>",
+      "estat expects syntax: estat <residuals|ovtest|vif|ar|firststage|overid|hausman|endogenous|margins|overdispersion|classification|countprob|countgof|gof|did|drdid|dml|bayes|spatial|report>",
     ),
     (
       "estat detail",
-      "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, overdispersion, countprob, countgof, gof, did, drdid, dml, bayes, spatial, or report",
+      "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, overdispersion, classification, countprob, countgof, gof, did, drdid, dml, bayes, spatial, or report",
     ),
     (
       "estat firststage, robust",
@@ -3236,7 +3269,7 @@ fn estat_preserves_bounded_parser_diagnostics() {
     ("estat firststage -x", "unsupported token in command: -"),
     (
       "estat `firststage`",
-      "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, overdispersion, countprob, countgof, gof, did, drdid, dml, bayes, spatial, or report",
+      "estat subcommand must be residuals, ovtest, vif, ar, firststage, overid, hausman, endogenous, margins, overdispersion, classification, countprob, countgof, gof, did, drdid, dml, bayes, spatial, or report",
     ),
   ];
 

@@ -1509,6 +1509,10 @@ pub enum EstatSubcommand {
   BinaryGoodnessOfFit {
     group_count: usize,
   },
+  /// Retained-sample binary classification at an inclusive probability cutoff.
+  BinaryClassification {
+    cutoff: String,
+  },
   Gof,
   Did,
   Drdid,

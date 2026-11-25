@@ -156,7 +156,8 @@ pub fn supports_batch_command(command: &Command) -> bool {
             | EstatSubcommand::FactorMargins { .. }
             | EstatSubcommand::CountProbabilities { .. }
             | EstatSubcommand::CountGoodnessOfFit { .. }
-            | EstatSubcommand::BinaryGoodnessOfFit { .. },
+            | EstatSubcommand::BinaryGoodnessOfFit { .. }
+            | EstatSubcommand::BinaryClassification { .. },
           ..
         },
     }
@@ -1541,6 +1542,46 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       data["sensitivity"] =
         json!("result_depends_on_requested_group_count_and_sparse_expected_cells");
       (data, "BinaryGoodnessOfFitResult")
+    }
+    ExecutionResult::BinaryClassification(result) => {
+      let metrics = &result.metrics;
+      (
+        json!({
+          "estimator": if result.model == tabdat_stats::BinaryModel::Logit { "logit" } else { "probit" },
+          "method": "retained_sample_probability_cutoff_classification",
+          "outcome": result.outcome,
+          "sample": result.sample,
+          "sample_role": "retained_estimation_sample",
+          "observation_count": metrics.observation_count,
+          "event_definition": "outcome_equals_1",
+          "cutoff": metrics.cutoff,
+          "classification_rule": "predicted_positive_when_probability_greater_than_or_equal_to_cutoff",
+          "confusion": {
+            "actual_positive_count": metrics.actual_positive_count,
+            "actual_negative_count": metrics.actual_negative_count,
+            "predicted_positive_count": metrics.predicted_positive_count,
+            "predicted_negative_count": metrics.predicted_negative_count,
+            "true_positive": metrics.true_positive,
+            "false_positive": metrics.false_positive,
+            "false_negative": metrics.false_negative,
+            "true_negative": metrics.true_negative,
+          },
+          "metrics_percent": {
+            "sensitivity": metrics.sensitivity,
+            "specificity": metrics.specificity,
+            "positive_predictive_value": metrics.positive_predictive_value,
+            "negative_predictive_value": metrics.negative_predictive_value,
+            "false_positive_rate_given_negative": metrics.false_positive_rate_given_negative,
+            "false_negative_rate_given_positive": metrics.false_negative_rate_given_positive,
+            "false_positive_rate_given_positive": metrics.false_positive_rate_given_positive,
+            "false_negative_rate_given_negative": metrics.false_negative_rate_given_negative,
+            "correctly_classified": metrics.correctly_classified,
+          },
+          "metric_units": "percent_0_to_100",
+          "uncertainty": "not_computed",
+        }),
+        "BinaryClassificationResult",
+      )
     }
     ExecutionResult::Nbreg(result) => {
       let mut data = json!({

@@ -1265,6 +1265,35 @@ impl Session {
     if let EstatSubcommand::CountGoodnessOfFit { tail_from } = command.subcommand {
       return self.execute_nb2_count_goodness_of_fit(tail_from);
     }
+    if let EstatSubcommand::BinaryClassification { cutoff } = &command.subcommand {
+      let (problem, result) = match &self.estimation {
+        Some(EstimationState::Logit(state)) | Some(EstimationState::Probit(state)) => {
+          (&state.problem, &state.result)
+        }
+        _ => return Err(RuntimeError::EstatClassificationRequiresPriorBinary),
+      };
+      let cutoff = cutoff
+        .parse::<f64>()
+        .map_err(|_| RuntimeError::EstatClassificationFailed {
+          message: "cutoff must be a finite number from 0 to 1".into(),
+        })?;
+      let metrics = tabdat_stats::binary_classification(
+        &problem.response,
+        &result.fitted_probabilities,
+        cutoff,
+      )
+      .map_err(|error| RuntimeError::EstatClassificationFailed {
+        message: error.to_string(),
+      })?;
+      return Ok(ExecutionResult::BinaryClassification(Box::new(
+        BinaryClassificationReport {
+          model: result.model,
+          outcome: problem.outcome.clone(),
+          sample: problem.sample.clone(),
+          metrics,
+        },
+      )));
+    }
     if let EstatSubcommand::BinaryGoodnessOfFit { group_count } = &command.subcommand {
       let (problem, result) = match &self.estimation {
         Some(EstimationState::Logit(state)) | Some(EstimationState::Probit(state)) => {

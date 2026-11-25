@@ -16,7 +16,7 @@ impl Fixture {
     .unwrap();
     fs::write(
       dir.path().join("analysis.td"),
-      "use binary_factor_data.csv\nlogit y x i.region\nlincom x + region_North - region_West + 0.5\nestat margins\nestat gof, group(10)\nestat margins, factor(region)\npredict index, xb\npredict probability, pr\nestimates store factors\nestimates table factors\nexport predictions.csv, replace\n",
+      "use binary_factor_data.csv\nlogit y x i.region\nlincom x + region_North - region_West + 0.5\nestat margins\nestat gof, group(10)\nestat classification\nestat classification, cutoff(.35)\nestat classification, cutoff(1)\nestat margins, factor(region)\npredict index, xb\npredict probability, pr\nestimates store factors\nestimates table factors\nexport predictions.csv, replace\n",
     )
     .unwrap();
     Self(dir)
@@ -86,6 +86,39 @@ fn binary_factor_fit_diagnostic_prediction_and_report_run_in_cli_json_and_text()
     .expect("grouped binary diagnostic");
   assert_eq!(gof["data"]["group_count"], 10);
 
+  let classifications = rows
+    .iter()
+    .filter(|row| row["result_type"] == "BinaryClassificationResult")
+    .collect::<Vec<_>>();
+  assert_eq!(classifications.len(), 3);
+  assert_eq!(classifications[0]["data"]["estimator"], "logit");
+  assert_eq!(
+    classifications[0]["data"]["sample_role"],
+    "retained_estimation_sample"
+  );
+  assert_eq!(classifications[0]["data"]["observation_count"], 237);
+  assert_eq!(classifications[0]["data"]["cutoff"], 0.5);
+  assert!(
+    classifications[0]["data"]["confusion"]["true_positive"]
+      .as_u64()
+      .is_some()
+  );
+  assert_eq!(
+    classifications[0]["data"]["metric_units"],
+    "percent_0_to_100"
+  );
+  assert_eq!(classifications[0]["data"]["uncertainty"], "not_computed");
+  assert_eq!(classifications[1]["data"]["cutoff"], 0.35);
+  assert_eq!(classifications[2]["data"]["cutoff"], 1.0);
+  assert_eq!(
+    classifications[2]["data"]["confusion"]["predicted_positive_count"],
+    0
+  );
+  assert_eq!(
+    classifications[2]["data"]["metrics_percent"]["positive_predictive_value"],
+    Value::Null
+  );
+
   let margins = rows
     .iter()
     .find(|row| row["result_type"] == "LogitMarginalEffectsResult")
@@ -135,6 +168,11 @@ fn binary_factor_fit_diagnostic_prediction_and_report_run_in_cli_json_and_text()
   assert!(text.contains("Logit average factor probability contrasts"));
   assert!(text.contains("region: North vs East"));
   assert!(text.contains("Hosmer-Lemeshow grouped goodness-of-fit test"));
+  assert!(text.contains("Logit retained-sample classification"));
+  assert!(text.contains("Positive predictive value"));
+  assert!(text.contains("cutoff = 0.35"));
+  assert!(text.contains("cutoff = 1"));
+  assert!(text.contains("Positive predictive value (TP / predicted positive)\tNA"));
   assert!(text.contains("Linear combination:"));
   assert!(text.contains("asymptotic standard-normal reference; residual df = NA"));
 }
