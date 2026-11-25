@@ -27,8 +27,13 @@ q>=18 and other endogenous/covariance dimensions remain unsupported.
 ## Progress
 
 - [x] Scope and verification plan recorded.
-- [ ] Open draft PR before substantive implementation.
-- [ ] Implement q=17 support and independent reference fixtures.
-- [ ] Update runtime/CLI coverage and specifications/examples.
-- [ ] Verify reference regeneration and affected checks.
+- [x] Open draft PR before substantive implementation (#503).
+- [x] Implement q=17 support and independent reference fixtures.
+- [x] Update runtime/CLI coverage and specifications/examples.
+- [x] Verify reference regeneration and affected checks.
 - [ ] Final PR review and merge.
+
+Verification note: the independent R reference and both generated designs match
+their checked-in CSVs byte-for-byte. The stats, execution, reporting, runtime
+and four affected CLI suites pass. Strict Clippy passes for the affected
+packages, root binary and changed CLI targets; formatting and diff checks pass.

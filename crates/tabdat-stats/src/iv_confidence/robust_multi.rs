@@ -7,7 +7,7 @@ use crate::{CovarianceType, InstrumentalVariablesProblem, StatsError};
 use super::{ArConfidenceInterval, ArConfidenceSetShape, interval, invalid, residualize};
 
 /// HC1/one-way CR1 AR confidence set for one endogenous regressor and two through
-/// sixteen excluded instruments. The joint-null degrees of freedom
+/// seventeen excluded instruments. The joint-null degrees of freedom
 /// equal the number of excluded instruments.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RobustMultipleInstrumentAndersonRubinConfidenceSet {
@@ -942,9 +942,9 @@ fn confidence_set_from_boundary(
   let normalized = polynomial_scale(polynomial, 1.0 / maximum);
   let (scaled, variable_scale) = scaled_polynomial(&normalized)?;
   let roots_in_scale = roots_on_unit_interval(&scaled)?;
-  if roots_in_scale.len() > 32 {
+  if roots_in_scale.len() > 34 {
     return Err(invalid(
-      "robust AR boundary has more than thirty-two real roots",
+      "robust AR boundary has more than thirty-four real roots",
     ));
   }
   let derivative = polynomial_derivative(&scaled);
@@ -1006,9 +1006,9 @@ fn confidence_set_from_boundary(
   if sign_to_left < 0 {
     intervals.push(interval(lower, None));
   }
-  if intervals.len() > 17 {
+  if intervals.len() > 18 {
     return Err(invalid(
-      "robust AR confidence set has more than seventeen components",
+      "robust AR confidence set has more than eighteen components",
     ));
   }
   for pair in intervals.windows(2) {
@@ -1237,10 +1237,9 @@ fn confidence_set_probes(intervals: &[ArConfidenceInterval], center: f64) -> (Ve
 }
 
 /// Invert the HC1/one-way CR1 joint AR Wald test for one endogenous regressor
-/// and two through sixteen excluded instruments. The confidence boundary has degree
-/// at most twice the instrument count; every real root is
-/// isolated by recursive derivative partitioning, without evaluating a finite
-/// beta grid.
+/// and two through seventeen excluded instruments. The confidence boundary has
+/// degree at most twice the instrument count; every real root is isolated by
+/// recursive derivative partitioning, without evaluating a finite beta grid.
 /// HC1 assumes independent rows. Cluster inference assumes independent groups
 /// with many groups and has no few-cluster guarantee.
 pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
@@ -1254,9 +1253,9 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     ));
   }
   let instrument_count = problem.instrument_names.len();
-  if problem.endogenous_names.len() != 1 || !(2..=16).contains(&instrument_count) {
+  if problem.endogenous_names.len() != 1 || !(2..=17).contains(&instrument_count) {
     return Err(invalid(
-      "robust multi-instrument AR confidence sets require one endogenous regressor and two to sixteen excluded instruments",
+      "robust multi-instrument AR confidence sets require one endogenous regressor and two to seventeen excluded instruments",
     ));
   }
   if !level.is_finite() || level <= 0.0 || level >= 100.0 {
@@ -2705,6 +2704,24 @@ mod tests {
       ],
       3e-8,
     );
+  }
+
+  #[test]
+  fn degree_thirty_four_boundary_supports_thirty_four_roots_and_eighteen_components() {
+    let roots = (-17..=-1)
+      .chain(1..=17)
+      .map(|root| root as f64 / 32.0)
+      .collect::<Vec<_>>();
+    let (shape, intervals) =
+      confidence_set_from_boundary(&polynomial_with_roots(&roots, -1.0), 0.0).unwrap();
+    assert_eq!(shape, ArConfidenceSetShape::Multiple);
+    let mut expected = vec![interval(None, Some(roots[0]))];
+    for index in (1..33).step_by(2) {
+      expected.push(interval(Some(roots[index]), Some(roots[index + 1])));
+    }
+    expected.push(interval(Some(*roots.last().unwrap()), None));
+    assert_eq!(expected.len(), 18);
+    assert_intervals_close_with_tolerance(&intervals, &expected, 3e-8);
   }
 
   #[test]
