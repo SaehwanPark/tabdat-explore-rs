@@ -1426,7 +1426,7 @@ impl Session {
               )
               .map(ExecutionResult::RobustAndersonRubinConfidenceSet)
               .map_err(|error| RuntimeError::EstatArFailed(error.to_string())),
-              2..=10 => tabdat_stats::robust_multiple_instrument_anderson_rubin_confidence_set(
+              2..=11 => tabdat_stats::robust_multiple_instrument_anderson_rubin_confidence_set(
                 &state.problem,
                 level,
                 covariance_type,
@@ -1434,7 +1434,7 @@ impl Session {
               .map(ExecutionResult::RobustMultipleInstrumentAndersonRubinConfidenceSet)
               .map_err(|error| RuntimeError::EstatArFailed(error.to_string())),
               _ => Err(RuntimeError::EstatArFailed(
-                "robust AR confidence sets currently support at most ten excluded instruments"
+                "robust AR confidence sets currently support at most eleven excluded instruments"
                   .into(),
               )),
             }
