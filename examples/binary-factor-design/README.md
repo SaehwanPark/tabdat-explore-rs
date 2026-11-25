@@ -49,6 +49,24 @@ probability contrasts, not causal effects or interaction effects. Missing or
 unseen factor levels, factors absent from the retained fit, weighted/multiway
 inference and simultaneous intervals remain outside this slice.
 
+## Planned continuous margins for mixed designs
+
+The next slice will allow bare `estat margins` after an additive factor design
+to report average marginal effects only for the original continuous predictors.
+For continuous predictor `j`, the estimand is
+`N^-1 sum_i f'(x_i' beta) beta_j`, evaluated over the retained sample with each
+factor and every other predictor held at its observed row value. Expanded factor
+columns are not reported as continuous derivatives. The full gradient includes
+all model coefficients and uses the retained model-based, robust or one-way
+cluster covariance for normal delta-method inference and a fixed 95% interval.
+
+Factor-only designs will fail clearly because they contain no continuous
+predictor to differentiate. Numeric `discrete(var)` remains limited to
+continuous-only designs. Interactions, weights, multiway clustering and
+simultaneous intervals remain unsupported. Independent Base R references will
+cover both links, baseline choices, `noconstant`, numeric/boolean factors and
+the supported covariance modes before this slice is marked installed.
+
 ## Independent validation
 
 `Rscript reference.R` uses R 4.6.2 and seed 84523 to generate
