@@ -108,6 +108,40 @@ impl Fixture {
     Self { root, parquet }
   }
 
+  fn eight_instrument_sample() -> Self {
+    let nonce = SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .expect("system clock should be after Unix epoch")
+      .as_nanos();
+    let fixture_id = NEXT_FIXTURE_ID.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!(
+      "tabdat-runtime-iv-{}-{}-{}",
+      std::process::id(),
+      nonce,
+      fixture_id
+    ));
+    fs::create_dir_all(&root).expect("fixture directory should be created");
+    let csv = root.join("eight-instrument.csv");
+    fs::write(
+      &csv,
+      include_str!("../../../examples/robust-ar/robust_ar_eight_ci_multiple_data.csv"),
+    )
+    .expect("eight-instrument fixture should be written");
+    let parquet = root.join("iv.parquet");
+    let connection = duckdb::Connection::open_in_memory().expect("fixture connection should open");
+    let csv_string = csv.to_string_lossy().replace('\'', "''");
+    let parquet_string = parquet.to_string_lossy().into_owned();
+    connection
+      .execute(
+        &format!(
+          "COPY (SELECT * FROM read_csv_auto('{csv_string}', header = true)) TO ? (FORMAT PARQUET)"
+        ),
+        [&parquet_string],
+      )
+      .expect("eight-instrument fixture should write to parquet");
+    Self { root, parquet }
+  }
+
   fn school_like_sample() -> Self {
     Self::new_with_sql(
       "WITH base AS (\
@@ -791,7 +825,7 @@ fn scalar_ar_confidence_sets_reuse_retained_sample_and_reject_endogenous_nuisanc
 }
 
 #[test]
-fn three_through_seven_instrument_robust_ar_sets_reuse_retained_fit_and_cap_dimensions() {
+fn three_through_six_instrument_robust_ar_sets_reuse_retained_fit_and_cap_nine_dimensions() {
   let fixture = Fixture::school_like_sample();
   for (option, expected_n) in [("robust", 58), ("cluster(group_id)", 57)] {
     let mut session = load(&fixture);
@@ -941,11 +975,11 @@ fn three_through_seven_instrument_robust_ar_sets_reuse_retained_fit_and_cap_dime
     assert_eq!(session.state(), changed);
   }
 
-  let seven_fixture = Fixture::seven_instrument_sample();
-  let mut session = load(&seven_fixture);
+  let eight_fixture = Fixture::eight_instrument_sample();
+  let mut session = load(&eight_fixture);
   session
     .execute(
-      parse_command("ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 row) robust").unwrap(),
+      parse_command("ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 row) robust").unwrap(),
     )
     .unwrap();
   let before = session.state();
@@ -954,13 +988,13 @@ fn three_through_seven_instrument_robust_ar_sets_reuse_retained_fit_and_cap_dime
       .execute(parse_command("estat ar, ci").unwrap())
       .unwrap_err()
       .to_string()
-      .contains("at most seven excluded instruments")
+      .contains("at most eight excluded instruments")
   );
   assert_eq!(session.state(), before);
 }
 
 #[test]
-fn seven_instrument_robust_ar_sets_reuse_retained_fit_and_reject_eight_instruments() {
+fn seven_instrument_robust_ar_sets_reuse_retained_fit() {
   let fixture = Fixture::seven_instrument_sample();
   for option in ["robust", "cluster(group)"] {
     let mut session = load(&fixture);
@@ -1000,22 +1034,49 @@ fn seven_instrument_robust_ar_sets_reuse_retained_fit_and_reject_eight_instrumen
     assert_eq!(session.execute(command).unwrap(), result);
     assert_eq!(session.state(), changed);
   }
+}
 
-  let mut session = load(&fixture);
-  session
-    .execute(
-      parse_command("ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 row) robust").unwrap(),
-    )
-    .unwrap();
-  let before = session.state();
-  assert!(
+#[test]
+fn eight_instrument_robust_ar_sets_reuse_retained_fit() {
+  let fixture = Fixture::eight_instrument_sample();
+  for option in ["robust", "cluster(group)"] {
+    let mut session = load(&fixture);
     session
-      .execute(parse_command("estat ar, ci").unwrap())
-      .unwrap_err()
-      .to_string()
-      .contains("at most seven excluded instruments")
-  );
-  assert_eq!(session.state(), before);
+      .execute(
+        parse_command(&format!(
+          "ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8) {option}"
+        ))
+        .unwrap(),
+      )
+      .unwrap();
+    let before = session.state();
+    let command = parse_command("estat ar, ci").unwrap();
+    let result = session.execute(command.clone()).unwrap();
+    let ExecutionResult::RobustMultipleInstrumentAndersonRubinConfidenceSet(set) = &result else {
+      panic!("expected robust eight-instrument AR confidence set");
+    };
+    assert_eq!(set.endogenous, "x");
+    assert_eq!(
+      set.excluded_instruments,
+      ["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8"]
+    );
+    assert_eq!(set.degrees_of_freedom, 8);
+    assert_eq!(set.observation_count, 192);
+    assert_eq!(set.auxiliary_parameter_count, 10);
+    assert_eq!(set.auxiliary_residual_df, 182);
+    assert_eq!(
+      set.cluster_group_count,
+      option.starts_with("cluster").then_some(24)
+    );
+    assert_eq!(session.state(), before);
+    session
+      .execute(parse_command("replace y = 999").unwrap())
+      .unwrap();
+    session.execute(parse_command("drop z1").unwrap()).unwrap();
+    let changed = session.state();
+    assert_eq!(session.execute(command).unwrap(), result);
+    assert_eq!(session.state(), changed);
+  }
 }
 
 #[test]

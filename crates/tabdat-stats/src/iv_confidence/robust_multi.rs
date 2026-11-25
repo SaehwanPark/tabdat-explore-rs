@@ -7,7 +7,7 @@ use crate::{CovarianceType, InstrumentalVariablesProblem, StatsError};
 use super::{ArConfidenceInterval, ArConfidenceSetShape, interval, invalid, residualize};
 
 /// HC1/one-way CR1 AR confidence set for one endogenous regressor and two through
-/// seven excluded instruments. The joint-null degrees of freedom
+/// eight excluded instruments. The joint-null degrees of freedom
 /// equal the number of excluded instruments.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RobustMultipleInstrumentAndersonRubinConfidenceSet {
@@ -643,6 +643,13 @@ fn near_zero(polynomial: &[f64], point: f64, value: f64) -> bool {
   scale == 0.0 || value.abs() <= 2e-12 * scale || value.abs() <= evaluation_floor
 }
 
+fn scaled_near_zero(polynomial: &[f64], point: f64, value: f64) -> bool {
+  let scale = polynomial_value_scale(polynomial, point);
+  // Compare against terms at this point. A unit-interval-wide floor can dwarf
+  // low-order values near zero after high-degree variable scaling and invent roots.
+  scale == 0.0 || value.abs() <= 2e-12 * scale
+}
+
 fn bisect_root(polynomial: &[f64], mut left: f64, mut right: f64) -> Result<f64, StatsError> {
   let mut left_value = polynomial_value(polynomial, left);
   let right_value = polynomial_value(polynomial, right);
@@ -732,7 +739,7 @@ fn roots_on_unit_interval_with_policy(
     if !value.is_finite() {
       return Err(invalid("robust AR polynomial evaluation is non-finite"));
     }
-    if value == 0.0 || (!strict_tangencies && near_zero(&polynomial, *point, value)) {
+    if value == 0.0 || (!strict_tangencies && scaled_near_zero(&polynomial, *point, value)) {
       roots.push(*point);
     } else if strict_tangencies
       && value.abs() <= 64.0 * f64::EPSILON * polynomial_residual_scale(&polynomial, *point)
@@ -753,12 +760,12 @@ fn roots_on_unit_interval_with_policy(
     let left_is_root = if strict_tangencies {
       left_value == 0.0
     } else {
-      near_zero(&polynomial, left, left_value)
+      scaled_near_zero(&polynomial, left, left_value)
     };
     let right_is_root = if strict_tangencies {
       right_value == 0.0
     } else {
-      near_zero(&polynomial, right, right_value)
+      scaled_near_zero(&polynomial, right, right_value)
     };
     if (left == -1.0 && left_is_root) || (right == 1.0 && right_is_root) {
       return Err(invalid(
@@ -834,9 +841,14 @@ fn scaled_polynomial(polynomial: &[f64]) -> Result<(Polynomial, f64), StatsError
     // Preserve it so callers can report singularity/repeated-root explicitly.
     return Ok((polynomial, 1.0));
   }
-  // Degree-fourteen boundaries need less expansion to keep low-order terms
-  // above the absolute evaluation floor; lower degrees retain the prior scale.
-  let margin = if degree == 14 { 1.25_f64 } else { 2.0_f64 };
+  // Degree-fourteen and degree-sixteen boundaries need less expansion to keep
+  // low-order terms above the absolute evaluation floor; lower degrees retain
+  // the prior scale because projected polynomials share this solver.
+  let margin = if matches!(degree, 14 | 16) {
+    1.25_f64
+  } else {
+    2.0_f64
+  };
   let log_scale = log_bound + margin.ln();
   if !log_scale.is_finite() || log_scale >= 700.0 {
     return Err(invalid(
@@ -935,9 +947,9 @@ fn confidence_set_from_boundary(
   let normalized = polynomial_scale(polynomial, 1.0 / maximum);
   let (scaled, variable_scale) = scaled_polynomial(&normalized)?;
   let roots_in_scale = roots_on_unit_interval(&scaled)?;
-  if roots_in_scale.len() > 14 {
+  if roots_in_scale.len() > 16 {
     return Err(invalid(
-      "robust AR boundary has more than fourteen real roots",
+      "robust AR boundary has more than sixteen real roots",
     ));
   }
   let derivative = polynomial_derivative(&scaled);
@@ -945,12 +957,12 @@ fn confidence_set_from_boundary(
   for root in &roots_in_scale {
     let value = polynomial_value(&scaled, *root);
     let slope = polynomial_value(&derivative, *root);
-    if !value.is_finite() || !near_zero(&scaled, *root, value) {
+    if !value.is_finite() || !scaled_near_zero(&scaled, *root, value) {
       return Err(invalid(
         "robust AR boundary root residual exceeds numerical tolerance",
       ));
     }
-    if !slope.is_finite() || near_zero(&derivative, *root, slope) {
+    if !slope.is_finite() || scaled_near_zero(&derivative, *root, slope) {
       return Err(invalid(
         "robust AR boundary has a repeated or numerically ambiguous real root",
       ));
@@ -962,7 +974,7 @@ fn confidence_set_from_boundary(
     roots.push(root);
   }
   let left_tail = polynomial_value(&scaled, -1.0);
-  if !left_tail.is_finite() || near_zero(&scaled, -1.0, left_tail) {
+  if !left_tail.is_finite() || scaled_near_zero(&scaled, -1.0, left_tail) {
     return Err(invalid("robust AR root bound is numerically ambiguous"));
   }
   let mut sign_to_left = sign(left_tail);
@@ -974,7 +986,7 @@ fn confidence_set_from_boundary(
   for pair in partitions.windows(2) {
     let probe = pair[0] + (pair[1] - pair[0]) / 2.0;
     let value = polynomial_value(&scaled, probe);
-    if !value.is_finite() || near_zero(&scaled, probe, value) {
+    if !value.is_finite() || scaled_near_zero(&scaled, probe, value) {
       return Err(invalid(
         "robust AR boundary sign is numerically ambiguous between roots",
       ));
@@ -999,9 +1011,9 @@ fn confidence_set_from_boundary(
   if sign_to_left < 0 {
     intervals.push(interval(lower, None));
   }
-  if intervals.len() > 8 {
+  if intervals.len() > 9 {
     return Err(invalid(
-      "robust AR confidence set has more than eight components",
+      "robust AR confidence set has more than nine components",
     ));
   }
   for pair in intervals.windows(2) {
@@ -1230,7 +1242,7 @@ fn confidence_set_probes(intervals: &[ArConfidenceInterval], center: f64) -> (Ve
 }
 
 /// Invert the HC1/one-way CR1 joint AR Wald test for one endogenous regressor
-/// and two through seven excluded instruments. The confidence boundary has degree
+/// and two through eight excluded instruments. The confidence boundary has degree
 /// at most twice the instrument count; every real root is
 /// isolated by recursive derivative partitioning, without evaluating a finite
 /// beta grid.
@@ -1247,9 +1259,9 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     ));
   }
   let instrument_count = problem.instrument_names.len();
-  if problem.endogenous_names.len() != 1 || !(2..=7).contains(&instrument_count) {
+  if problem.endogenous_names.len() != 1 || !(2..=8).contains(&instrument_count) {
     return Err(invalid(
-      "robust multi-instrument AR confidence sets require one endogenous regressor and two to seven excluded instruments",
+      "robust multi-instrument AR confidence sets require one endogenous regressor and two to eight excluded instruments",
     ));
   }
   if !level.is_finite() || level <= 0.0 || level >= 100.0 {
@@ -2417,6 +2429,30 @@ mod tests {
         interval(Some(3.0), Some(4.0)),
         interval(Some(5.0), Some(6.0)),
         interval(Some(7.0), None),
+      ],
+    );
+  }
+
+  #[test]
+  fn degree_sixteen_boundary_supports_sixteen_roots_and_nine_components() {
+    let roots = [
+      -8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0,
+    ];
+    let (shape, intervals) =
+      confidence_set_from_boundary(&polynomial_with_roots(&roots, -1.0), 0.0).unwrap();
+    assert_eq!(shape, ArConfidenceSetShape::Multiple);
+    assert_intervals_close(
+      &intervals,
+      &[
+        interval(None, Some(-8.0)),
+        interval(Some(-7.0), Some(-6.0)),
+        interval(Some(-5.0), Some(-4.0)),
+        interval(Some(-3.0), Some(-2.0)),
+        interval(Some(-1.0), Some(1.0)),
+        interval(Some(2.0), Some(3.0)),
+        interval(Some(4.0), Some(5.0)),
+        interval(Some(6.0), Some(7.0)),
+        interval(Some(8.0), None),
       ],
     );
   }

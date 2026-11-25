@@ -1473,7 +1473,7 @@ panel likelihood is supplied.
   illustration or a schooling-only interval from the three-endogenous design.
 - **HC1/CR1 scalar AR method evidence (not a textbook replication):** the
   [`robust-ar` workflow](../../examples/robust-ar/README.md) inverts the robust
-  auxiliary Wald test for exactly one endogenous regressor and one to seven
+  auxiliary Wald test for exactly one endogenous regressor and one to eight
   excluded instruments, with included exogenous coefficients unrestricted.
   The deterministic 80-row design retains 78 rows under HC1 (two missing outcome/
   instrument rows) and 77 under CR1 (one additional missing group); the clustered
@@ -1485,8 +1485,8 @@ panel likelihood is supplied.
   endpoint membership and current-data/retained-fit behavior through both CLI
   modes. HC1 requires independent rows; CR1 requires independent groups and many-
   group asymptotics, with no finite-sample or few-cluster guarantee. The scalar
-  one-instrument path and the two-to-seven-instrument path use distinct result
-  types; the latter isolates boundaries up to degree fourteen through derivative
+  one-instrument path and the two-to-eight-instrument path use distinct result
+  types; the latter isolates boundaries up to degree sixteen through derivative
   roots without a finite grid.
   Independent base R `lm.fit`/HC1/CR1 references validate the 20-row two-instrument
   fixture: K_aux=4, residual DF=16, 95% critical chi-square(2)=5.99146454710798,
@@ -1504,7 +1504,7 @@ panel likelihood is supplied.
   set, and a CR1 design with six boundary roots and four accepted components.
   Tests compare all finite endpoints and direct auxiliary-Wald probes, verify
   the six-root degree-six boundary, and cover rescaling, retained fit, JSON/text,
-  rank, and the six-instrument support. The four-instrument Base R 4.6.2
+  rank, and support through eight instruments. The four-instrument Base R 4.6.2
   `lm.fit`/HC1/CR1 reference uses 48 rows, K_aux=6, residual DF=42 and the
   95% chi-square(4) critical value 9.48772903678115. Corrections are
   1.14285714285714 / 1.22077922077922 for HC1 / CR1 with 12 groups. Cases
@@ -1529,7 +1529,7 @@ panel likelihood is supplied.
   [0.848220516944529, 1.52707474910469]. Rust compares endpoints and direct
   Wald probes within 3e-8, checks the degree-twelve boundary, twelve-root/
   seven-component polynomial, rescaling, retained state, text/JSON and rejection
-  above seven instruments. Eight or more excluded instruments, multiple endogenous
+  above eight instruments. Nine or more excluded instruments, multiple endogenous
   regressors outside the bounded
   projected
   two-by-two slice, robust projection outside that slice, HAC/survey covariance
@@ -1545,8 +1545,20 @@ panel likelihood is supplied.
   [1.11163705575731, 1.51047538844265] /
   [1.17198974024994, 1.53810157793966]. The boundary has degree fourteen;
   Rust compares endpoints and direct Wald probes within 3e-8, checks rescaling,
-  retained fit and state, and text/JSON output. Eight or more excluded
-  instruments remain unsupported.
+  retained fit and state, and text/JSON output. The eight-instrument reference
+  below extends support through q=8; q9+ remains unsupported.
+- **Eight-instrument HC1/CR1 scalar AR method evidence (not a textbook replication):**
+  the independent Base R 4.6.2 references use two 192-row designs, one included
+  control, K_aux=10 and residual DF=182. The 95% critical chi-square(8) value is
+  15.5073130558655; corrections are 1.05494505494505 for HC1 and
+  1.09507883420927 for CR1 with 24 groups. The primary HC1/CR1 sets are
+  [1.0887754541176, 1.40883145836894] / [1.22474047234525, 1.32397269272157];
+  the secondary sets are [1.11427595691973, 1.40051392176535] /
+  [1.01318139921973, 1.37571882762637]. Rust compares all endpoints and six
+  direct Wald probes per design/covariance within 3e-8, along with corrections,
+  metadata, rescaling, retained state and text/JSON output. The degree-sixteen
+  solver is tested with sixteen real roots and nine accepted components. Nine or
+  more excluded instruments remain unsupported.
 - **Bounded projected scalar AR method:** after a nonrobust multi-endogenous 2SLS
   fit, `estat ar, ci coefficient(name) [level(95)]` profiles all other endogenous
   coefficients out of the homoskedastic joint AR region and reports the scalar
