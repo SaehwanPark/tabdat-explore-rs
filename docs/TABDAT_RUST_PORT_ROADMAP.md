@@ -136,16 +136,21 @@ example inventories are authoritative for which bounded slices already exist.
 
 ## Next bounded actions
 
-Select one of these outcomes with an exact ledger-defined contract, then add its
-evidence beside the workflow. Keep the choice responsive to correctness defects
-and demonstrated dependencies rather than treating the list as phase gates.
+The Table 20.6 discrepancy audit is complete as a bounded investigation. The
+official October 2005 program and the year-2-only NB2 fit did not explain the
+printed row; PR [#478](https://github.com/SaehwanPark/tabdat-explore-rs/pull/478)
+records the evidence and keeps the conflict explicit in the count ledger. Resume
+that investigation only if new primary-source evidence becomes available; do not
+tune estimates or tolerances.
 
-1. Investigate the remaining printed Table 20.6 NB2 frequency discrepancy using
-   the pinned author program, independent count-law calculations and the already
-   audited native fit. Preserve both the printed row and executable result until
-   evidence identifies a reproducible explanation; do not tune estimates or
-   tolerances to force agreement. Record whether the source conflict is resolved
-   or remains an explicit coverage gap in the [count ledger](reference/microeconometrics-coverage.md).
+1. Add pointwise delta-method standard errors for current-row Poisson/NB2 PMF
+   predictions using `predict target, pmf(k) se` (and the existing cutoff-variable
+   form). Use the covariance selected by the retained fit, including the full
+   joint beta/lnalpha covariance for NB2; treat current predictors and fixed
+   offsets/exposure as known. Keep existing point predictions unchanged. Do not
+   imply future-count uncertainty, confidence intervals, or CDF standard errors.
+   Validate the analytic gradients against independent finite differences and
+   cover missing rows, selected covariance modes, and atomic failure behavior.
 
 Do not turn the entire textbook inventory into a prerequisite for one bounded
 analysis. Preserve the assumptions and unresolved source differences in the ledger.
