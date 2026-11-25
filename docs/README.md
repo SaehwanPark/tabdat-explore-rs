@@ -7,6 +7,7 @@
 - [CLI, scripts and interactive editing](guides/cli-and-editor.md)
 - [Command semantics and CLI-v1 result contracts](reference/command-results.md)
 - [Reusable panel `xtsum` command contract](commands/xtsum.md)
+- [Explicit-key panel `xtdes` command contract](commands/xtdes.md)
 - [Current outcome roadmap](TABDAT_RUST_PORT_ROADMAP.md)
 - [Graduate microeconometrics coverage and textbook replication ledger](reference/microeconometrics-coverage.md)
 - [Contributor workflow and local checks](../CONTRIBUTING.md)

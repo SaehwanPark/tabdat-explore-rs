@@ -140,12 +140,10 @@ Select one of these outcomes with an exact ledger-defined contract, then add its
 evidence beside the workflow. Keep the choice responsive to correctness defects
 and demonstrated dependencies rather than treating the list as phase gates.
 
-1. Advance one required econometric analysis or bounded panel diagnostic beyond
-   the reusable descriptive `xtsum`. The
-   [Chapter 21 workflows](../examples/mma21p1panel/README.md) provide explicit
-   panel samples, designs and open comparison/diagnostic choices, while the
-   [coverage ledger](reference/microeconometrics-coverage.md) records the next
-   evidence needed for IV, binary, quantile and panel slices.
+1. Deliver the [bounded explicit-key `xtdes`](commands/xtdes.md) panel-structure
+   diagnostic after `xtsum`. Validate its general panel/time-key behavior against
+   Base R and replace the Chapter 21 source-specific structure facts only after
+   the complete source audit passes; this does not add persistent panel state.
 2. Advance the next bounded MMA count requirement from its defined source and
    sample. The [native count workflows](../examples/mma20p1count/README.md)
    identify fixed-offset, clustered/person, NB2 and remaining Table 20.6 work;
