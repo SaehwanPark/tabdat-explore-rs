@@ -51,3 +51,32 @@ fn report_and_spatial_options_are_syntax_only() {
     ));
   }
 }
+
+#[test]
+fn grouped_binary_gof_parses_only_the_bounded_quantile_option() {
+  assert_eq!(
+    parse_command("estat gof, group(10)").unwrap(),
+    Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::BinaryGoodnessOfFit { group_count: 10 },
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("estat gof").unwrap(),
+    Command::Estat {
+      command: EstatCommand {
+        subcommand: EstatSubcommand::Gof,
+      },
+    }
+  );
+  for input in [
+    "estat gof, group(2)",
+    "estat gof, group(21)",
+    "estat gof, group(10.5)",
+    "estat gof, table",
+    "estat gof, group(10) table",
+  ] {
+    assert!(parse_command(input).is_err(), "accepted {input:?}");
+  }
+}

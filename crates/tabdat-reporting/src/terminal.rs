@@ -3018,6 +3018,45 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       }
       text
     }
+    ExecutionResult::BinaryGoodnessOfFit(result) => {
+      let model = match result.model {
+        tabdat_stats::BinaryModel::Logit => "Logit",
+        tabdat_stats::BinaryModel::Probit => "Probit",
+      };
+      let observation_count = result
+        .test
+        .groups
+        .iter()
+        .map(|group| group.observation_count)
+        .sum::<usize>();
+      let mut text = format!(
+        "{model} Hosmer-Lemeshow grouped goodness-of-fit test\nOutcome: {}; retained estimation N = {observation_count}\nRequested groups = {}; actual groups = {}\nHosmer-Lemeshow chi-square({}) = {}; upper-tail p-value = {}\nGroup\tProbability upper bound\tObserved events\tExpected events\tObserved nonevents\tExpected nonevents\tN\n",
+        result.outcome.escape_debug(),
+        result.test.requested_group_count,
+        result.test.group_count,
+        result.test.degrees_of_freedom,
+        result.test.statistic,
+        result.test.p_value,
+      );
+      for group in &result.test.groups {
+        writeln!(
+          text,
+          "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+          group.group,
+          group.probability_upper_bound,
+          group.observed_events,
+          group.expected_events,
+          group.observed_nonevents,
+          group.expected_nonevents,
+          group.observation_count,
+        )
+        .unwrap();
+      }
+      text.push_str(
+        "This calibration test uses the retained model-based independent-Bernoulli fit. Ties stay together; results can change with the requested group count, and sparse expected cells can make the chi-square approximation unreliable.\n",
+      );
+      text
+    }
     ExecutionResult::Nbreg(result) => nb2_report(result),
     ExecutionResult::NbregMarginalEffects(result) => format!(
       "NB2 continuous average partial effects; retained estimation N = {}\nPredictor-column derivatives beta_j*mean(mu), not discrete changes or original-variable chain rules.\nDelta-method uncertainty conditional on observed X; {}, asymptotic normal 95% intervals. Uses beta block of FULL joint beta/lnalpha covariance.\n{}{}{}{}",

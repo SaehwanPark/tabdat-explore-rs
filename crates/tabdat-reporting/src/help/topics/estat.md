@@ -14,6 +14,7 @@ How to invoke:
 `estat countprob [, max(10)]` (after Poisson or NB2)
 `estat countgof [, max(10)]` (after a model-based unclustered or one-way
 clustered NB2 fit)
+`estat gof, group(10)` (after an unweighted model-based logit or probit fit)
 
 What it does:
 For `vif`, report variance-inflation factors from the retained linear-regression predictor design, in predictor order; an active dataset and prior successful bounded `regress` fit are required. The IV forms below provide Anderson–Rubin coefficient inference, Sargan overidentification testing, and joint Wu–Hausman endogeneity testing from a retained 2SLS design.
@@ -33,7 +34,7 @@ Notes:
 - A supplied `mean_vif` aggregate row follows predictor rows when values are available. Labels are not unique identifiers; a predictor can itself be called `mean_vif`. Undefined factors appear as missing cells; the aggregate is absent if no values are available. An auxiliary-fit failure is an execution error.
 - A lone predictor without an intercept uses the zero-column auxiliary model: its fitted values are zero, so SSR equals uncentered TSS and VIF/mean-VIF are 1 for a nonzero finite predictor. The library returns an undefined factor for an all-zero predictor; ordinary regression rank and zero-parameter validation are unchanged. This corrects the former diagnostic failure, allowing batches/scripts to continue normally (MIG-0011).
 - Terminal output remains the ordered `Variable`/`VIF` table. CLI-v1 JSON returns `result_type: "TableResult"`, `data.headers` and ordered `data.rows`. Cells use the existing scalar policy: unavailable/non-finite numbers become `null`, finite zero remains numeric. JSON null does not distinguish unavailable values from infinity. No VIF-specific result type or extra model arrays are included; parent-fit metadata is in the preceding `RegressionResult`.
-- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, classical panel `hausman`, `endogenous`, binary/count/Tobit/truncated-Gaussian continuous `margins`, binary numeric-0/1 discrete `margins`, the Poisson NB2-direction score test `overdispersion`, descriptive count `countprob`, and the model-based NB2 grouped distribution test `countgof` (described below). Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
+- Other `estat` forms may parse, but are not installed in this bounded runtime or admitted by CLI-v1 JSON. The supported forms are `vif`, `ar`, `overid`, classical panel `hausman`, `endogenous`, binary/count/Tobit/truncated-Gaussian continuous `margins`, binary numeric-0/1 discrete `margins`, grouped binary `gof`, the Poisson NB2-direction score test `overdispersion`, descriptive count `countprob`, and the model-based NB2 grouped distribution test `countgof` (described below). Bare `estat gof` remains outside this slice, as do other binary specification tests. Generic table serialization alone does not admit additional commands. Direct `sql` SELECT/WITH queries are independently admitted as `TableResult`; `sql ... into name` returns `SqlCreateResult`, and `use name` returns `ActivateResult`. See `help sql` for supported forms and native validation/state limits.
 
 ## Classical panel FE–RE Hausman comparison
 
@@ -158,6 +159,36 @@ the retained NB2 sample and does not refit or mutate model/data state. See
 `examples/mma20p1count/count_gof.md` for the independent Base R reference and
 source comparison, and `examples/mma20p1count/cluster_count_gof.md` for the
 cluster influence-function derivation and independent reference.
+
+## Grouped binary goodness of fit
+
+After an unweighted, model-based `logit` or `probit` fit, run
+`estat gof, group(10)`. The requested group count must be an integer from 3 to
+20. The diagnostic uses the original retained response and fitted
+probabilities; it does not rescan current data or refit the model. Ordered
+fitted probabilities are divided at approximately equal-size quantiles. Rows
+with exactly tied probabilities stay together, so the reported actual number
+of nonempty groups can be smaller than requested. At least three actual groups
+and strictly positive expected event and non-event counts in every group are
+required.
+
+For each group, the report gives the inclusive upper probability boundary,
+observed and expected event/non-event counts, and N. The Hosmer–Lemeshow
+statistic is the grouped Bernoulli Pearson statistic
+`sum((observed_events - expected_events)^2 /
+(expected_events * expected_nonevents / group_N))`. Estimation-sample inference
+uses asymptotic chi-square with `actual_groups - 2` degrees of freedom and its
+upper-tail p-value. CLI-v1 JSON returns `BinaryGoodnessOfFitResult` with the
+ordered group details, retained sample, method, reference and assumptions.
+
+Robust, clustered and weighted fits are rejected. Their covariance choices do
+not justify the independent-Bernoulli chi-square calibration. This grouped
+calibration diagnostic is sensitive to the requested group count and can be
+unreliable when groups have sparse expected cells. It does not supply the
+default Pearson test across covariate patterns or any other binary
+specification test. See
+[`examples/binary-hosmer-lemeshow/README.md`](../../../../../examples/binary-hosmer-lemeshow/README.md)
+for the independent Base R comparison and edge-case evidence.
 
 ## Binary continuous average partial effects
 

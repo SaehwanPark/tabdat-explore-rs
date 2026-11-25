@@ -965,8 +965,12 @@ fn get_command_schema(
           name: "noopen".to_string(),
           required: false,
         },
+        OptionDescriptor {
+          name: "group".to_string(),
+          required: false,
+        },
       ],
-      syntax: "estat vif | estat ar, null(b1 b2 ...) | estat ar, ci [level(95)] | estat overid | estat endogenous | estat margins | estat margins, discrete(variable) | estat overdispersion | estat countprob [, max(10)] | estat countgof [, max(10)]".to_string(),
+      syntax: "estat vif | estat ar, null(b1 b2 ...) | estat ar, ci [level(95)] | estat overid | estat endogenous | estat margins | estat margins, discrete(variable) | estat overdispersion | estat countprob [, max(10)] | estat countgof [, max(10)] | estat gof, group(10)".to_string(),
     }),
     "estimates" => Ok(CommandSchemaResult {
       arguments: vec![

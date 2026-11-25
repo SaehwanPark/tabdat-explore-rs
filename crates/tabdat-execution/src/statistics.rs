@@ -1256,6 +1256,30 @@ impl Session {
     if let EstatSubcommand::CountGoodnessOfFit { tail_from } = command.subcommand {
       return self.execute_nb2_count_goodness_of_fit(tail_from);
     }
+    if let EstatSubcommand::BinaryGoodnessOfFit { group_count } = &command.subcommand {
+      let (problem, result) = match &self.estimation {
+        Some(EstimationState::Logit(state)) | Some(EstimationState::Probit(state)) => {
+          (&state.problem, &state.result)
+        }
+        _ => return Err(RuntimeError::EstatGofRequiresPriorBinary),
+      };
+      if result.robust || result.cluster.is_some() {
+        return Err(RuntimeError::EstatGofRequiresModelBasedBinary);
+      }
+      let test = tabdat_stats::binary_hosmer_lemeshow_test(problem, result, *group_count).map_err(
+        |error| RuntimeError::EstatGofFailed {
+          message: error.to_string(),
+        },
+      )?;
+      return Ok(ExecutionResult::BinaryGoodnessOfFit(Box::new(
+        BinaryGoodnessOfFitResult {
+          model: result.model,
+          outcome: problem.outcome.clone(),
+          sample: problem.sample.clone(),
+          test,
+        },
+      )));
+    }
     if matches!(
       &command.subcommand,
       EstatSubcommand::AndersonRubin { .. }

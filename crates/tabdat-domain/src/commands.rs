@@ -1497,6 +1497,10 @@ pub enum EstatSubcommand {
   CountGoodnessOfFit {
     tail_from: usize,
   },
+  /// Quantile-grouped Hosmer–Lemeshow test after a binary logit or probit fit.
+  BinaryGoodnessOfFit {
+    group_count: usize,
+  },
   Gof,
   Did,
   Drdid,

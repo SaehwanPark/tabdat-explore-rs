@@ -7153,6 +7153,52 @@ fn parse_estat_command(body: &str) -> Result<Command, ParseError> {
       },
     });
   }
+  if !argument.backtick_quoted
+    && normalized_subcommand == "gof"
+    && let Some(comma) = first_unquoted_comma(body)
+  {
+    let tokens = tokenize_use_options(&body[comma + 1..])?;
+    match tokens.as_slice() {
+      [
+        UseToken {
+          kind: UseTokenKind::Identifier { quoted: false },
+          text: name,
+          ..
+        },
+        UseToken {
+          kind: UseTokenKind::Symbol,
+          text: open,
+          ..
+        },
+        UseToken {
+          kind: UseTokenKind::Number,
+          text: value,
+          ..
+        },
+        UseToken {
+          kind: UseTokenKind::Symbol,
+          text: close,
+          ..
+        },
+      ] if name == "group" && open == "(" && close == ")" => {
+        let group_count = value
+          .parse::<usize>()
+          .ok()
+          .filter(|n| (3..=20).contains(n))
+          .ok_or_else(|| ParseError::new("estat gof group must be an integer from 3 to 20"))?;
+        return Ok(Command::Estat {
+          command: EstatCommand {
+            subcommand: EstatSubcommand::BinaryGoodnessOfFit { group_count },
+          },
+        });
+      }
+      _ => {
+        return Err(ParseError::new(
+          "estat gof supports only group(#), an integer from 3 to 20",
+        ));
+      }
+    }
+  }
   if !argument.backtick_quoted && normalized_subcommand == "ar" {
     let options = first_unquoted_comma(body)
       .map(|index| parse_use_options(&body[index + 1..]))

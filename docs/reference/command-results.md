@@ -1155,6 +1155,33 @@ the source discrepancy explicit. The author program's sample statistic also
 differs by about `0.000312` from an independently polished Base R reference;
 that difference remains unresolved and no tolerance was widened.
 
+## Grouped binary goodness-of-fit reports
+
+`estat gof, group(#)` is read-only after a retained unweighted, model-based
+binary logit or probit fit. The integer request range is 3..20. It groups the
+retained response and fitted probabilities by approximate probability
+quantiles, keeping exact fitted-probability ties together. Ties can reduce the
+actual group count; fewer than three actual groups or a zero expected outcome
+cell is an error. Robust and clustered fits are rejected. Bare `estat gof` and
+its distinct covariate-pattern Pearson test remain outside this slice.
+
+CLI-v1 returns `BinaryGoodnessOfFitResult` with `estimator`,
+`method: "hosmer_lemeshow_quantile_group_calibration"`, `outcome`,
+`observation_count`, the retained `sample`, `sample_role`, covariance and
+reference metadata, `requested_group_count`, actual `group_count`,
+`degrees_of_freedom`, `statistic`, `p_value`, and ordered `groups`. Each group
+contains its inclusive probability upper bound, observation count, observed
+events/non-events and expected events/non-events. The estimation-sample
+reference is asymptotic chi-square with `actual_group_count - 2` degrees of
+freedom. The test assumes independent Bernoulli observations and a correctly
+specified binary-response model; results depend on the requested group count,
+and sparse expected cells can make the chi-square approximation unreliable.
+It does not test conditional dependence.
+
+The synthetic four-pattern, 160-row fixture leaves 159 complete observations.
+Base R 4.6.2 independently validates the tied-group logit/probit paths; see the
+[reference script and numerical evidence](../../examples/binary-hosmer-lemeshow/README.md).
+
 ## Summaries and percentiles
 
 A summary uses `schema_version: 1`,
