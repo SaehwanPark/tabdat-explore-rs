@@ -220,21 +220,25 @@ row qualifiers, weights, ROC curves or cutpoint selection. JSON returns
 ## Binary continuous average partial effects
 
 After a successful model-based, robust or one-way clustered binary fit (`logit`
-or `probit`, optionally `, robust` or `, cluster(group)`), `estat margins` reports, for each
-predictor column excluding the intercept, the family-specific average derivative:
+or `probit`, optionally `, robust` or `, cluster(group)`), `estat margins` reports
+the family-specific average derivative for each original continuous variable
+listed directly or used in a continuous interaction:
 
-- logit: `beta_j*mean(p*(1-p))`
-- probit: `beta_j*mean(phi(beta_0 + beta'x))`
+- logit: `mean(p*(1-p) * d eta/dx)`
+- probit: `mean(phi(eta) * d eta/dx)`
 
 The average uses the **retained complete-finite estimation design**, not current
 rows. Current-data edits do not rescan, refit or change the estimand.
-Only original continuous predictor terms are reported; expanded factor dummy
-columns are not treated as continuous slopes. In additive factor designs, each
-continuous effect keeps every retained row's factor levels and other covariates
-at their observed values. The full gradient includes the factor coefficients,
-so their uncertainty contributes through the selected covariance. Factor-only
-designs have no continuous effect and fail clearly. Use `factor(variable)` below
-for retained-factor probability contrasts and their uncertainty.
+Expanded factor dummy columns are not treated as continuous slopes. For
+`c.x#c.z`, the product contributes one design column and no automatic main
+effects; its contribution to `d eta/dx` is `beta_xz*z`, and its contribution to
+`d eta/dz` is `beta_xz*x`. If either main effect is also listed, it contributes
+its coefficient to the corresponding derivative. Factor levels and other
+covariates stay at their observed retained-row values. The full gradient
+includes all fitted coefficients, including factor and interaction coefficients.
+Factor-only designs have no continuous effect and fail clearly. Use
+`factor(variable)` below for retained-factor probability contrasts and their
+uncertainty.
 
 Uncertainty is the full delta method using the fit's selected covariance:
 model-based (logit: inverse Fisher information; probit: inverse observed
@@ -247,9 +251,9 @@ X**. It is not uncertainty in the covariate distribution. Output includes normal
 z/two-sided p and fixed 95% intervals; CLI-v1 returns
 `LogitMarginalEffectsResult` or `ProbitMarginalEffectsResult` by fitted family.
 
-These are continuous predictor-column derivatives, not discrete changes or
-original-variable interaction chain rules. In particular, a generated log-price
-column gives a derivative per log-price unit, not per original price unit. No
+These are original-variable continuous derivatives, not discrete changes. In
+particular, a generated log-price column gives a derivative per log-price unit,
+not per original price unit. No
 multiway-cluster/weighted effects or level option are installed. The one supported
 numeric binary contrast is described below. Additional model-family margins are
 limited to the Poisson/NB2 continuous effects below. The retained fit
@@ -259,12 +263,12 @@ estimation attempt; see `help logit`, `help probit`, `help poisson` and `help pr
 
 ## Binary discrete probability changes
 
-After logit or probit, run `estat margins, discrete(variable)` for one predictor
-whose values in the retained sample are exactly 0 and 1, with both levels
-present. The selected column must belong to an original continuous term, so the
-command also works when the model contains additive factor terms. Expanded
-factor dummy columns are not selectable; use `factor(variable)` for a retained
-categorical predictor.
+After logit or probit without continuous interactions, run
+`estat margins, discrete(variable)` for one predictor whose values in the
+retained sample are exactly 0 and 1, with both levels present. The selected
+column must belong to an original continuous term, so the command also works
+when the model contains additive factor terms. Expanded factor dummy columns are not selectable;
+use `factor(variable)` for a retained categorical predictor.
 It reports the average fitted probability difference after setting that
 predictor to 1 versus 0 for every retained row; all other predictor values stay
 at their observed row values. The result is a finite change, not a continuous
@@ -277,9 +281,10 @@ a fixed 95% interval. Cluster inference assumes independent groups; the G/(G-1)
 correction does not guarantee reliable few-cluster inference. Current data edits
 do not alter the result. The command rejects an unknown predictor, a factor
 dummy, a continuous predictor with values other than 0/1, or a retained sample
-missing either level. It does not add factor-variable encoding for the selected
-contrast, multiple contrasts, interactions, weights, multilevel changes, or a
-causal interpretation. CLI-v1 JSON returns
+missing either level. It rejects models with continuous interactions because
+changing one input also changes its product column. It does not add
+factor-variable encoding for the selected contrast, multiple contrasts, factor
+interactions, weights, multilevel changes, or a causal interpretation. CLI-v1 JSON returns
 `BinaryDiscreteChangeResult` with the estimand, predictor, covariance and sample
 count. See `examples/binary-discrete-change/README.md` for the independent Base R
 reference and runnable logit/probit scripts.

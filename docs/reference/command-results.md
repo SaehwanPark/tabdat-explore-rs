@@ -435,20 +435,25 @@ appends linear indices on **current** predictor rows, without the outcome. Bare
 or an unrepresentable index yield NULL. The canonical staging path preserves
 order, labels, row count and fit; target/type/required-column failures do not publish
 an output column. `PredictionResult` retains its existing metadata-only shape.
-Use head/tail/export to inspect or persist values. Residuals, intervals and other
-prediction forms are not installed after logit; linear prediction semantics stay
-unchanged.
+Use head/tail/export to inspect or persist values. `predict name, pr se` appends
+current-row probability delta-method standard errors; `predict name, pr interval
+[level(95)]` appends probabilities and transformed latent-index confidence
+bounds. Residuals and other prediction forms are not installed after logit. See
+`help predict` for the covariance and interval contract.
 
 `estat margins` returns `LogitMarginalEffectsResult` with `estimator: "logit"`,
-`effect: "average_continuous_predictor_column_derivative"`,
+`effect: "average_continuous_predictor_column_derivative"` for additive
+designs, and `effect: "average_original_continuous_variable_derivative"` when
+the design includes continuous products,
 `sample: "retained_estimation_design"`, N and ordered `effects` (the same normal
-inference fields as coefficients, excluding the intercept). It averages
-`beta_j*p*(1-p)` over the retained design. `uncertainty:
+inference fields as coefficients). It averages
+`p_i*(1-p_i) * d eta_i/dx` over the retained design. `uncertainty:
 "conditional_on_observed_design_delta_method"` includes the full intercept/slopes'
 covariance through the delta gradient, **not** sampling uncertainty in the
 covariate distribution. Current-data changes do not redefine the estimand or
-rescan/refit the model. These are not discrete changes or interaction chain
-rules. `lincom` uses the retained binary covariance for affine combinations on
+rescan/refit the model. For `c.x#c.z`, source-variable derivatives apply the
+product rule and retain the interaction coefficient in the full delta gradient.
+These derivatives are not discrete changes. `lincom` uses the retained binary covariance for affine combinations on
 the linear index, with normal z inference and no residual degrees of freedom;
 it does not produce odds ratios or probability effects. `test` uses the binary
 Wald chi-square contract above rather than linear Student-t/F inference.
@@ -458,12 +463,15 @@ predictor terms; expanded factor dummy columns are not reported as derivatives.
 Each continuous effect is evaluated at every retained row with that row's
 factor levels and other covariates unchanged. The full gradient still includes
 all factor coefficients and their covariance. A factor-only design fails
-because it has no continuous predictor. Interactions remain unsupported.
+because it has no continuous predictor. Continuous interactions report effects
+for original source variables; discrete changes reject interaction models.
+Factor interactions and `##` expansion remain unsupported.
 
 `estat margins, discrete(variable)` after either family returns
 `BinaryDiscreteChangeResult`. It accepts one retained original continuous
 predictor with exactly both 0 and 1 represented, including in an additive
-factor design. Expanded factor dummy columns are not selectable. For each
+factor design. Interaction models are rejected because changing one input
+changes its product term. Expanded factor dummy columns are not selectable. For each
 retained row it changes that column to 0 and 1, leaves all other columns at
 their row values, and averages
 `Pr(y=1|X, variable=1) - Pr(y=1|X, variable=0)`. JSON identifies this as
@@ -510,8 +518,11 @@ penultimate-iterate information; their covariance label and null LR-inference
 fields follow the robust contract above. CLI-v1
 returns `BinaryProbitResult` (`estimator: "probit"`, same field layout, same
 convergence fields) and `ProbitMarginalEffectsResult` after `estat margins`
-(`estimator: "probit"`; margins average `beta_j*phi(beta_0 + beta'x)` over the
-retained design). `predict ... , pr` computes probabilities with the same
+(`estimator: "probit"`; margins average `phi(eta_i) * d eta_i/dx` over the
+retained design, using `effect: "average_continuous_predictor_column_derivative"`
+for additive designs and `effect: "average_original_continuous_variable_derivative"`
+when the design includes continuous products).
+`predict ... , pr` computes probabilities with the same
 registered `tabdat_gauss_phi` Gaussian function the fit used, keeping SQL
 probabilities bit-identical to engine probabilities under the same index; `, xb`
 appends the finite linear index, and unsupported predict forms fail with the
@@ -522,8 +533,8 @@ probit wording. Continuous `estat margins` returns
 `estat margins` keeps the established prior-logit message.
 
 See the [exact fishing-mode contract and R reference](../../examples/mma14p1binary/README.md).
-Weighted/survey/multiway binary inference and interactions remain required work
-where applicable. The bounded Figure14.1 SVG
+Weighted/survey/multiway binary inference, factor interactions and broader
+interaction semantics remain required work where applicable. The bounded Figure14.1 SVG
 workflow below does not complete broader illustration graphics.
 
 ## Bounded Heckman two-step selection

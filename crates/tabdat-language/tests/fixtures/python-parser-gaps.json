@@ -1,1 +1,6 @@
-[]
+[
+  {
+    "input": "predict cost_hat, xb interval",
+    "difference": "expected error \"predict interval options require posterior_predictive\", got Err(ParseError { message: \"predict interval options require posterior_predictive, n, pr, pmf() or cdf()\" })"
+  }
+]

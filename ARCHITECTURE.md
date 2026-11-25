@@ -77,6 +77,13 @@ shared execution path owns publication, so batch, scripts and typed callers do
 not acquire competing artifact semantics. There is no renderer framework or
 raster/font dependency.
 
+Linear model state retains ordered design terms when source variables cannot
+reconstruct the fitted columns by name alone. Execution expands those terms for
+estimation and rebuilds them for current-row prediction. Binary fits also retain
+interaction source values aligned to the estimation sample, which lets
+post-estimation compute original-variable product-rule derivatives after active
+data edits.
+
 Future MCP transport, PNG/other visualization families, ReadStat, libgretl and
 other native integrations may reuse the same boundaries but are **not** installed
 production capabilities. Phase 1 prototypes demonstrate feasibility, not

@@ -121,11 +121,11 @@ fn pinned_python_parser_acceptance_variants_and_diagnostics() {
         .replace("vif, firststage", "vif, ar, firststage")
         .replace(
           "margins|gof",
-          "margins|overdispersion|countprob|countgof|gof",
+          "margins|overdispersion|classification|countprob|countgof|gof",
         )
         .replace(
           "margins, gof",
-          "margins, overdispersion, countprob, countgof, gof",
+          "margins, overdispersion, classification, countprob, countgof, gof",
         );
       assert_eq!(result.unwrap_err().message(), expected);
       continue;

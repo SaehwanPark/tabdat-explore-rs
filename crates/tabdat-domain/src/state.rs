@@ -124,14 +124,17 @@ pub enum EstimationFamily {
   ControlFunction,
 }
 
-/// One retained linear-design term. Continuous terms contribute one column;
-/// factor terms contribute one treatment column per non-reference level (or
-/// every level when no intercept is fitted).
+/// One retained linear-design term. Continuous and continuous-interaction terms
+/// contribute one column each; factor terms contribute one treatment column per
+/// non-reference level (or every level when no intercept is fitted).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum LinearDesignTerm {
   /// A numeric predictor used as one column.
   Continuous { name: String },
+  /// Product of two numeric predictors; contributes one column named
+  /// `first__interaction__second`.
+  ContinuousInteraction { first: String, second: String },
   /// An explicitly declared categorical predictor.
   Factor {
     variable: String,
@@ -147,7 +150,7 @@ impl LinearDesignTerm {
   /// Stable factor metadata for reports, if this term is categorical.
   pub fn factor(&self) -> Option<(&str, Option<&str>, &[LinearFactorLevel])> {
     match self {
-      Self::Continuous { .. } => None,
+      Self::Continuous { .. } | Self::ContinuousInteraction { .. } => None,
       Self::Factor {
         variable,
         reference,
@@ -155,6 +158,18 @@ impl LinearDesignTerm {
       } => Some((variable, reference.as_deref(), levels)),
     }
   }
+}
+
+/// Retained source values for one binary-fit continuous interaction.
+///
+/// These values stay aligned with the estimation sample so post-estimation
+/// derivatives do not depend on subsequently edited active data.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryInteractionSourceValues {
+  pub first: String,
+  pub second: String,
+  pub first_values: Vec<f64>,
+  pub second_values: Vec<f64>,
 }
 
 /// Retained typed category value used to reconstruct prediction design columns.
@@ -230,10 +245,13 @@ pub struct RandomEffectsState {
 pub struct BinaryLogitState {
   pub problem: tabdat_stats::EstimationProblem,
   pub result: tabdat_stats::BinaryLogitResult,
-  /// Ordered design terms for fits with categorical factor predictors.
+  /// Ordered source terms for explicit factor or continuous-interaction designs.
   /// Empty for legacy continuous-only fits.
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   pub design_terms: Vec<LinearDesignTerm>,
+  /// Complete-sample source values needed for interaction marginal effects.
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
+  pub interaction_source_values: Vec<BinaryInteractionSourceValues>,
 }
 
 /// Owned binary probit fit; the shared design/fit record with the family

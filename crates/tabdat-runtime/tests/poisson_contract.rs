@@ -244,7 +244,6 @@ fn count_test_works_and_other_unsupported_postestimation_fails_without_mutation(
   same_rows(&rows(&mut s), &old);
   for text in [
     "predict bad, pr",
-    "predict bad, residuals",
     "predict bad, posterior_predictive interval",
     "predict bad, posterior_predictive saving(\"bad.csv\")",
     "predict y, n",

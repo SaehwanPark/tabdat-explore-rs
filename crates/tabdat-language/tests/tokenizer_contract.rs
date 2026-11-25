@@ -74,7 +74,7 @@ fn decodes_quoted_tokens_and_unicode_character_offsets() {
 fn supports_empty_input_and_the_complete_bounded_symbol_set() {
   assert!(tokenize(" \u{1c}\u{1f}\n\t").unwrap().is_empty());
   assert_eq!(
-    compact(tokenize(", = < > + - * / ( ) : . == != <= >=").unwrap()),
+    compact(tokenize(", = < > + - * / ( ) : . # == != <= >=").unwrap()),
     vec![
       (TokenKind::Symbol, ",".to_owned(), 0, 1),
       (TokenKind::Symbol, "=".to_owned(), 2, 3),
@@ -88,10 +88,11 @@ fn supports_empty_input_and_the_complete_bounded_symbol_set() {
       (TokenKind::Symbol, ")".to_owned(), 18, 19),
       (TokenKind::Symbol, ":".to_owned(), 20, 21),
       (TokenKind::Symbol, ".".to_owned(), 22, 23),
-      (TokenKind::Symbol, "==".to_owned(), 24, 26),
-      (TokenKind::Symbol, "!=".to_owned(), 27, 29),
-      (TokenKind::Symbol, "<=".to_owned(), 30, 32),
-      (TokenKind::Symbol, ">=".to_owned(), 33, 35),
+      (TokenKind::Symbol, "#".to_owned(), 24, 25),
+      (TokenKind::Symbol, "==".to_owned(), 26, 28),
+      (TokenKind::Symbol, "!=".to_owned(), 29, 31),
+      (TokenKind::Symbol, "<=".to_owned(), 32, 34),
+      (TokenKind::Symbol, ">=".to_owned(), 35, 37),
     ]
   );
 }

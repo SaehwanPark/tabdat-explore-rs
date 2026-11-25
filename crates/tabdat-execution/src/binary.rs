@@ -123,36 +123,45 @@ impl Session {
       return Err(error(format!("numeric variable required: {outcome}")));
     }
     for term in &terms {
-      let name = term.variable();
-      let column = dataset
-        .columns
-        .iter()
-        .find(|column| column.name == name)
-        .ok_or_else(|| error(format!("unknown variable: {name}")))?;
-      let supported = match term {
-        crate::regress_design::RegressTerm::Continuous { .. } => {
-          is_numeric_data_type(&column.data_type)
-        }
-        crate::regress_design::RegressTerm::Factor { .. } => {
-          is_numeric_data_type(&column.data_type)
-            || matches!(column.data_type.as_str(), "VARCHAR" | "BOOLEAN")
-        }
-      };
-      if !supported {
-        return Err(error(match term {
-          crate::regress_design::RegressTerm::Continuous { .. } => {
-            format!("numeric variable required: {name}")
-          }
+      for name in term.variables() {
+        let column = dataset
+          .columns
+          .iter()
+          .find(|column| column.name == name)
+          .ok_or_else(|| error(format!("unknown variable: {name}")))?;
+        let supported = match term {
           crate::regress_design::RegressTerm::Factor { .. } => {
-            format!("factor variable must be text, boolean or numeric codes: {name}")
+            is_numeric_data_type(&column.data_type)
+              || matches!(column.data_type.as_str(), "VARCHAR" | "BOOLEAN")
           }
-        }));
+          crate::regress_design::RegressTerm::Continuous { .. }
+          | crate::regress_design::RegressTerm::ContinuousInteraction { .. } => {
+            is_numeric_data_type(&column.data_type)
+          }
+        };
+        if !supported {
+          return Err(error(match term {
+            crate::regress_design::RegressTerm::Factor { .. } => {
+              format!("factor variable must be text, boolean or numeric codes: {name}")
+            }
+            crate::regress_design::RegressTerm::Continuous { .. }
+            | crate::regress_design::RegressTerm::ContinuousInteraction { .. } => {
+              format!("numeric variable required: {name}")
+            }
+          }));
+        }
       }
     }
+    let predictor_input_count: usize = terms.iter().map(|term| term.variables().len()).sum();
     let mut select_columns =
-      Vec::with_capacity(1 + terms.len() + usize::from(cluster_variable.is_some()));
+      Vec::with_capacity(1 + predictor_input_count + usize::from(cluster_variable.is_some()));
     select_columns.push(quote_identifier(outcome));
-    select_columns.extend(terms.iter().map(|term| quote_identifier(term.variable())));
+    select_columns.extend(
+      terms
+        .iter()
+        .flat_map(|term| term.variables())
+        .map(quote_identifier),
+    );
     if let Some(name) = cluster_variable {
       let column = dataset
         .columns
@@ -173,6 +182,7 @@ impl Session {
     let mut retained = Vec::new();
     let mut response = Vec::new();
     let mut design = Vec::new();
+    let mut interaction_rows: Vec<Vec<(f64, f64)>> = Vec::new();
     let mut cluster_groups = Vec::new();
     self
       .backend
@@ -200,21 +210,60 @@ impl Session {
             return Ok(());
           };
           let mut raw_terms = Vec::with_capacity(terms.len());
-          for (term_index, term) in terms.iter().enumerate() {
-            let cell = row.cell(term_index + 1).map_err(|read_error| {
-              error(match read_error {
-                CellReadError::Backend(message) => message,
-                _ => format!("could not read {command_name} predictor cell"),
-              })
-            })?;
+          let mut row_interactions = Vec::new();
+          let mut input_index = 0usize;
+          for term in &terms {
             match term {
               crate::regress_design::RegressTerm::Continuous { .. } => {
+                let cell = row.cell(input_index + 1).map_err(|read_error| {
+                  error(match read_error {
+                    CellReadError::Backend(message) => message,
+                    _ => format!("could not read {command_name} predictor cell"),
+                  })
+                })?;
+                input_index += 1;
                 let Some(value) = cell_to_f64(cell).filter(|value| value.is_finite()) else {
                   return Ok(());
                 };
                 raw_terms.push(crate::regress_design::ObservedTermValue::Continuous(value));
               }
+              crate::regress_design::RegressTerm::ContinuousInteraction { .. } => {
+                let first_cell = row.cell(input_index + 1).map_err(|read_error| {
+                  error(match read_error {
+                    CellReadError::Backend(message) => message,
+                    _ => format!("could not read first {command_name} interaction cell"),
+                  })
+                })?;
+                let second_cell = row.cell(input_index + 2).map_err(|read_error| {
+                  error(match read_error {
+                    CellReadError::Backend(message) => message,
+                    _ => format!("could not read second {command_name} interaction cell"),
+                  })
+                })?;
+                input_index += 2;
+                let (Some(first), Some(second)) = (
+                  cell_to_f64(first_cell).filter(|value| value.is_finite()),
+                  cell_to_f64(second_cell).filter(|value| value.is_finite()),
+                ) else {
+                  return Ok(());
+                };
+                let product = first * second;
+                if !product.is_finite() {
+                  return Ok(());
+                }
+                raw_terms.push(crate::regress_design::ObservedTermValue::Interaction(
+                  product,
+                ));
+                row_interactions.push((first, second));
+              }
               crate::regress_design::RegressTerm::Factor { .. } => {
+                let cell = row.cell(input_index + 1).map_err(|read_error| {
+                  error(match read_error {
+                    CellReadError::Backend(message) => message,
+                    _ => format!("could not read {command_name} factor predictor cell"),
+                  })
+                })?;
+                input_index += 1;
                 let Some(value) = crate::regress_design::ObservedFactor::from_cell(cell)
                   .map_err(|failure| error(failure.to_string()))?
                 else {
@@ -226,7 +275,7 @@ impl Session {
           }
           let cluster_group = if cluster_variable.is_some() {
             let cell = row
-              .cell(terms.len() + 1)
+              .cell(predictor_input_count + 1)
               .map_err(|_| error("could not read cluster cell".to_owned()))?;
             let Some(group) =
               binary_cluster_key(cell).map_err(|message| error(message.to_owned()))?
@@ -247,6 +296,7 @@ impl Session {
           // not itself round to bit-exact one at every scale.
           response.push(if outcome_value == 0.0 { 0.0 } else { 1.0 });
           design.push(raw_terms);
+          interaction_rows.push(row_interactions);
           if let Some(group) = cluster_group {
             cluster_groups.push(group);
           }
@@ -268,7 +318,7 @@ impl Session {
     .map_err(|e| error(e.to_string()))?;
     let expanded = crate::regress_design::expand_design(&terms, &design, include_intercept)
       .map_err(|failure| error(failure.to_string()))?;
-    let design_terms = if crate::regress_design::has_factor_terms(&expanded.design_terms) {
+    let design_terms = if crate::regress_design::has_explicit_design_terms(&expanded.design_terms) {
       expanded.design_terms
     } else {
       Vec::new()
@@ -293,16 +343,45 @@ impl Session {
       }
     }
     .map_err(|e| error(e.to_string()))?;
+    let interaction_source_values = terms
+      .iter()
+      .filter_map(|term| match term {
+        crate::regress_design::RegressTerm::ContinuousInteraction { first, second } => {
+          Some((first.clone(), second.clone()))
+        }
+        crate::regress_design::RegressTerm::Continuous { .. }
+        | crate::regress_design::RegressTerm::Factor { .. } => None,
+      })
+      .enumerate()
+      .map(|(interaction_index, (first, second))| {
+        let first_values = interaction_rows
+          .iter()
+          .map(|row| row[interaction_index].0)
+          .collect();
+        let second_values = interaction_rows
+          .iter()
+          .map(|row| row[interaction_index].1)
+          .collect();
+        tabdat_domain::BinaryInteractionSourceValues {
+          first,
+          second,
+          first_values,
+          second_values,
+        }
+      })
+      .collect::<Vec<_>>();
     self.estimation = Some(match model {
       BinaryModel::Logit => EstimationState::Logit(Box::new(BinaryLogitState {
         problem,
         result: result.clone(),
         design_terms,
+        interaction_source_values,
       })),
       BinaryModel::Probit => EstimationState::Probit(Box::new(BinaryProbitState {
         problem,
         result: result.clone(),
         design_terms,
+        interaction_source_values,
       })),
     });
     Ok(match model {
@@ -315,17 +394,13 @@ impl Session {
     let Some(EstimationState::Logit(state)) = &self.estimation else {
       return Err(RuntimeError::EstatMarginsRequiresPriorLogit);
     };
-    let predictor_columns =
-      binary_continuous_predictor_columns(&state.problem, &state.design_terms)
-        .map_err(|message| RuntimeError::EstatMarginsFailed { message })?;
-    let result = tabdat_stats::binary_average_marginal_effects_for_columns(
+    let result = binary_continuous_marginal_effects(
       &state.problem,
       &state.result,
-      &predictor_columns,
+      &state.design_terms,
+      &state.interaction_source_values,
     )
-    .map_err(|e| RuntimeError::EstatMarginsFailed {
-      message: e.to_string(),
-    })?;
+    .map_err(|message| RuntimeError::EstatMarginsFailed { message })?;
     Ok(ExecutionResult::LogitMarginalEffects(result))
   }
 
@@ -333,17 +408,13 @@ impl Session {
     &self,
     state: &BinaryProbitState,
   ) -> Result<ExecutionResult, RuntimeError> {
-    let predictor_columns =
-      binary_continuous_predictor_columns(&state.problem, &state.design_terms)
-        .map_err(|message| RuntimeError::EstatMarginsFailed { message })?;
-    let result = tabdat_stats::binary_average_marginal_effects_for_columns(
+    let result = binary_continuous_marginal_effects(
       &state.problem,
       &state.result,
-      &predictor_columns,
+      &state.design_terms,
+      &state.interaction_source_values,
     )
-    .map_err(|e| RuntimeError::EstatMarginsFailed {
-      message: e.to_string(),
-    })?;
+    .map_err(|message| RuntimeError::EstatMarginsFailed { message })?;
     Ok(ExecutionResult::ProbitMarginalEffects(Box::new(result)))
   }
 
@@ -364,6 +435,14 @@ impl Session {
         message: "requires a prior logit or probit fit".into(),
       });
     };
+    if design_terms
+      .iter()
+      .any(|term| matches!(term, LinearDesignTerm::ContinuousInteraction { .. }))
+    {
+      return Err(RuntimeError::EstatMarginsFailed {
+        message: "discrete changes for continuous interaction models are not supported; use average marginal effects".into(),
+      });
+    }
     let continuous_columns = binary_continuous_predictor_columns(problem, design_terms)
       .map_err(|message| RuntimeError::EstatMarginsFailed { message })?;
     if let Some(column) = problem
@@ -575,7 +654,7 @@ impl Session {
       + design_terms
         .iter()
         .map(|term| match term {
-          LinearDesignTerm::Continuous { .. } => 1,
+          LinearDesignTerm::Continuous { .. } | LinearDesignTerm::ContinuousInteraction { .. } => 1,
           LinearDesignTerm::Factor {
             reference, levels, ..
           } => {
@@ -590,13 +669,7 @@ impl Session {
     if result.coefficients.len() != expected_coefficients {
       return Err(RuntimeError::PredictFailed);
     }
-    let required = design_terms
-      .iter()
-      .map(|term| match term {
-        LinearDesignTerm::Continuous { name } => name.clone(),
-        LinearDesignTerm::Factor { variable, .. } => variable.clone(),
-      })
-      .collect::<Vec<_>>();
+    let required = crate::regress_design::design_input_variables(&design_terms);
     let missing = required
       .iter()
       .filter(|name| {
@@ -611,25 +684,30 @@ impl Session {
       return Err(RuntimeError::PredictUnknownVariable { variables: missing });
     }
     for term in &design_terms {
-      let (name, factor) = match term {
-        LinearDesignTerm::Continuous { name } => (name, false),
-        LinearDesignTerm::Factor { variable, .. } => (variable, true),
+      let (names, factor) = match term {
+        LinearDesignTerm::Continuous { name } => (vec![name.as_str()], false),
+        LinearDesignTerm::ContinuousInteraction { first, second } => {
+          (vec![first.as_str(), second.as_str()], false)
+        }
+        LinearDesignTerm::Factor { variable, .. } => (vec![variable.as_str()], true),
       };
-      let data_type = &dataset
-        .columns
-        .iter()
-        .find(|column| column.name == *name)
-        .ok_or(RuntimeError::PredictFailed)?
-        .data_type;
-      let supported = if factor {
-        is_numeric_data_type(data_type) || matches!(data_type.as_str(), "VARCHAR" | "BOOLEAN")
-      } else {
-        is_numeric_data_type(data_type)
-      };
-      if !supported {
-        return Err(error(format!(
-          "current data has an unsupported type for '{name}'"
-        )));
+      for name in names {
+        let data_type = &dataset
+          .columns
+          .iter()
+          .find(|column| column.name == name)
+          .ok_or(RuntimeError::PredictFailed)?
+          .data_type;
+        let supported = if factor {
+          is_numeric_data_type(data_type) || matches!(data_type.as_str(), "VARCHAR" | "BOOLEAN")
+        } else {
+          is_numeric_data_type(data_type)
+        };
+        if !supported {
+          return Err(error(format!(
+            "current data has an unsupported type for '{name}'"
+          )));
+        }
       }
     }
 
@@ -661,7 +739,7 @@ impl Session {
       .visit_rows(
         &query,
         |row| {
-          let cells = (0..design_terms.len())
+          let cells = (0..required.len())
             .map(|index| read_owned_cell(row, index, true, "could not read predictor cell"))
             .collect::<Result<Vec<_>, _>>()?;
           let expanded =
@@ -750,7 +828,7 @@ impl Session {
       + design_terms
         .iter()
         .map(|term| match term {
-          LinearDesignTerm::Continuous { .. } => 1,
+          LinearDesignTerm::Continuous { .. } | LinearDesignTerm::ContinuousInteraction { .. } => 1,
           LinearDesignTerm::Factor {
             reference, levels, ..
           } => {
@@ -766,13 +844,7 @@ impl Session {
       return Err(RuntimeError::PredictFailed);
     }
 
-    let required = design_terms
-      .iter()
-      .map(|term| match term {
-        LinearDesignTerm::Continuous { name } => name.clone(),
-        LinearDesignTerm::Factor { variable, .. } => variable.clone(),
-      })
-      .collect::<Vec<_>>();
+    let required = crate::regress_design::design_input_variables(&design_terms);
     let missing = required
       .iter()
       .filter(|name| {
@@ -787,26 +859,30 @@ impl Session {
       return Err(RuntimeError::PredictUnknownVariable { variables: missing });
     }
     for term in &design_terms {
-      let name = match term {
-        LinearDesignTerm::Continuous { name } => name,
-        LinearDesignTerm::Factor { variable, .. } => variable,
-      };
-      let data_type = &dataset
-        .columns
-        .iter()
-        .find(|column| column.name == *name)
-        .ok_or(RuntimeError::PredictFailed)?
-        .data_type;
-      let supported = match term {
-        LinearDesignTerm::Continuous { .. } => is_numeric_data_type(data_type),
-        LinearDesignTerm::Factor { .. } => {
-          is_numeric_data_type(data_type) || matches!(data_type.as_str(), "VARCHAR" | "BOOLEAN")
+      let (names, factor) = match term {
+        LinearDesignTerm::Continuous { name } => (vec![name.as_str()], false),
+        LinearDesignTerm::ContinuousInteraction { first, second } => {
+          (vec![first.as_str(), second.as_str()], false)
         }
+        LinearDesignTerm::Factor { variable, .. } => (vec![variable.as_str()], true),
       };
-      if !supported {
-        return Err(error(format!(
-          "current data has an unsupported type for '{name}'"
-        )));
+      for name in names {
+        let data_type = &dataset
+          .columns
+          .iter()
+          .find(|column| column.name == name)
+          .ok_or(RuntimeError::PredictFailed)?
+          .data_type;
+        let supported = if factor {
+          is_numeric_data_type(data_type) || matches!(data_type.as_str(), "VARCHAR" | "BOOLEAN")
+        } else {
+          is_numeric_data_type(data_type)
+        };
+        if !supported {
+          return Err(error(format!(
+            "current data has an unsupported type for '{name}'"
+          )));
+        }
       }
     }
 
@@ -826,7 +902,7 @@ impl Session {
       .visit_rows(
         &query,
         |row| {
-          let cells = (0..design_terms.len())
+          let cells = (0..required.len())
             .map(|index| read_owned_cell(row, index, true, "could not read predictor cell"))
             .collect::<Result<Vec<_>, _>>()?;
           let value = match crate::regress_design::expand_current_row(
@@ -895,6 +971,17 @@ fn binary_factor_contrast_design(
   for term in design_terms {
     match term {
       LinearDesignTerm::Continuous { .. } => predictor_column += 1,
+      LinearDesignTerm::ContinuousInteraction { first, second } => {
+        let expected = crate::regress_design::interaction_parameter_name(first, second);
+        if problem
+          .predictor_names
+          .get(predictor_column)
+          .is_none_or(|retained_name| retained_name != &expected)
+        {
+          return Err("retained interaction metadata does not match the binary design".into());
+        }
+        predictor_column += 1;
+      }
       LinearDesignTerm::Factor {
         variable: term_variable,
         reference,
@@ -982,6 +1069,12 @@ fn binary_continuous_predictor_columns(
         continuous_columns.push(predictor_column);
         predictor_column += 1;
       }
+      LinearDesignTerm::ContinuousInteraction { .. } => {
+        return Err(
+          "discrete changes for continuous interaction models are not supported; use average marginal effects"
+            .into(),
+        );
+      }
       LinearDesignTerm::Factor {
         variable,
         reference,
@@ -1023,6 +1116,191 @@ fn binary_continuous_predictor_columns(
     return Err("margins require at least one continuous predictor in the fitted design".into());
   }
   Ok(continuous_columns)
+}
+
+fn binary_continuous_marginal_effects(
+  problem: &tabdat_stats::EstimationProblem,
+  result: &tabdat_stats::BinaryMleResult,
+  design_terms: &[LinearDesignTerm],
+  interaction_source_values: &[tabdat_domain::BinaryInteractionSourceValues],
+) -> Result<tabdat_stats::LogitMarginalEffects, String> {
+  if design_terms
+    .iter()
+    .any(|term| matches!(term, LinearDesignTerm::ContinuousInteraction { .. }))
+  {
+    let derivative_design =
+      binary_continuous_marginal_derivatives(problem, design_terms, interaction_source_values)?;
+    tabdat_stats::binary_average_marginal_effects_for_derivatives(
+      problem,
+      result,
+      &derivative_design,
+    )
+    .map_err(|error| error.to_string())
+  } else {
+    let predictor_columns = binary_continuous_predictor_columns(problem, design_terms)?;
+    tabdat_stats::binary_average_marginal_effects_for_columns(problem, result, &predictor_columns)
+      .map_err(|error| error.to_string())
+  }
+}
+
+fn binary_continuous_marginal_derivatives(
+  problem: &tabdat_stats::EstimationProblem,
+  design_terms: &[LinearDesignTerm],
+  interaction_source_values: &[tabdat_domain::BinaryInteractionSourceValues],
+) -> Result<Vec<tabdat_stats::BinaryMarginalEffectDesign>, String> {
+  let observation_count = problem.observation_count();
+  let predictor_count = problem.predictor_names.len();
+  if design_terms.is_empty() {
+    if !interaction_source_values.is_empty() {
+      return Err("interaction source values have no retained design metadata".into());
+    }
+    return Ok(
+      problem
+        .predictor_names
+        .iter()
+        .enumerate()
+        .map(|(column, name)| {
+          let mut row_derivatives = vec![vec![0.0; predictor_count]; observation_count];
+          for row in &mut row_derivatives {
+            row[column] = 1.0;
+          }
+          tabdat_stats::BinaryMarginalEffectDesign {
+            predictor_name: name.clone(),
+            row_derivatives,
+          }
+        })
+        .collect(),
+    );
+  }
+
+  fn ensure_effect(
+    derivatives: &mut Vec<(String, Vec<Vec<f64>>)>,
+    name: &str,
+    predictor_count: usize,
+    observation_count: usize,
+  ) -> usize {
+    if let Some(index) = derivatives
+      .iter()
+      .position(|(existing, _)| existing == name)
+    {
+      index
+    } else {
+      let index = derivatives.len();
+      derivatives.push((
+        name.to_owned(),
+        vec![vec![0.0; predictor_count]; observation_count],
+      ));
+      index
+    }
+  }
+
+  let mut predictor_column = 0usize;
+  let mut interaction_index = 0usize;
+  let mut derivatives: Vec<(String, Vec<Vec<f64>>)> = Vec::new();
+  for term in design_terms {
+    match term {
+      LinearDesignTerm::Continuous { name } => {
+        if problem
+          .predictor_names
+          .get(predictor_column)
+          .is_none_or(|retained_name| retained_name != name)
+        {
+          return Err("retained continuous metadata does not match the binary design".into());
+        }
+        let effect = ensure_effect(&mut derivatives, name, predictor_count, observation_count);
+        for row in &mut derivatives[effect].1 {
+          row[predictor_column] += 1.0;
+        }
+        predictor_column += 1;
+      }
+      LinearDesignTerm::ContinuousInteraction { first, second } => {
+        let expected = crate::regress_design::interaction_parameter_name(first, second);
+        if problem
+          .predictor_names
+          .get(predictor_column)
+          .is_none_or(|retained_name| retained_name != &expected)
+        {
+          return Err("retained interaction metadata does not match the binary design".into());
+        }
+        let source = interaction_source_values
+          .get(interaction_index)
+          .ok_or_else(|| "retained interaction source values are incomplete".to_owned())?;
+        if source.first != *first
+          || source.second != *second
+          || source.first_values.len() != observation_count
+          || source.second_values.len() != observation_count
+          || source
+            .first_values
+            .iter()
+            .chain(&source.second_values)
+            .any(|value| !value.is_finite())
+        {
+          return Err("retained interaction source values do not match the fitted sample".into());
+        }
+        let first_effect =
+          ensure_effect(&mut derivatives, first, predictor_count, observation_count);
+        let second_effect =
+          ensure_effect(&mut derivatives, second, predictor_count, observation_count);
+        for observation in 0..observation_count {
+          derivatives[first_effect].1[observation][predictor_column] +=
+            source.second_values[observation];
+          derivatives[second_effect].1[observation][predictor_column] +=
+            source.first_values[observation];
+        }
+        interaction_index += 1;
+        predictor_column += 1;
+      }
+      LinearDesignTerm::Factor {
+        variable,
+        reference,
+        levels,
+      } => {
+        if levels.len() < 2 {
+          return Err(format!(
+            "factor '{variable}' has fewer than two retained levels"
+          ));
+        }
+        let omitted_index = if problem.include_intercept {
+          let reference = reference.as_deref().ok_or_else(|| {
+            format!("retained factor '{variable}' is missing its intercept reference")
+          })?;
+          Some(
+            levels
+              .iter()
+              .position(|level| level.label() == reference)
+              .ok_or_else(|| {
+                format!("retained reference for factor '{variable}' is absent from its levels")
+              })?,
+          )
+        } else {
+          if reference.is_some() {
+            return Err(format!(
+              "retained factor '{variable}' has a reference without an intercept"
+            ));
+          }
+          None
+        };
+        predictor_column += levels.len() - usize::from(omitted_index.is_some());
+      }
+    }
+  }
+  if predictor_column != predictor_count || interaction_index != interaction_source_values.len() {
+    return Err("retained design metadata does not match the binary predictors".into());
+  }
+  if derivatives.is_empty() {
+    return Err("margins require at least one continuous predictor in the fitted design".into());
+  }
+  Ok(
+    derivatives
+      .into_iter()
+      .map(
+        |(predictor_name, row_derivatives)| tabdat_stats::BinaryMarginalEffectDesign {
+          predictor_name,
+          row_derivatives,
+        },
+      )
+      .collect(),
+  )
 }
 
 fn binary_probability(model: BinaryModel, xb: f64) -> f64 {

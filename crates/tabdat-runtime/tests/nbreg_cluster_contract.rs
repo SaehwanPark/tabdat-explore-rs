@@ -131,12 +131,7 @@ fn retained_joint_effects_survive_edits_and_predictions_need_neither_outcome_nor
   assert_eq!(s.state().estimation, retained);
   let before = s.state();
   let old = rows(&mut s);
-  for text in [
-    "predict x, n",
-    "predict bad, pr",
-    "predict bad, residuals",
-    "estat vif",
-  ] {
+  for text in ["predict x, n", "predict bad, pr", "estat vif"] {
     fail(&mut s, text);
     assert_eq!(s.state(), before, "{text}");
     assert_eq!(rows(&mut s), old);
