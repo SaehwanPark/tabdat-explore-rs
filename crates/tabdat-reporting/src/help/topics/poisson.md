@@ -25,6 +25,7 @@ Example workflow:
 - `estat overdispersion` — one-sided score test in the NB2 variance direction
 - `estat margins`
 - `predict mean_visits, n`
+- `predict response_residual, residuals`
 - `predict index, xb`
 - `head 8`
 - `export visits_predictions.csv`
@@ -90,6 +91,10 @@ Inference and interpretation:
   X beta+ln(exposure)). Retained margins hold original fixed terms/groups fixed
   despite data edits; derivatives do not apply a chain rule through the fixed
   term even if its source variable is also a predictor.
+- `predict residual, residuals` returns current numeric y minus the current
+  conditional mean. Missing/nonfinite outcomes or model inputs produce NULL;
+  finite outcomes must be exact counts in 0..2^53-1. It is a raw response
+  residual, not Pearson, deviance or standardized, and does not use covariance.
 
 `estat countprob [, max(10)]` compares observed and fitted count frequencies on
 retained y/means (exact0..9 plus >=10 by default). It assumes the full Poisson

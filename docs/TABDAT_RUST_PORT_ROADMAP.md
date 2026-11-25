@@ -77,7 +77,7 @@ order. Each row describes a bounded end-to-end outcome, not every option.
 | --- | --- |
 | **IV/2SLS** | Exogenous/endogenous/instrument design, exact sample and rank checks, classical and appropriate robust/cluster inference, first-stage diagnostics, endogeneity and overidentification tests where identified, and weak-instrument-robust inference where required. Bounded homoskedastic tests/sets include the DATA66 `grade76` AR projection with other endogenous coefficients unrestricted; HC1/one-way CR0 Wooldridge overidentification scores, HC1/CR1 scalar AR sets for one endogenous regressor and one to nine excluded instruments, and closed robust AR projection for exactly two endogenous regressors/two excluded instruments are also installed. Broader robust projection and endogenous-subvector tests remain. Conventional first-stage F does not certify validity. |
 | **Logit/probit** | Domain and separation/convergence failures, model-based/robust/cluster inference, probability and linear-index predictions, continuous average marginal effects plus a bounded numeric 0/1 probability change with explicit estimands and delta uncertainty, and retained-fit Wald tests of general linear restrictions. |
-| **Poisson/NB2** | Count-domain checks, offsets/exposure, explicit variance parameterization, model-specific diagnostics, conditional means/effects and covariance conventions, retained-fit Wald tests and linear combinations of mean coefficients, a Poisson NB2-direction score test with selected model/row/cluster score variance, bounded model-based unclustered plus one-way cluster-robust NB2 grouped score-adjusted goodness-of-fit tests, and current-row PMF/CDF predictions with pointwise delta-method SEs and logit-Wald intervals under the retained covariance plus discrete equal-tail future-count intervals under fitted means/law. Distinguish Poisson QMLE from distributional claims. |
+| **Poisson/NB2** | Count-domain checks, offsets/exposure, explicit variance parameterization, model-specific diagnostics, conditional means/effects and covariance conventions, retained-fit Wald tests and linear combinations of mean coefficients, a Poisson NB2-direction score test with selected model/row/cluster score variance, bounded model-based unclustered plus one-way cluster-robust NB2 grouped score-adjusted goodness-of-fit tests, and current-row PMF/CDF predictions with pointwise delta-method SEs and logit-Wald intervals under the retained covariance plus discrete equal-tail future-count intervals under fitted means/law and raw current-row Poisson/NB2 response residuals. Distinguish Poisson QMLE from distributional claims. |
 | **Linear panels** | Explicit unit/time keys, gaps and duplicates, lag/lead/difference semantics, pooled/within/Between/FD/RE fits, model comparisons, predictions and inference. Read-only [`xtdes`](commands/xtdes.md) and [`xtsum`](commands/xtsum.md) take explicit keys without retaining panel state; broader model comparisons and diagnostics remain open. |
 | **Quantile regression** | Conditional quantiles, current-row predictions, IID uncertainty and a bounded whole-cluster pairs bootstrap with explicit resampling unit. Analytic clustered covariance, general restrictions, simultaneous bands, effects and Figure 4.1 remain. |
 | **Seeded resampling** | Explicit seed/stream, IID and cluster units, B−1 uncertainty, percentile conventions and failure policy. Current OLS, quantile and selected Poisson/panel compositions are bounded source workflows, not a general automatic bootstrap API. |
@@ -96,7 +96,7 @@ the next outcome without repeating the ledger's detailed delivery records.
 | Choice | MNL, balanced conditional logit and restricted normalized/non-normalized nested-choice workflows with source audits | Broader availability and choice sets, ordered/richer models, effects uncertainty, IIA diagnostics and remaining illustrations |
 | Censoring and selection | Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step workflows with declared inference/effects | Richer truncation/censoring, two-part and selection workflows, default ML and remaining illustrations |
 | Survival | KM/NA compositions plus bounded exponential, Weibull, Gompertz and Cox/Breslow source workflows | General declarations, delayed entry, time-varying covariates, clustered inference, competing-risk incidence and richer diagnostics |
-| Counts | Poisson/NB2, fixed offsets and a bounded `exposure(var)` option, effects, probability bins, pointwise current-row PMF/CDF delta-method SEs and logit-Wald intervals under the retained covariance, discrete equal-tail future-count intervals under fitted means/law, a Poisson NB2-direction score test, unclustered and one-way cluster-robust NB2 grouped GOF tests, and selected person/cluster workflows | Household/site/multiway/survey/panel inference, hurdle/zero-inflated/mixture models, other formal NB tests and unresolved Table 20.6 output |
+| Counts | Poisson/NB2, fixed offsets and a bounded `exposure(var)` option, effects, probability bins, pointwise current-row PMF/CDF delta-method SEs and logit-Wald intervals under the retained covariance, discrete equal-tail future-count intervals under fitted means/law, raw current-row Poisson/NB2 response residuals, a Poisson NB2-direction score test, unclustered and one-way cluster-robust NB2 grouped GOF tests, and selected person/cluster workflows | Household/site/multiway/survey/panel inference, hurdle/zero-inflated/mixture models, other formal NB tests and unresolved Table 20.6 output |
 | Linear and nonlinear panels | Explicit-key linear panels, IV/GMM composition, Gaussian GEE and selected Poisson FE/RE/GEE workflows | Persistent declarations, dynamic-panel methods, broader GEE/FE/RE inference, model comparisons and instrument-control diagnostics |
 | Treatment and clustered samples | NSW/PSID comparisons, DID, overlap diagnostics, IPW, kernel and descriptive matching compositions; household/individual clustered workflows | General estimands, matching uncertainty, survey weights/strata/PSUs, design-based variance and remaining treatment/Chapter 24 analyses |
 | Nonparametric and missing data | Bounded KDE/LOWESS source adaptations and complete-case/single-fill/Rubin-summary comparisons | General smoothing/uncertainty, tied-curve parity, imputation generation/diagnostics and finite-complete-DF multiple-imputation inference |
@@ -174,17 +174,17 @@ covariance invariance, offsets/exposure, missing rows, collisions, support/work
 limits and empty data. This discrete predictive interval is separate from the
 pointwise parameter-uncertainty interval for an individual PMF or CDF.
 
-The next count-diagnostics slice is raw current-row Poisson/NB2 response
-residuals through `predict target, residuals`. Define the result as current
-`y - exp(xb)`, using the retained mean coefficients and current predictors plus
-fixed offset/exposure; covariance selection does not change it. Require the
-current outcome, return NULL for missing/nonfinite outcomes or model inputs,
-and fail atomically on finite outcomes outside the family count domain. Keep
-bare `xb`, `n`, the fit/sample and row order unchanged. Check every row against
-independent base-R `glm`/`MASS::glm.nb` response residuals after changing current
-predictors/offsets and outcomes; cover missingness, collisions and invalid
-current counts at runtime and CLI boundaries. Residuals are raw response
-residuals, not Pearson, deviance or standardized residuals.
+Raw current-row Poisson/NB2 response residuals are installed through
+`predict target, residuals`. The result is current `y - exp(xb)`, using retained
+mean coefficients and current predictors plus fixed offset/exposure; covariance
+selection does not change it. Missing/nonfinite outcomes or model inputs yield
+NULL; finite outcomes must remain exact counts in the family domain or the
+prediction fails atomically. Bare `xb`, `n`, fit/sample and row order remain
+unchanged. A 36-row independent base-R `glm`/`MASS::glm.nb` fixture validates
+changed current outcomes, predictors and offsets. Runtime/CLI tests cover
+missingness, covariance invariance, collisions, empty data and invalid current
+counts. These are raw response residuals, not Pearson, deviance or standardized
+residuals.
 
 Do not turn the entire textbook inventory into a prerequisite for one bounded
 analysis. Preserve the assumptions and unresolved source differences in the ledger.

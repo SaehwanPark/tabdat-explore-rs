@@ -6,6 +6,7 @@ predict poisson_p0, pmf(0)
 predict poisson_p0_se, pmf(0) se
 predict poisson_p0_interval, pmf(0) interval
 predict poisson_future, n interval level(90)
+predict poisson_response_residual, residuals
 predict poisson_cdf2, cdf(2)
 predict poisson_cdf2_se, cdf(2) se
 predict poisson_cdf2_interval, cdf(2) interval level(90)
@@ -16,12 +17,15 @@ predict poisson_row_cdf_se, cdf(cutoff) se
 predict poisson_row_cdf_interval, cdf(cutoff) interval
 export poisson_probabilities.csv
 nbreg y x z, offset(log_time) cluster(person)
-# Retained fit, with changed current predictors/offsets and no outcome/group columns.
-drop y person
+# Retained fit with changed current outcome, predictors and offset.
+replace y = y + 1
 replace x = x + .2
 replace log_time = log_time - .3
 gsort -id
 predict nb2_mean, n
+predict nb2_response_residual, residuals
+# Probability predictions need no current outcome or group ID.
+drop y person
 predict nb2_p0, pmf(0)
 predict nb2_p2, pmf(2)
 predict nb2_p2_se, pmf(2) se

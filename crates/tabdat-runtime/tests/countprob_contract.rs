@@ -374,11 +374,7 @@ fn current_probabilities_preserve_retained_fit_labels_and_failure_state() {
     assert_eq!(s.state().estimation, before.estimation);
     let stable = s.state();
     let rows = run(&mut s, "head 100");
-    for command in [
-      "predict p0, pmf(0)",
-      "predict bad, pr",
-      "predict bad, residuals",
-    ] {
+    for command in ["predict p0, pmf(0)", "predict bad, pr"] {
       assert!(s.execute(parse_command(command).unwrap()).is_err());
       assert_eq!(s.state(), stable);
       assert_eq!(run(&mut s, "head 100"), rows);

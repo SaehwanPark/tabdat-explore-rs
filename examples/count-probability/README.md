@@ -21,6 +21,15 @@ stored as DOUBLEs, and cumulative CDF-prefix search is limited to 10,000,000
 terms across usable rows. A row whose fitted inputs are missing/nonfinite gets
 NULL in all three outputs.
 
+For raw response residuals, use `predict response_residual, residuals` after
+Poisson/NB2. It returns the current numeric outcome minus the retained current
+conditional mean, including current predictor and offset/exposure values.
+Residuals do not use the selected covariance or NB2 alpha uncertainty and are
+not Pearson, deviance or standardized residuals. Missing/nonfinite outcomes or
+model inputs return NULL; finite current outcomes must be exact counts in the
+Poisson `0..2^53-1` or NB2 `0..100000` domain, otherwise the prediction fails
+before publication.
+
 For a current-row PMF or CDF, add `se` to write its pointwise delta-method
 standard error instead of the probability, for example `predict p2_se, pmf(2) se`,
 `predict cdf2_se, cdf(2) se`, or the corresponding current-cutoff forms. Run the
@@ -53,16 +62,18 @@ cp "$root/examples/nb2-offset/nb2_offset.csv" .
 ```
 
 This synthetic method extension demonstrates both laws, fixed offsets, changed
-current rows, scalar and row-specific cutoffs, PMF/CDF parameter standard errors
-and intervals, future-count intervals, and CSV export. The corresponding
+current outcomes/predictors/offsets, raw response residuals, scalar and row-specific
+cutoffs, PMF/CDF parameter standard errors and intervals, future-count intervals,
+and CSV export. The corresponding
 RAND Table20.5 mean models are a target application, but this example adds no
 published table row or resolution of the printed Table20.6 NB2 discrepancy.
 Exports refuse existing files; earlier successful script effects are not rolled back
 after a later error.
 
 The retained fit/sample never changes during prediction. Current outcomes and
-cluster IDs are not required; the fitted predictor/offset names are. Missing or
-nonfinite cells and nonfinite/overflowing indices/means produce SQL NULL. A
+cluster IDs are not required for PMF/CDF and `n interval` predictions; the
+fitted predictor/offset names are. Missing or nonfinite cells and
+nonfinite/overflowing indices/means produce SQL NULL. A
 finite index whose exponential underflows to zero uses the limiting point mass
 at zero. Empty data is supported. Bounds, missing/nonnumeric required columns,
 existing targets, unsupported estimator/mode/options or probability convergence
@@ -93,6 +104,8 @@ Rscript crates/tabdat-stats/tests/fixtures/count_probability_interval_reference.
   crates/tabdat-stats/tests/fixtures/count_probability_interval_reference.csv
 Rscript crates/tabdat-stats/tests/fixtures/count_predictive_interval_reference.R \
   crates/tabdat-stats/tests/fixtures/count_predictive_interval_reference.csv
+Rscript crates/tabdat-runtime/tests/fixtures/count_response_residual_reference.R \
+  crates/tabdat-runtime/tests/fixtures/count_response_residual_reference.csv
 ```
 
 The PMF SE kernel matches independent base-R central differences
@@ -117,5 +130,13 @@ cases across five levels, zero/tiny and large means, both NB2 alpha-domain ends,
 and tail probabilities near one. The fixture also records each endpoint's
 neighboring CDF/survival and attained coverage, which is at least nominal for
 the discrete equal-tail convention.
+
+Current-row Poisson response means/residuals match base R 4.6.2 `glm` and NB2
+means/residuals match MASS 7.3-66 `glm.nb` on a 36-row fixed-offset design.
+The reference changes current outcomes, predictors and offsets after fitting;
+missing current outcomes/predictors/offsets remain NULL. Runtime tests cover
+model-based/robust/cluster covariance invariance, family count-domain errors,
+missing outcome columns, collisions and empty data. The CLI tests check JSON
+and text output plus atomic failure state.
 
 No production Python/R dependency is used.

@@ -75,6 +75,12 @@ impl CountFamily {
       Self::NormalPoisson => "normal RE Poisson outcome must be an exact nonnegative integer in 0..100000 on the complete finite estimation sample",
     })
   }
+  fn current_outcome_error(self) -> RuntimeError {
+    self.error(format!(
+      "current outcome must be an exact nonnegative integer in 0..={} or missing",
+      self.maximum()
+    ))
+  }
   fn prediction_error(self) -> RuntimeError {
     match self {
       Self::Poisson => RuntimeError::PredictPoissonUnsupported,
@@ -339,6 +345,7 @@ impl Session {
       command.kind,
       PredictKind::Xb
         | PredictKind::MeanCount
+        | PredictKind::Residuals
         | PredictKind::CountPmf(_)
         | PredictKind::CountPmfStandardError(_)
         | PredictKind::CountCdf(_)
@@ -436,6 +443,9 @@ impl Session {
     if let Some(name) = exposure_variable {
       required_variables.push(name.clone());
     }
+    if command.kind == PredictKind::Residuals {
+      required_variables.push(problem.outcome.clone());
+    }
     let missing: Vec<_> = required_variables
       .iter()
       .filter(|name| !dataset.columns.iter().any(|c| c.name == **name))
@@ -457,6 +467,13 @@ impl Session {
       selected_columns.push(name.clone());
       index
     });
+    let outcome_index = if command.kind == PredictKind::Residuals {
+      let index = selected_columns.len();
+      selected_columns.push(problem.outcome.clone());
+      Some(index)
+    } else {
+      None
+    };
     let cutoff_index = command.count_cutoff_variable.as_ref().map(|name| {
       let index = selected_columns.len();
       selected_columns.push(name.clone());
@@ -468,7 +485,12 @@ impl Session {
         .iter()
         .any(|c| c.name == *name && !is_numeric_data_type(&c.data_type))
       {
-        return Err(family.error(format!("prediction requires numeric predictor: {name}")));
+        let role = if command.kind == PredictKind::Residuals && name == &problem.outcome {
+          "current outcome"
+        } else {
+          "predictor"
+        };
+        return Err(family.error(format!("prediction requires numeric {role}: {name}")));
       }
     }
     let offset = usize::from(problem.include_intercept);
@@ -681,6 +703,84 @@ impl Session {
         backend.add_numeric_prediction_column(&dataset, &command.target_variable, &estimates)
       }
       .map_err(|_| RuntimeError::PredictFailed)?;
+      let next = self.sync_active_dataset(added)?;
+      return Ok(ExecutionResult::Prediction(PredictionResult {
+        dataset: next,
+      }));
+    }
+    if command.kind == PredictKind::Residuals {
+      let outcome_index = outcome_index.ok_or_else(|| {
+        family.error("current outcome is required for response residual prediction")
+      })?;
+      let columns = selected_columns
+        .iter()
+        .map(|name| quote_identifier(name))
+        .collect::<Vec<_>>()
+        .join(", ");
+      let mut values = Vec::new();
+      self
+        .backend
+        .as_ref()
+        .ok_or(RuntimeError::PredictFailed)?
+        .visit_rows(
+          &format!("SELECT {columns} FROM {ACTIVE_TABLE}"),
+          |row| {
+            let outcome = row
+              .cell(outcome_index)
+              .map_err(|_| family.error("could not read current outcome"))?;
+            if matches!(outcome, CellValue::Null)
+              || matches!(outcome, CellValue::Float(value) if !value.is_finite())
+            {
+              values.push(None);
+              return Ok(());
+            }
+            let Some(outcome) = exact_count(outcome, family.maximum()) else {
+              return Err(family.current_outcome_error());
+            };
+
+            let mut xb = prediction.intercept.unwrap_or(0.0);
+            for (index, coefficient) in coefficients.iter().enumerate() {
+              let Some(value) = cell_to_f64(
+                row
+                  .cell(index)
+                  .map_err(|_| family.error("could not read predictor"))?,
+              )
+              .filter(|value| value.is_finite()) else {
+                values.push(None);
+                return Ok(());
+              };
+              xb += coefficient * value;
+            }
+            if let Some(index) = exposure_index {
+              let exposure = cell_to_f64(
+                row
+                  .cell(index)
+                  .map_err(|_| family.error("could not read exposure"))?,
+              )
+              .filter(|value| value.is_finite() && *value > 0.0);
+              let Some(exposure) = exposure else {
+                values.push(None);
+                return Ok(());
+              };
+              xb += exposure.ln();
+            }
+            let mean = xb.exp();
+            if !xb.is_finite() || !mean.is_finite() {
+              values.push(None);
+              return Ok(());
+            }
+            let residual = outcome - mean;
+            values.push(residual.is_finite().then_some(residual));
+            Ok(())
+          },
+          |message| family.error(message),
+        )?;
+      let added = self
+        .backend
+        .as_mut()
+        .ok_or(RuntimeError::PredictFailed)?
+        .add_numeric_prediction_column(&dataset, &command.target_variable, &values)
+        .map_err(|_| RuntimeError::PredictFailed)?;
       let next = self.sync_active_dataset(added)?;
       return Ok(ExecutionResult::Prediction(PredictionResult {
         dataset: next,

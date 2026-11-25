@@ -27,6 +27,7 @@ Example workflow:
 - `nbreg visits age income`
 - `estat countgof, max(10)`
 - `predict nb_mean_visits, n`
+- `predict response_residual, residuals`
 - `predict nb_index, xb`
 - `head 8`
 - `export nb_visits_predictions.csv`
@@ -96,6 +97,10 @@ Inference and interpretation:
   z inference, a two-sided p-value and a 95% normal confidence interval.
 - NB residual deviance at fitted alpha and Pearson/(N-K-1) dispersion are
   descriptive, not formal specification/panel tests or covariance multipliers.
+- `predict residual, residuals` returns current numeric y minus the current
+  conditional mean. Missing/nonfinite outcomes or model inputs produce NULL;
+  finite outcomes must be exact counts in 0..100000. It is a raw response
+  residual, not Pearson, deviance or standardized, and does not use covariance.
 - `predict ..., n` is the current-row conditional mean, not a probability or
   integer draw; no clipping at one. Bare predict stays xb. `estat margins` uses
   retained X and full selected joint covariance for continuous column derivatives
