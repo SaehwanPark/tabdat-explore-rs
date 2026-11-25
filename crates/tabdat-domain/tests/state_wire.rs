@@ -137,6 +137,7 @@ fn binary_factor_design_state_roundtrips_and_legacy_state_defaults_terms() {
         ],
       },
     ],
+    interaction_source_values: Vec::new(),
   };
   let wire = serde_json::to_value(&state).unwrap();
   assert_eq!(
@@ -148,6 +149,57 @@ fn binary_factor_design_state_roundtrips_and_legacy_state_defaults_terms() {
   legacy_wire.as_object_mut().unwrap().remove("design_terms");
   let legacy = serde_json::from_value::<BinaryLogitState>(legacy_wire).unwrap();
   assert!(legacy.design_terms.is_empty());
+}
+
+#[test]
+fn binary_interaction_state_roundtrips_source_values_and_defaults_legacy_field() {
+  let x = (0..90)
+    .map(|index| ((index as f64) * 0.37).sin())
+    .collect::<Vec<_>>();
+  let z = (0..90)
+    .map(|index| ((index as f64) * 0.23).cos())
+    .collect::<Vec<_>>();
+  let response = (0..90)
+    .map(|index| f64::from(u8::from((index * 37 + index / 3 * 5) % 101 < 50)))
+    .collect::<Vec<_>>();
+  let problem = tabdat_stats::EstimationProblem::new(
+    "y",
+    vec!["x__interaction__z".into()],
+    response,
+    x.iter()
+      .zip(&z)
+      .map(|(first, second)| vec![first * second])
+      .collect(),
+  )
+  .unwrap();
+  let result = tabdat_stats::fit_binary_logit(&problem).unwrap();
+  let state = BinaryLogitState {
+    problem,
+    result,
+    design_terms: vec![LinearDesignTerm::ContinuousInteraction {
+      first: "x".into(),
+      second: "z".into(),
+    }],
+    interaction_source_values: vec![BinaryInteractionSourceValues {
+      first: "x".into(),
+      second: "z".into(),
+      first_values: x,
+      second_values: z,
+    }],
+  };
+  let wire = serde_json::to_value(&state).unwrap();
+  assert_eq!(
+    serde_json::from_value::<BinaryLogitState>(wire.clone()).unwrap(),
+    state
+  );
+
+  let mut legacy_wire = wire;
+  legacy_wire
+    .as_object_mut()
+    .unwrap()
+    .remove("interaction_source_values");
+  let legacy = serde_json::from_value::<BinaryLogitState>(legacy_wire).unwrap();
+  assert!(legacy.interaction_source_values.is_empty());
 }
 
 #[test]

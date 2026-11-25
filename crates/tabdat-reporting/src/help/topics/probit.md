@@ -1,7 +1,7 @@
 # probit
 
 Installed syntax:
-`probit y x1 i.group [, robust cluster(group) noconstant]`
+`probit y x1 c.x#c.z i.group [, robust cluster(group) noconstant]`
 
 Fit an unweighted independent-Bernoulli binary probit model. Reports model-based
 inverse observed-information (OIM) covariance from Newton steps, coefficient
@@ -44,10 +44,11 @@ categorical columns):
 - `probit insured age bmi`
 - `probit insured age i.region`
 - `probit insured age ib(West).region`
-- `estat margins` — continuous average predictor-column derivatives and delta SE/95% intervals
+- `estat margins` — original continuous-variable derivatives, including the
+  product rule for `c.x#c.z`, with delta SE/95% intervals
 - `estat margins, discrete(treated)` — average probability change for an
   original continuous numeric 0/1 predictor, including in additive factor
-  designs
+  designs without interactions
 - `estat margins, factor(region)` — average probability contrasts of retained
   levels versus the fit-time reference
 - `estat classification` — retained-sample class counts and descriptive
@@ -62,7 +63,9 @@ categorical columns):
 Sample and state:
 - Outcomes and continuous predictors must be numeric. Explicit factors use
   `i.var` or `ib(level).var` and accept finite numeric codes, text or booleans.
-  Missing/nonfinite model values are excluded jointly; retained y must be
+  A continuous interaction uses `c.x#c.z` and adds only the product column;
+  include `x z` separately to add main effects. Missing/nonfinite model values
+  and nonfinite products are excluded jointly; retained y must be
   exactly 0/1 with both classes. Other finite outcomes on complete rows are
   errors, not silently mapped to nonzero=1.
 - `i.var` omits the first sorted level in the retained sample; `ib(level).var`
@@ -91,13 +94,16 @@ Convergence and supported limits:
   looks flat. This is not an analytic separation classifier; extreme finite
   designs may also fail numerical-resolution bounds.
 - Additive one-way factor main effects are supported. Bare `estat margins`
-  reports only original continuous predictor effects, including after these
-  factor designs; factor coefficients enter the full delta gradient. `factor(var)`
-  reports retained-level probability contrasts. Interactions remain unsupported.
+  reports original continuous-variable derivatives, including in mixed designs,
+  and product-rule effects for continuous interactions; all factor and
+  interaction coefficients enter the full delta gradient. `factor(var)` reports
+  retained-level probability contrasts. `c.x#c.z` adds one product without
+  implicit main effects. Factor interactions and `##` expansion are unsupported.
   The bounded `discrete(var)` form accepts one original continuous term with
-  exact 0/1 values and both levels, including in mixed designs; expanded factor
-  dummy columns are not selectable. See `help estat` for effect estimands and
-  inference.
+  exact 0/1 values and both levels in additive designs; it explicitly rejects
+  interaction models because changing one input also changes its product term.
+  Expanded factor dummy columns are not selectable. See `help estat` for effect
+  estimands and inference.
 - Only one-way clustering is supported. Weighted/survey probit is not installed.
   Current-row `pr se` and `pr interval [level(95)]` use the selected retained
   covariance, conditional on current predictors; intervals transform normal

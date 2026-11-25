@@ -10124,7 +10124,7 @@ pub fn tokenize(text: &str) -> Result<Vec<Token>, ParseError> {
     }
     if matches!(
       character,
-      ',' | '=' | '<' | '>' | '+' | '-' | '*' | '/' | '(' | ')' | ':' | '.'
+      ',' | '=' | '<' | '>' | '+' | '-' | '*' | '/' | '(' | ')' | ':' | '.' | '#'
     ) {
       tokens.push(Token {
         kind: TokenKind::Symbol,
@@ -10314,7 +10314,14 @@ fn parse_simple_body_with_factor_terms(
             text.extend(&characters[variable_start..index]);
             continue;
           }
-          if allow_factor_terms && !quoted && characters[index] == '.' && text == "i" {
+          if allow_factor_terms
+            && !quoted
+            && characters[index] == '.'
+            && text
+              .rsplit('#')
+              .next()
+              .is_some_and(|part| part.eq_ignore_ascii_case("i"))
+          {
             if characters
               .get(index + 1)
               .is_some_and(|character| character.is_alphabetic() || *character == '_')
@@ -10326,6 +10333,44 @@ fn parse_simple_body_with_factor_terms(
             return Err(ParseError::new(
               "factor term syntax i. requires a variable after the dot",
             ));
+          }
+          if allow_factor_terms
+            && !quoted
+            && characters[index] == '.'
+            && text
+              .rsplit('#')
+              .next()
+              .is_some_and(|part| part.eq_ignore_ascii_case("c"))
+          {
+            if characters
+              .get(index + 1)
+              .is_some_and(|character| character.is_alphabetic() || *character == '_')
+            {
+              text.push('.');
+              index += 1;
+              continue;
+            }
+            return Err(ParseError::new(
+              "continuous term syntax c. requires a variable after the dot",
+            ));
+          }
+          if allow_factor_terms && !quoted && characters[index] == '#' {
+            let left = text.rsplit('#').next().unwrap_or_default();
+            let left_is_continuous = left
+              .get(..2)
+              .is_some_and(|prefix| prefix.eq_ignore_ascii_case("c."));
+            let right_is_continuous = characters
+              .get(index + 1)
+              .is_some_and(|character| character.eq_ignore_ascii_case(&'c'))
+              && characters.get(index + 2) == Some(&'.');
+            if !left_is_continuous || !right_is_continuous {
+              return Err(ParseError::new(
+                "only two-variable continuous interactions are supported; expected c.x#c.z",
+              ));
+            }
+            text.push('#');
+            index += 1;
+            continue;
           }
           if is_unsupported_simple_symbol(characters[index], allow_symbols) {
             return Err(ParseError::new(format!(
@@ -16277,15 +16322,15 @@ mod tests {
       ),
       (
         "predict cost_hat, xb interval",
-        "predict interval options require posterior_predictive",
+        "predict interval options require posterior_predictive, n, pr, pmf() or cdf()",
       ),
       (
         "predict cost_hat, xb level(90)",
-        "predict interval options require posterior_predictive",
+        "predict option level requires interval",
       ),
       (
         "predict cost_hat, residuals interval",
-        "predict interval options require posterior_predictive",
+        "predict interval options require posterior_predictive, n, pr, pmf() or cdf()",
       ),
       (
         "predict cost_hat, posterior_predictive level(90)",

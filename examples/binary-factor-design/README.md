@@ -68,8 +68,11 @@ predictor to differentiate. The `discrete(var)` form accepts an original
 continuous term with exact 0/1 values and both levels in the retained sample,
 including in these additive factor designs. It changes only the selected
 column in each retained design row, so factor indicators and other covariates
-remain observed. Interactions, weights, multiway clustering and simultaneous
-intervals remain unsupported.
+remain observed. This additive-factor formula does not cover continuous
+product terms, whose source-variable derivatives use the separate
+[continuous-interaction method](../continuous-interaction/README.md). Factor
+interactions, weights, multiway clustering and simultaneous intervals remain
+unsupported here.
 
 ## Discrete changes in mixed designs
 
@@ -82,11 +85,11 @@ asymptotic-normal inference and the fixed 95% interval. Current-data edits do
 not change the retained-design calculation.
 
 Expanded factor dummy columns will not qualify as the selected numeric
-predictor. Models with interactions, weights, multiway clustering or
-simultaneous intervals remain unsupported. Independent Base R references cover
-both links, default and explicit factor references, `noconstant`, numeric-code
-and boolean factors, plus model-based, robust and clustered covariance for the
-default text-factor design.
+predictor. Discrete changes reject models with continuous product terms;
+weights, multiway clustering and simultaneous intervals are also unsupported.
+Independent Base R references cover both links, default and explicit factor
+references, `noconstant`, numeric-code and boolean factors, plus model-based,
+robust and clustered covariance for the default text-factor design.
 
 ## Independent validation
 
@@ -140,7 +143,9 @@ combinations, state-preserving unknown/nonlinear `lincom` failures, zero-SE
 behavior and results retained across current-data edits. A complete row with y
 outside {0,1}, an absent explicit reference and a factor-margin request for an
 absent term fail clearly;
-failed fits clear stale estimation state. Interactions remain unsupported.
+failed fits clear stale estimation state. This fixture covers additive factor
+designs; continuous product-term behavior is validated separately in the
+[continuous-interaction reference](../continuous-interaction/README.md).
 
 `estat classification[, cutoff(#)]` is checked separately against the default
 design's independent R fit for logit/probit at cutoffs 0.5 and 0.35, including

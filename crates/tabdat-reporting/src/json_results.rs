@@ -708,7 +708,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ),
     ExecutionResult::LogitMarginalEffects(result) => (
       json!({
-        "estimator": "logit", "effect": "average_continuous_predictor_column_derivative",
+        "estimator": "logit", "effect": if result.original_variable_derivatives { "average_original_continuous_variable_derivative" } else { "average_continuous_predictor_column_derivative" },
         "sample": "retained_estimation_design", "uncertainty": "conditional_on_observed_design_delta_method",
         "cluster": result.cluster,
         "covariance": if result.cluster.is_some() { "cluster_sandwich_g_over_g_minus_1" } else if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_fisher_information" }, "confidence_level": 95.0,
@@ -1019,7 +1019,7 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ),
     ExecutionResult::ProbitMarginalEffects(result) => (
       json!({
-        "estimator": "probit", "effect": "average_continuous_predictor_column_derivative",
+        "estimator": "probit", "effect": if result.original_variable_derivatives { "average_original_continuous_variable_derivative" } else { "average_continuous_predictor_column_derivative" },
         "sample": "retained_estimation_design", "uncertainty": "conditional_on_observed_design_delta_method",
         "cluster": result.cluster,
         "covariance": if result.cluster.is_some() { "cluster_sandwich_g_over_g_minus_1" } else if result.robust { "robust_sandwich_n_over_n_minus_1" } else { "model_based_observed_information" }, "confidence_level": 95.0,

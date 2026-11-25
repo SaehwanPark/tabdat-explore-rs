@@ -1,10 +1,14 @@
 use crate::*;
 
-/// One parsed `regress` predictor term.
+/// One parsed linear-model predictor term.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum RegressTerm {
   Continuous {
     name: String,
+  },
+  ContinuousInteraction {
+    first: String,
+    second: String,
   },
   Factor {
     variable: String,
@@ -13,10 +17,11 @@ pub(crate) enum RegressTerm {
 }
 
 impl RegressTerm {
-  pub(crate) fn variable(&self) -> &str {
+  pub(crate) fn variables(&self) -> Vec<&str> {
     match self {
-      Self::Continuous { name } => name,
-      Self::Factor { variable, .. } => variable,
+      Self::Continuous { name } => vec![name],
+      Self::Factor { variable, .. } => vec![variable],
+      Self::ContinuousInteraction { first, second } => vec![first, second],
     }
   }
 }
@@ -119,22 +124,113 @@ fn factor_level_from_observed(value: &ObservedFactor) -> LinearFactorLevel {
   }
 }
 
-/// Whether any retained design term is an explicitly categorical factor.
-pub(crate) fn has_factor_terms(design_terms: &[LinearDesignTerm]) -> bool {
-  design_terms
-    .iter()
-    .any(|term| matches!(term, LinearDesignTerm::Factor { .. }))
+/// Whether the fitted design needs retained term metadata for prediction.
+pub(crate) fn has_explicit_design_terms(design_terms: &[LinearDesignTerm]) -> bool {
+  design_terms.iter().any(|term| {
+    matches!(
+      term,
+      LinearDesignTerm::Factor { .. } | LinearDesignTerm::ContinuousInteraction { .. }
+    )
+  })
 }
 
-/// Parse the bounded inline factor syntax accepted by `regress`.
-pub(crate) fn parse_regress_terms(predictors: &[String]) -> Result<Vec<RegressTerm>, RuntimeError> {
-  predictors
+/// Source variables in the same flattened order used by execution queries.
+pub(crate) fn design_input_variables(design_terms: &[LinearDesignTerm]) -> Vec<String> {
+  design_terms
     .iter()
-    .map(|predictor| parse_regress_term(predictor))
+    .flat_map(|term| match term {
+      LinearDesignTerm::Continuous { name } => vec![name.clone()],
+      LinearDesignTerm::ContinuousInteraction { first, second } => {
+        vec![first.clone(), second.clone()]
+      }
+      LinearDesignTerm::Factor { variable, .. } => vec![variable.clone()],
+    })
     .collect()
 }
 
+/// Parse the bounded inline factor and continuous-product syntax.
+pub(crate) fn parse_regress_terms(predictors: &[String]) -> Result<Vec<RegressTerm>, RuntimeError> {
+  let terms = predictors
+    .iter()
+    .map(|predictor| parse_regress_term(predictor))
+    .collect::<Result<Vec<_>, _>>()?;
+  let mut identities = std::collections::HashSet::new();
+  for term in &terms {
+    if !identities.insert(term_identity(term)) {
+      return Err(RuntimeError::RegressFailed {
+        message: format!("duplicate design term: {term:?}"),
+      });
+    }
+  }
+  Ok(terms)
+}
+
 fn parse_regress_term(predictor: &str) -> Result<RegressTerm, RuntimeError> {
+  if predictor.contains('#') {
+    if predictor.contains("##") {
+      return Err(RuntimeError::RegressFailed {
+        message:
+          "full-factorial interactions are not supported; use c.x#c.z for one continuous product"
+            .into(),
+      });
+    }
+    let Some((first, second)) = predictor.split_once('#') else {
+      unreachable!("contains('#') was checked")
+    };
+    if second.contains('#') {
+      return Err(RuntimeError::RegressFailed {
+        message: "only two-variable continuous interactions are supported; expected c.x#c.z".into(),
+      });
+    }
+    let first = first
+      .strip_prefix("c.")
+      .or_else(|| {
+        first
+          .get(..2)
+          .filter(|prefix| prefix.eq_ignore_ascii_case("c."))
+          .map(|_| &first[2..])
+      })
+      .ok_or_else(|| RuntimeError::RegressFailed {
+        message:
+          "continuous interactions require c. qualifiers on both variables, for example c.x#c.z"
+            .into(),
+      })?;
+    let second = second
+      .strip_prefix("c.")
+      .or_else(|| {
+        second
+          .get(..2)
+          .filter(|prefix| prefix.eq_ignore_ascii_case("c."))
+          .map(|_| &second[2..])
+      })
+      .ok_or_else(|| RuntimeError::RegressFailed {
+        message:
+          "continuous interactions require c. qualifiers on both variables, for example c.x#c.z"
+            .into(),
+      })?;
+    validate_factor_variable(first)?;
+    validate_factor_variable(second)?;
+    if first == second {
+      return Err(RuntimeError::RegressFailed {
+        message: "continuous interactions require two distinct variables".into(),
+      });
+    }
+    return Ok(RegressTerm::ContinuousInteraction {
+      first: first.to_owned(),
+      second: second.to_owned(),
+    });
+  }
+  if let Some(name) = predictor.strip_prefix("c.").or_else(|| {
+    predictor
+      .get(..2)
+      .filter(|prefix| prefix.eq_ignore_ascii_case("c."))
+      .map(|_| &predictor[2..])
+  }) {
+    validate_factor_variable(name)?;
+    return Ok(RegressTerm::Continuous {
+      name: name.to_owned(),
+    });
+  }
   if let Some(variable) = predictor.strip_prefix("i.") {
     validate_factor_variable(variable)?;
     return Ok(RegressTerm::Factor {
@@ -164,6 +260,20 @@ fn parse_regress_term(predictor: &str) -> Result<RegressTerm, RuntimeError> {
   Ok(RegressTerm::Continuous {
     name: predictor.to_owned(),
   })
+}
+
+fn term_identity(term: &RegressTerm) -> String {
+  match term {
+    RegressTerm::Continuous { name } => format!("continuous:{name}"),
+    RegressTerm::Factor { variable, base } => format!("factor:{variable}:{base:?}"),
+    RegressTerm::ContinuousInteraction { first, second } => {
+      if first <= second {
+        format!("interaction:{first}:{second}")
+      } else {
+        format!("interaction:{second}:{first}")
+      }
+    }
+  }
 }
 
 fn validate_factor_variable(variable: &str) -> Result<(), RuntimeError> {
@@ -329,7 +439,7 @@ pub(crate) fn expand_design(
     .iter()
     .filter_map(|term| match term {
       RegressTerm::Continuous { name } => Some(name.clone()),
-      RegressTerm::Factor { .. } => None,
+      RegressTerm::ContinuousInteraction { .. } | RegressTerm::Factor { .. } => None,
     })
     .collect();
   let mut parameter_names = Vec::new();
@@ -343,14 +453,30 @@ pub(crate) fn expand_design(
         design_terms.push(LinearDesignTerm::Continuous { name: name.clone() });
         factor_plans.push(None);
       }
+      RegressTerm::ContinuousInteraction { first, second } => {
+        let name = interaction_parameter_name(first, second);
+        if !used_names.insert(name.clone()) {
+          return Err(RuntimeError::RegressFailed {
+            message: format!("generated interaction parameter name collides with '{name}'"),
+          });
+        }
+        parameter_names.push(name);
+        design_terms.push(LinearDesignTerm::ContinuousInteraction {
+          first: first.clone(),
+          second: second.clone(),
+        });
+        factor_plans.push(None);
+      }
       RegressTerm::Factor { variable, base } => {
         let values = raw_terms
           .iter()
           .map(|row| match &row[term_index] {
             ObservedTermValue::Factor(value) => Ok(value.clone()),
-            ObservedTermValue::Continuous(_) => Err(RuntimeError::RegressFailed {
-              message: "internal factor design mismatch".into(),
-            }),
+            ObservedTermValue::Continuous(_) | ObservedTermValue::Interaction(_) => {
+              Err(RuntimeError::RegressFailed {
+                message: "internal factor design mismatch".into(),
+              })
+            }
           })
           .collect::<Result<Vec<_>, _>>()?;
         let levels = sorted_factor_levels(&values);
@@ -399,10 +525,15 @@ pub(crate) fn expand_design(
   let mut design_matrix = Vec::with_capacity(raw_terms.len());
   for row in raw_terms {
     let mut design_row = Vec::with_capacity(parameter_names.len());
-    for (index, value) in row.iter().enumerate() {
-      match value {
-        ObservedTermValue::Continuous(value) => design_row.push(*value),
-        ObservedTermValue::Factor(value) => {
+    for (index, (term, value)) in terms.iter().zip(row).enumerate() {
+      match (term, value) {
+        (RegressTerm::Continuous { .. }, ObservedTermValue::Continuous(value)) => {
+          design_row.push(*value)
+        }
+        (RegressTerm::ContinuousInteraction { .. }, ObservedTermValue::Interaction(value)) => {
+          design_row.push(*value)
+        }
+        (RegressTerm::Factor { .. }, ObservedTermValue::Factor(value)) => {
           let plan = factor_plans[index]
             .as_ref()
             .ok_or_else(|| RuntimeError::RegressFailed {
@@ -411,6 +542,11 @@ pub(crate) fn expand_design(
           for level in &plan.included {
             design_row.push(f64::from(value.same_level(level)));
           }
+        }
+        _ => {
+          return Err(RuntimeError::RegressFailed {
+            message: "internal regression design mismatch".into(),
+          });
         }
       }
     }
@@ -428,6 +564,7 @@ pub(crate) fn expand_design(
 #[derive(Debug, Clone)]
 pub(crate) enum ObservedTermValue {
   Continuous(f64),
+  Interaction(f64),
   Factor(ObservedFactor),
 }
 
@@ -439,21 +576,46 @@ pub(crate) fn expand_current_row(
   include_intercept: bool,
   cells: &[&CellValue],
 ) -> Result<Option<Vec<f64>>, RuntimeError> {
-  if design_terms.len() != cells.len() {
+  let input_count: usize = design_terms
+    .iter()
+    .map(|term| match term {
+      LinearDesignTerm::Continuous { .. } | LinearDesignTerm::Factor { .. } => 1,
+      LinearDesignTerm::ContinuousInteraction { .. } => 2,
+    })
+    .sum();
+  if input_count != cells.len() {
     return Err(RuntimeError::PredictFailed);
   }
   let mut columns = Vec::new();
-  for (term, cell) in design_terms.iter().zip(cells) {
+  let mut cell_index = 0usize;
+  for term in design_terms {
     match term {
       LinearDesignTerm::Continuous { .. } => {
+        let cell = cells[cell_index];
+        cell_index += 1;
         let Some(value) = cell_to_f64(cell).filter(|value| value.is_finite()) else {
           return Ok(None);
         };
         columns.push(value);
       }
+      LinearDesignTerm::ContinuousInteraction { .. } => {
+        let first = cell_to_f64(cells[cell_index]).filter(|value| value.is_finite());
+        let second = cell_to_f64(cells[cell_index + 1]).filter(|value| value.is_finite());
+        cell_index += 2;
+        let (Some(first), Some(second)) = (first, second) else {
+          return Ok(None);
+        };
+        let product = first * second;
+        if !product.is_finite() {
+          return Ok(None);
+        }
+        columns.push(product);
+      }
       LinearDesignTerm::Factor {
         reference, levels, ..
       } => {
+        let cell = cells[cell_index];
+        cell_index += 1;
         let Some(observed) = ObservedFactor::from_cell(cell)? else {
           return Ok(None);
         };
@@ -487,6 +649,10 @@ pub(crate) fn expand_current_row(
     }
   }
   Ok(Some(columns))
+}
+
+pub(crate) fn interaction_parameter_name(first: &str, second: &str) -> String {
+  format!("{first}__interaction__{second}")
 }
 
 /// Compare a retained report level with a freshly read cell value.
@@ -622,6 +788,80 @@ mod tests {
         },
       ]
     );
+  }
+
+  #[test]
+  fn parses_and_expands_one_continuous_interaction() {
+    let terms = parse_regress_terms(&["c.x#c.z".into(), "x".into()]).unwrap();
+    assert_eq!(
+      terms,
+      vec![
+        RegressTerm::ContinuousInteraction {
+          first: "x".into(),
+          second: "z".into(),
+        },
+        RegressTerm::Continuous { name: "x".into() },
+      ]
+    );
+    let raw = vec![vec![
+      ObservedTermValue::Interaction(6.0),
+      ObservedTermValue::Continuous(2.0),
+    ]];
+    let design = expand_design(&terms, &raw, true).unwrap();
+    assert_eq!(design.parameter_names, ["x__interaction__z", "x"]);
+    assert_eq!(design.design_matrix, [vec![6.0, 2.0]]);
+    assert_eq!(
+      design.design_terms,
+      [
+        LinearDesignTerm::ContinuousInteraction {
+          first: "x".into(),
+          second: "z".into(),
+        },
+        LinearDesignTerm::Continuous { name: "x".into() },
+      ]
+    );
+    assert_eq!(
+      expand_current_row(
+        &design.design_terms,
+        true,
+        &[
+          &CellValue::SignedInteger(2),
+          &CellValue::SignedInteger(3),
+          &CellValue::SignedInteger(2)
+        ]
+      )
+      .unwrap(),
+      Some(vec![6.0, 2.0])
+    );
+    assert_eq!(
+      expand_current_row(
+        &design.design_terms,
+        true,
+        &[
+          &CellValue::SignedInteger(2),
+          &CellValue::Null,
+          &CellValue::SignedInteger(2)
+        ]
+      )
+      .unwrap(),
+      None
+    );
+  }
+
+  #[test]
+  fn rejects_unsupported_or_duplicate_interactions() {
+    for invalid in [
+      "c.x#z",
+      "x#c.z",
+      "i.region#c.x",
+      "c.x##c.z",
+      "c.x#c.z#c.w",
+      "c.x#c.x",
+    ] {
+      assert!(parse_regress_terms(&[invalid.into()]).is_err(), "{invalid}");
+    }
+    assert!(parse_regress_terms(&["c.x#c.z".into(), "c.z#c.x".into()]).is_err());
+    assert!(parse_regress_terms(&["x".into(), "c.x".into()]).is_err());
   }
 
   #[test]

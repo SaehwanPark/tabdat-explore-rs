@@ -6,7 +6,9 @@ use tabdat_reporting::{
   json_results::{serialize_execution_result, supports_batch_command, supports_script_command},
   terminal::{render_execution_result, render_interactive_help},
 };
-use tabdat_stats::{BinaryCluster, BinaryDiscreteChange, BinaryModel, LogitEstimate};
+use tabdat_stats::{
+  BinaryCluster, BinaryDiscreteChange, BinaryModel, LogitEstimate, LogitMarginalEffects,
+};
 
 fn result(model: BinaryModel, robust: bool, cluster: Option<BinaryCluster>) -> ExecutionResult {
   ExecutionResult::BinaryDiscreteChange(Box::new(BinaryDiscreteChange {
@@ -27,6 +29,55 @@ fn result(model: BinaryModel, robust: bool, cluster: Option<BinaryCluster>) -> E
     cluster,
     observation_count: 120,
   }))
+}
+
+#[test]
+fn binary_continuous_margins_json_and_terminal_describe_original_variable_derivatives() {
+  let effects = LogitMarginalEffects {
+    robust: false,
+    cluster: None,
+    observation_count: 120,
+    effects: vec![LogitEstimate {
+      name: "x".into(),
+      value: 0.12,
+      standard_error: 0.03,
+      statistic: 4.0,
+      p_value: 0.0001,
+      confidence_lower: 0.0612,
+      confidence_upper: 0.1788,
+    }],
+    original_variable_derivatives: false,
+  };
+  for result in [
+    ExecutionResult::LogitMarginalEffects(effects.clone()),
+    ExecutionResult::ProbitMarginalEffects(Box::new(effects.clone())),
+  ] {
+    let envelope: Value =
+      serde_json::from_str(&serialize_execution_result(&result).unwrap()).unwrap();
+    assert_eq!(
+      envelope["data"]["effect"],
+      "average_continuous_predictor_column_derivative"
+    );
+    assert_eq!(envelope["data"]["effects"][0]["name"], "x");
+    assert!(
+      render_execution_result(&result)
+        .contains("Original-variable derivatives include the product rule for c.x#c.z")
+    );
+  }
+
+  let interaction_effects = LogitMarginalEffects {
+    original_variable_derivatives: true,
+    ..effects.clone()
+  };
+  let envelope: Value = serde_json::from_str(
+    &serialize_execution_result(&ExecutionResult::LogitMarginalEffects(interaction_effects))
+      .unwrap(),
+  )
+  .unwrap();
+  assert_eq!(
+    envelope["data"]["effect"],
+    "average_original_continuous_variable_derivative"
+  );
 }
 
 #[test]

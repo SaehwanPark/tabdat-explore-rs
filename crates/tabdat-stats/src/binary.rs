@@ -754,7 +754,8 @@ pub fn binary_hosmer_lemeshow_test(
 pub type BinaryLogitResult = BinaryMleResult;
 
 /// Conditional-on-observed-design continuous average partial derivatives.
-/// These are not discrete changes or chain-rule effects of original variables.
+/// These are not discrete changes; continuous interaction terms use their
+/// retained product-rule derivatives.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LogitMarginalEffects {
   #[serde(default)]
@@ -763,6 +764,19 @@ pub struct LogitMarginalEffects {
   pub cluster: Option<BinaryCluster>,
   pub observation_count: usize,
   pub effects: Vec<LogitEstimate>,
+  /// True when effects differentiate original source variables through a
+  /// row-varying design such as a continuous product term.
+  #[serde(skip)]
+  pub original_variable_derivatives: bool,
+}
+
+/// Row-specific predictor-design derivative for one original continuous input.
+/// Each row contains derivatives with respect to the model's predictor columns,
+/// excluding the optional intercept.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BinaryMarginalEffectDesign {
+  pub predictor_name: String,
+  pub row_derivatives: Vec<Vec<f64>>,
 }
 
 /// Average fitted-probability change when one binary predictor is set from
@@ -1485,6 +1499,42 @@ pub fn binary_average_marginal_effects_for_columns(
   result: &BinaryMleResult,
   predictor_columns: &[usize],
 ) -> Result<LogitMarginalEffects, StatsError> {
+  let n = problem.observation_count();
+  let predictor_count = problem.predictor_names.len();
+  let mut designs = Vec::with_capacity(predictor_columns.len());
+  let mut selected_columns = BTreeSet::new();
+  if predictor_columns
+    .iter()
+    .any(|column| *column >= predictor_count || !selected_columns.insert(*column))
+  {
+    return Err(invalid(
+      result.model,
+      "marginal effect columns must be unique retained predictors",
+    ));
+  }
+  for &column in predictor_columns {
+    let mut row_derivatives = vec![vec![0.0; predictor_count]; n];
+    for row in &mut row_derivatives {
+      row[column] = 1.0;
+    }
+    designs.push(BinaryMarginalEffectDesign {
+      predictor_name: problem.predictor_names[column].clone(),
+      row_derivatives,
+    });
+  }
+  let mut effects = binary_average_marginal_effects_for_derivatives(problem, result, &designs)?;
+  effects.original_variable_derivatives = false;
+  Ok(effects)
+}
+
+/// Average original-variable derivatives through a retained nonlinear link.
+/// `row_derivatives` allows the caller to describe product-rule terms while
+/// this routine applies the full coefficient covariance delta method.
+pub fn binary_average_marginal_effects_for_derivatives(
+  problem: &EstimationProblem,
+  result: &BinaryMleResult,
+  derivative_designs: &[BinaryMarginalEffectDesign],
+) -> Result<LogitMarginalEffects, StatsError> {
   problem.validate()?;
   let model = result.model;
   let n = problem.observation_count();
@@ -1526,34 +1576,37 @@ pub fn binary_average_marginal_effects_for_columns(
       "marginal effects require finite fit quantities",
     ));
   }
-  let mut selected_columns = BTreeSet::new();
-  if predictor_columns
-    .iter()
-    .any(|column| *column >= problem.predictor_names.len() || !selected_columns.insert(*column))
-  {
-    return Err(invalid(
-      model,
-      "marginal effect columns must be unique retained predictors",
-    ));
+  let predictor_count = problem.predictor_names.len();
+  let mut names = BTreeSet::new();
+  for design in derivative_designs {
+    if design.predictor_name.is_empty()
+      || !names.insert(design.predictor_name.as_str())
+      || design.row_derivatives.len() != n
+      || design
+        .row_derivatives
+        .iter()
+        .any(|row| row.len() != predictor_count || row.iter().any(|value| !value.is_finite()))
+    {
+      return Err(invalid(
+        model,
+        "marginal-effect derivative designs must have unique names and finite retained-row dimensions",
+      ));
+    }
   }
   let x = full_design(problem);
-  // (link derivative, link second derivative) mean structures.
-  let (mean_link, mean_link_change) = match model {
+  let (link_derivatives, link_second_derivatives) = match model {
     BinaryModel::Logit => {
       // Stored from the converged fit: stable p*(1-p) stays the link
       // derivative even when a probability rounds to exactly one.
-      let mean_link = result.fitted_weights.iter().sum::<f64>() / n as f64;
-      let mean_link_change: Vec<f64> = (0..k)
-        .map(|j| {
-          x.iter()
-            .zip(&result.fitted_weights)
-            .zip(&result.fitted_probabilities)
-            .map(|((row, w), p)| row[j] * w * (1.0 - 2.0 * p))
-            .sum::<f64>()
-            / n as f64
-        })
-        .collect();
-      (mean_link, mean_link_change)
+      (
+        result.fitted_weights.clone(),
+        result
+          .fitted_weights
+          .iter()
+          .zip(&result.fitted_probabilities)
+          .map(|(weight, probability)| weight * (1.0 - 2.0 * probability))
+          .collect(),
+      )
     }
     BinaryModel::Probit => {
       // Density pieces recomputed from the reported coefficients and the
@@ -1575,26 +1628,43 @@ pub fn binary_average_marginal_effects_for_columns(
           "marginal effects require finite fit quantities",
         ));
       }
-      let mean_link = etas.iter().map(|&z| normal_pdf(z)).sum::<f64>() / n as f64;
-      let mean_link_change: Vec<f64> = (0..k)
-        .map(|j| {
-          x.iter()
-            .zip(&etas)
-            .map(|(row, z)| row[j] * (-(z * normal_pdf(*z))))
-            .sum::<f64>()
-            / n as f64
-        })
+      let derivatives = etas.iter().map(|z| normal_pdf(*z)).collect::<Vec<_>>();
+      let second_derivatives: Vec<f64> = etas
+        .iter()
+        .zip(&derivatives)
+        .map(|(z, derivative)| -(z * derivative))
         .collect();
-      (mean_link, mean_link_change)
+      (derivatives, second_derivatives)
     }
   };
   let mut effects = Vec::new();
-  for &column in predictor_columns {
-    let name = &problem.predictor_names[column];
-    let index = column + usize::from(problem.include_intercept);
-    let beta = result.coefficients[index].value;
-    let mut gradient: Vec<f64> = mean_link_change.iter().map(|d| beta * d).collect();
-    gradient[index] += mean_link;
+  let intercept = usize::from(problem.include_intercept);
+  for design in derivative_designs {
+    let mut estimate = 0.0;
+    let mut gradient = vec![0.0; k];
+    for observation in 0..n {
+      let derivative = &design.row_derivatives[observation];
+      let eta_derivative = derivative
+        .iter()
+        .enumerate()
+        .map(|(column, value)| value * result.coefficients[column + intercept].value)
+        .sum::<f64>();
+      estimate += link_derivatives[observation] * eta_derivative;
+      for parameter in 0..k {
+        let row_derivative = if parameter < intercept {
+          0.0
+        } else {
+          derivative[parameter - intercept]
+        };
+        gradient[parameter] +=
+          link_second_derivatives[observation] * eta_derivative * x[observation][parameter]
+            + link_derivatives[observation] * row_derivative;
+      }
+    }
+    estimate /= n as f64;
+    for value in &mut gradient {
+      *value /= n as f64;
+    }
     let variance: f64 = (0..k)
       .map(|i| {
         (0..k)
@@ -1604,8 +1674,8 @@ pub fn binary_average_marginal_effects_for_columns(
       .sum();
     effects.push(inference(
       model,
-      name.clone(),
-      beta * mean_link,
+      design.predictor_name.clone(),
+      estimate,
       variance.sqrt(),
     )?);
   }
@@ -1614,6 +1684,7 @@ pub fn binary_average_marginal_effects_for_columns(
     cluster: result.cluster.clone(),
     observation_count: n,
     effects,
+    original_variable_derivatives: true,
   })
 }
 

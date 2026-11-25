@@ -166,7 +166,11 @@ impl Session {
 
     let mut referenced_variables = Vec::new();
     referenced_variables.push(command.outcome.clone());
-    referenced_variables.extend(terms.iter().map(|term| term.variable().to_owned()));
+    referenced_variables.extend(
+      terms
+        .iter()
+        .flat_map(|term| term.variables().into_iter().map(str::to_owned)),
+    );
     if let Some(w) = &command.weight_variable {
       referenced_variables.push(w.clone());
     }
@@ -202,9 +206,12 @@ impl Session {
     // Factor variables are explicitly categorical and may be text/boolean/numeric.
     let mut numeric_candidates = Vec::new();
     numeric_candidates.push(command.outcome.clone());
-    numeric_candidates.extend(terms.iter().filter_map(|term| match term {
-      RegressTerm::Continuous { name } => Some(name.clone()),
-      RegressTerm::Factor { .. } => None,
+    numeric_candidates.extend(terms.iter().flat_map(|term| match term {
+      RegressTerm::Continuous { name } => vec![name.clone()],
+      RegressTerm::ContinuousInteraction { first, second } => {
+        vec![first.clone(), second.clone()]
+      }
+      RegressTerm::Factor { .. } => Vec::new(),
     }));
     if let Some(w) = &command.weight_variable {
       numeric_candidates.push(w.clone());
@@ -233,7 +240,7 @@ impl Session {
           (!is_numeric_data_type(data_type) && !matches!(data_type, "VARCHAR" | "BOOLEAN"))
             .then_some(variable.clone())
         }
-        RegressTerm::Continuous { .. } => None,
+        RegressTerm::Continuous { .. } | RegressTerm::ContinuousInteraction { .. } => None,
       })
       .collect::<Vec<_>>();
     if !invalid_factors.is_empty() {
@@ -254,7 +261,7 @@ impl Session {
     let mut select_columns = Vec::new();
     select_columns.push(quote_identifier(&command.outcome));
     for term in &terms {
-      select_columns.push(quote_identifier(term.variable()));
+      select_columns.extend(term.variables().into_iter().map(quote_identifier));
     }
     if let Some(c) = &command.cluster_variable {
       select_columns.push(quote_identifier(c));
@@ -275,11 +282,11 @@ impl Session {
     // preserves this physical sample order, including bootstrap index mapping.
     let query = format!("SELECT {select_sql} FROM {ACTIVE_TABLE}");
 
-    let term_count = terms.len();
+    let predictor_input_count: usize = terms.iter().map(|term| term.variables().len()).sum();
     let has_cluster = command.cluster_variable.is_some();
     let has_weight = command.weight_variable.is_some();
-    let cluster_idx = 1 + term_count;
-    let weight_idx = 1 + term_count + if has_cluster { 1 } else { 0 };
+    let cluster_idx = 1 + predictor_input_count;
+    let weight_idx = 1 + predictor_input_count + if has_cluster { 1 } else { 0 };
 
     let mut total_rows = 0usize;
     let mut retained_indices = Vec::new();
@@ -314,27 +321,70 @@ impl Session {
 
         // Extract ordered terms. Factor cells retain their type so prediction
         // can reconstruct the same category comparisons.
-        let mut term_values = Vec::with_capacity(term_count);
+        let mut term_values = Vec::with_capacity(terms.len());
         let mut terms_valid = true;
-        for (index, term) in terms.iter().enumerate() {
-          let cell = read_owned_cell(row, 1 + index, true, "could not read predictor cell")?;
+        let mut input_index = 0usize;
+        for term in &terms {
           match term {
-            RegressTerm::Continuous { .. } => match cell_to_f64(cell) {
-              Some(value) if value.is_finite() => {
-                term_values.push(ObservedTermValue::Continuous(value));
+            RegressTerm::Continuous { .. } => {
+              let cell =
+                read_owned_cell(row, 1 + input_index, true, "could not read predictor cell")?;
+              input_index += 1;
+              match cell_to_f64(cell) {
+                Some(value) if value.is_finite() => {
+                  term_values.push(ObservedTermValue::Continuous(value));
+                }
+                _ => {
+                  terms_valid = false;
+                  break;
+                }
               }
-              _ => {
+            }
+            RegressTerm::ContinuousInteraction { .. } => {
+              let first_cell = read_owned_cell(
+                row,
+                1 + input_index,
+                true,
+                "could not read first interaction predictor cell",
+              )?;
+              let second_cell = read_owned_cell(
+                row,
+                2 + input_index,
+                true,
+                "could not read second interaction predictor cell",
+              )?;
+              input_index += 2;
+              let (Some(first), Some(second)) = (
+                cell_to_f64(first_cell).filter(|value| value.is_finite()),
+                cell_to_f64(second_cell).filter(|value| value.is_finite()),
+              ) else {
+                terms_valid = false;
+                break;
+              };
+              let product = first * second;
+              if product.is_finite() {
+                term_values.push(ObservedTermValue::Interaction(product));
+              } else {
                 terms_valid = false;
                 break;
               }
-            },
-            RegressTerm::Factor { .. } => match ObservedFactor::from_cell(cell)? {
-              Some(value) => term_values.push(ObservedTermValue::Factor(value)),
-              None => {
-                terms_valid = false;
-                break;
+            }
+            RegressTerm::Factor { .. } => {
+              let cell = read_owned_cell(
+                row,
+                1 + input_index,
+                true,
+                "could not read factor predictor cell",
+              )?;
+              input_index += 1;
+              match ObservedFactor::from_cell(cell)? {
+                Some(value) => term_values.push(ObservedTermValue::Factor(value)),
+                None => {
+                  terms_valid = false;
+                  break;
+                }
               }
-            },
+            }
           }
         }
         if !terms_valid {
@@ -417,7 +467,7 @@ impl Session {
     // Retained design metadata is additive: a purely continuous fit keeps the
     // established JSON/state shape, so only designs with an explicit factor
     // record their terms.
-    let design_terms = if regress_design::has_factor_terms(&expanded.design_terms) {
+    let design_terms = if regress_design::has_explicit_design_terms(&expanded.design_terms) {
       expanded.design_terms
     } else {
       Vec::new()
@@ -1713,12 +1763,11 @@ impl Session {
       return Err(RuntimeError::UnsupportedCommand { name: "predict" });
     }
 
-    // A retained factor design must be scored with its own contrast columns;
-    // predicting from expanded coefficient names alone would look for columns
-    // that never existed in the data. `linear_state` already excludes clustered
-    // GMM, and IV carries no factor terms.
+    // Retained factor and interaction designs must be rebuilt from their source
+    // variables; expanded coefficient names do not exist in the active data.
+    // `linear_state` already excludes clustered GMM, and IV carries no factor terms.
     if let Some(model) = self.linear_state()
-      && regress_design::has_factor_terms(&model.design_terms)
+      && regress_design::has_explicit_design_terms(&model.design_terms)
     {
       let design_terms = model.design_terms.clone();
       let include_intercept = model.include_intercept;
@@ -1818,11 +1867,11 @@ impl Session {
     }))
   }
 
-  /// Current-data `xb`/residual prediction for a retained factor design.
+  /// Current-data `xb`/residual prediction for a retained explicit design.
   ///
-  /// The retained design defines both the required data variables and the dummy
-  /// column order, so unknown or missing levels yield NULL instead of silently
-  /// scoring a different model.
+  /// The retained design defines source variables, product construction and
+  /// dummy-column order, so invalid products or unknown levels yield NULL
+  /// instead of silently scoring a different model.
   fn execute_design_prediction(
     &mut self,
     command: &PredictCommand,
@@ -1836,7 +1885,7 @@ impl Session {
     let design_columns: usize = design_terms
       .iter()
       .map(|term| match term {
-        LinearDesignTerm::Continuous { .. } => 1,
+        LinearDesignTerm::Continuous { .. } | LinearDesignTerm::ContinuousInteraction { .. } => 1,
         LinearDesignTerm::Factor {
           reference, levels, ..
         } => {
@@ -1860,13 +1909,7 @@ impl Session {
         variable: command.target_variable.clone(),
       });
     }
-    let mut required = design_terms
-      .iter()
-      .map(|term| match term {
-        LinearDesignTerm::Continuous { name } => name.clone(),
-        LinearDesignTerm::Factor { variable, .. } => variable.clone(),
-      })
-      .collect::<Vec<_>>();
+    let mut required = regress_design::design_input_variables(&design_terms);
     let residual = command.kind == PredictKind::Residuals;
     if residual {
       required.push(outcome.to_owned());
@@ -1885,7 +1928,7 @@ impl Session {
       return Err(RuntimeError::PredictUnknownVariable { variables: missing });
     }
 
-    let term_count = design_terms.len();
+    let term_count = required.len() - usize::from(residual);
     let query = format!(
       "SELECT {} FROM {ACTIVE_TABLE}",
       required

@@ -24,12 +24,12 @@ not by implementing every estimator mentioned in a chapter.
 
 | Book chapters / area | Installed baseline | Required remaining outcomes |
 | --- | --- | --- |
-| 4: Linear, IV and quantile models | Bounded OLS with one-way factors, WLS/diagonal GLS, 2SLS, HC1/one-way cluster inference; IID-location qreg and joint IID/whole-cluster pairs quantile bootstrap with one two-quantile coefficient contrast | Remaining IV diagnostics, analytic clustered qreg covariance, general quantile restrictions and simultaneous bands; cross-estimator factor designs, interactions and weight semantics |
+| 4: Linear, IV and quantile models | Bounded OLS with one-way factors and two-variable continuous products, WLS/diagonal GLS, 2SLS, HC1/one-way cluster inference; IID-location qreg and joint IID/whole-cluster pairs quantile bootstrap with one two-quantile coefficient contrast | Remaining IV diagnostics, analytic clustered qreg covariance, general quantile restrictions and simultaneous bands; cross-estimator factor designs, broader interactions and weight semantics |
 | 5–6, 10: ML/NLS, GMM/systems, optimization | Least squares, bounded binary logit/probit MLE/QR and explicit-formula unweighted NLS | Remaining nonlinear/system estimation, identification, optimization and valid covariance/convergence diagnostics |
-| 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald, retained-fit Wald restrictions, continuous delta AMEs and bounded 0/1 probability changes | Further model-specific LR/LM/specification tests, nonlinear restrictions, comparison and uncertainty |
+| 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald, retained-fit Wald restrictions, continuous product-rule delta AMEs and bounded 0/1 probability changes in additive designs | Further model-specific LR/LM/specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | Bounded original177-row PSID Figure9.2 Epanechnikov composition and native centred-rank LOWESS Figure9.3 source-data adaptation; independent source/R/geometry validation | General density, histogram/other kernels/kNN/remaining local or semiparametric regression; historical Figure9.3 tied-curve parity unresolved; no general KDE command or uncertainty |
 | 11–13: Bootstrap, simulation, Bayesian | Bounded seeded IID and whole-cluster OLS pairs, joint IID and whole-cluster quantile pairs and selected whole-cluster Poisson/panel workflows with B-1 covariance and percentile intervals; source-specific refit compositions are independently audited | Residual/parametric/general-estimator bootstrap and automatic FE/RE refits, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
-| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, additive one-way categorical main effects, probabilities/xb and current-row probability delta SEs/link-scale intervals, continuous retained-X delta AMEs and numeric 0/1 retained-X discrete changes for original continuous terms in mixed designs, factor-level average probability contrasts with delta uncertainty, retained-fit Wald restrictions, unweighted model-based grouped Hosmer–Lemeshow calibration and descriptive retained-sample cutoff classification; validated native §14.2 tables/figure under explicit conventions | Interactions, other binary specification tests, endogenous/fractional models and remaining illustration outputs/graphics |
+| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit with additive one-way categorical main effects and two-variable continuous products, probabilities/xb and current-row probability delta SEs/link-scale intervals, continuous retained-X product-rule delta AMEs and numeric 0/1 retained-X discrete changes for original continuous terms in additive designs, factor-level average probability contrasts with delta uncertainty, retained-fit Wald restrictions, unweighted model-based grouped Hosmer–Lemeshow calibration and descriptive retained-sample cutoff classification; validated native §14.2 tables/figure under explicit conventions | Factor interactions, discrete changes in interaction models, other binary specification tests, endogenous/fractional models and remaining illustration outputs/graphics |
 | 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step author-program workflows, with declared covariance, effects and current predictions | Remaining censoring/truncation, selection/two-part/CLAD workflows and illustrations; two-step is not default ML, causal or RAND parity |
 | 17–19: Survival, heterogeneity, multiple hazards | Validated composed566-strike/artificial80-spell KM/NA workflows plus original3343-spell exponential/Weibull/Gompertz/Cox-Breslow cause-specific regression/full robust inference and net-survival points; owned Cox reference baseline | General declarations/richer parametric/Cox, mixture/frailty and multiple-event analyses; no general survival declaration API or competing-risk incidence support |
@@ -1336,7 +1336,8 @@ panel likelihood is supplied.
   Default, explicit-reference, `noconstant`, numeric-code and boolean factor
   references are included. This synthetic method evidence does not validate a
   textbook illustration;
-  interactions remain unsupported. See the
+  factor interactions, `##` expansion, and broader transformations remain
+  unsupported. See the
   [fixture and independent reference](../../examples/binary-factor-design/README.md).
 - **Retained binary classification method slice:** `estat classification[, cutoff(#)]`
   uses the exact retained outcome/probabilities after either link, classifies
@@ -1383,6 +1384,19 @@ panel likelihood is supplied.
   textbook replication or causal claim. See the [independent reference and
   runnable workflow](../../examples/binary-discrete-change/README.md) and
   [PR #461](https://github.com/SaehwanPark/tabdat-explore-rs/pull/461).
+- **Continuous interaction method slice:** `c.x#c.z` contributes one `x*z`
+  column to OLS, logit and probit without implicit main effects. A deterministic
+  synthetic 240-row fixture retains 236 rows per model after missing inputs,
+  product overflow and model-specific missing outcomes. Independent Base R
+  4.6.2 comparisons cover OLS coefficients, standard errors, full covariance
+  and current-row predictions; logit/probit coefficients and standard errors,
+  current-row probabilities, probability SEs and 95% intervals; and binary
+  product-rule average derivatives/SEs for full and interaction-only designs.
+  Runtime coverage checks invalid/duplicate syntax, failed-fit state, product
+  reconstruction for current predictions, discrete-change rejection and AME
+  stability after editing active data. Numerical comparisons use 3e-8 absolute
+  tolerance. This is synthetic method evidence, not a textbook illustration
+  replication. See the [fixture and independent reference](../../examples/continuous-interaction/README.md).
 - **OLS/six-column comparison:** [PR #275](https://github.com/SaehwanPark/tabdat-explore-rs/pull/275)
   adds `comparison.td`, independently checked by base R4.6.1 and a standard-library
   checker: all 94 classical/robust logit/probit/OLS numerical quantities and all

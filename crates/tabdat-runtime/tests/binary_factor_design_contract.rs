@@ -518,6 +518,7 @@ fn continuous_margins_after_factor_fits_match_base_r_and_use_only_retained_conti
       let before = session.state().estimation;
       let actual = continuous_marginal_effect_result(run(&mut session, "estat margins"));
       let reference = continuous_marginal_effect_reference(model, design, covariance);
+      assert!(!actual.original_variable_derivatives, "{fit}");
       assert_eq!(actual.observation_count, 237, "{fit}");
       assert_eq!(actual.robust, covariance != "model_based", "{fit}");
       assert_eq!(actual.cluster.is_some(), covariance == "cluster", "{fit}");

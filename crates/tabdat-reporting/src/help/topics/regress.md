@@ -1,7 +1,7 @@
 # regress
 
 How to invoke:
-`regress y x1 x2 [, robust cluster(var) noconstant wls(var) gls(var)]`
+`regress y x1 x2 [c.x#c.z] [, robust cluster(var) noconstant wls(var) gls(var)]`
 or `regress y x1 x2 if <predicate> [, ...]`
 
 What it does:
@@ -17,6 +17,7 @@ Examples:
 - `regress cost age bmi if eligible == 1, robust`
 - `regress lnwage educ i.region i.year`
 - `regress lnwage educ ib(North).region`
+- `regress lnwage educ experience c.educ#c.experience`
 - `regress lnwage i.region, noconstant`
 
 Factor terms:
@@ -36,10 +37,20 @@ Factor terms:
   `ib(level).var`, which would have nothing to contrast against.
 - A factor with one retained level in an intercept model, and a reference level
   absent from the estimation sample, fail with explicit messages.
-- Only `regress` accepts factor terms. Other estimators and commands such as
-  `summarize`, `logit` or `bootstrap` still reject `i.var`.
+- `regress`, `logit` and `probit` accept additive factor terms. Other
+  estimators and commands still reject `i.var`.
 
-Prediction after a factor fit:
+Continuous interactions:
+- `c.x#c.z` contributes one product column, `x*z`, with parameter name
+  `x__interaction__z`. It does not add either main effect; include `x z` too
+  when those terms belong in the model.
+- Inputs and their product must be finite on a retained row. Current-data
+  predictions rebuild the product from `x` and `z`; missing, nonfinite or
+  overflowing products yield NULL.
+- Only two-variable continuous products are installed. Factor interactions,
+  `##` full-factorial expansion and other transformations remain unsupported.
+
+Prediction after a factor or interaction fit:
 - `predict newvar` reconstructs the retained contrast columns from the current
   data, so it never looks for columns named like expanded coefficients.
 - A missing factor cell, or a level first seen after the fit, yields NULL for
@@ -48,7 +59,7 @@ Prediction after a factor fit:
   current outcome.
 
 Stored reports:
-- `estimates store` retains the ordered design terms for factor fits, and
+- `estimates store` retains the ordered factor/interaction terms, and
   `estimates table` prints an explicit reference-level row. Continuous-only fits
   keep the established report shape without design metadata.
 

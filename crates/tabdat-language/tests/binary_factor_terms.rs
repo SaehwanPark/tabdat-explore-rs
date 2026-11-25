@@ -22,6 +22,33 @@ fn logit_and_probit_accept_the_bounded_factor_main_effect_syntax() {
 }
 
 #[test]
+fn regression_and_binary_models_accept_typed_continuous_interaction_terms() {
+  for input in [
+    "regress y c.x#c.z x",
+    "logit y c.x#c.z x",
+    "probit y C.x#C.z c.x",
+  ] {
+    let command = parse_command(input).unwrap();
+    let predictors = match command {
+      Command::Regress { command } => command.predictors,
+      Command::Logit { command } => command.predictors,
+      Command::Probit { command } => command.predictors,
+      other => panic!("expected a supported interaction fit, got {other:?}"),
+    };
+    assert_eq!(
+      predictors,
+      [
+        input.split_whitespace().nth(2).unwrap(),
+        input.split_whitespace().nth(3).unwrap()
+      ]
+    );
+  }
+
+  assert!(parse_command("regress y c.x#z").is_err());
+  assert!(parse_command("logit y x#c.z").is_err());
+}
+
+#[test]
 fn count_models_and_factor_interactions_remain_outside_the_parser_slice() {
   assert!(parse_command("poisson y i.region").is_err());
   assert!(parse_command("nbreg y i.region").is_err());
