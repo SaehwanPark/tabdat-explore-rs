@@ -243,7 +243,6 @@ fn unsupported_postestimation_and_failed_prediction_never_mutate_data_labels_or_
   assert_eq!(rows(&mut s), old);
   for text in [
     "predict bad, pr",
-    "predict bad, residuals",
     "predict bad, posterior_predictive interval",
     "predict y, n",
     "estat vif",

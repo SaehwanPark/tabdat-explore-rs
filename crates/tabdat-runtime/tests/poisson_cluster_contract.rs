@@ -140,12 +140,7 @@ fn retained_cluster_effects_survive_edits_and_current_predictions_do_not_need_id
   assert_eq!(s.state().estimation, retained);
   let before = s.state();
   let old = rows(&mut s);
-  for text in [
-    "predict x, n",
-    "predict bad, pr",
-    "predict bad, residuals",
-    "estat vif",
-  ] {
+  for text in ["predict x, n", "predict bad, pr", "estat vif"] {
     fail(&mut s, text);
     assert_eq!(s.state(), before, "{text}");
     assert_eq!(rows(&mut s), old);

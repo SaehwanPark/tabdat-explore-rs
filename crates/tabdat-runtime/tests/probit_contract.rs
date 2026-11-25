@@ -202,16 +202,21 @@ fn binary_prediction_options_reject_and_never_mutate_state() {
   ));
   assert_eq!(s.state(), before);
   assert_eq!(preview(&mut s), rows);
-  assert!(parse_command("predict unused, pr interval").is_err());
-  for flag in 0..3 {
+  let tabdat_domain::Command::Predict { command } =
+    parse_command("predict unused, pr interval").unwrap()
+  else {
+    unreachable!()
+  };
+  assert!(command.interval);
+  assert_eq!(command.kind, tabdat_domain::PredictKind::Pr);
+  for flag in 0..2 {
     let tabdat_domain::Command::Predict { mut command } =
       parse_command("predict unused, pr").unwrap()
     else {
       unreachable!()
     };
     match flag {
-      0 => command.interval = true,
-      1 => command.std = true,
+      0 => command.std = true,
       _ => command.saving = Some("unused.csv".into()),
     }
     assert!(matches!(
