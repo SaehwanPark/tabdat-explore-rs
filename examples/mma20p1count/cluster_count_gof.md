@@ -1,5 +1,13 @@
 # Cluster robust NB2 grouped goodness of fit
 
+## Installed workflow
+
+The existing `estat countgof [, max(10)]` command selects this calculation when
+the retained NB2 fit is one-way clustered. It reports the group variable/count,
+`G/(G-1)` covariance multiplier, full moment covariance and chi-square result in
+JSON. The terminal report names the cluster method and assumptions. The
+model-based unclustered command and its JSON fields remain unchanged.
+
 ## Design contract
 
 This slice extends `estat countgof [, max(10)]` to an unweighted, clustered
@@ -38,7 +46,7 @@ requires independent clusters, a correctly specified conditional NB2 marginal
 distribution, and many independent clusters. `G/(G-1)` only scales the
 estimated covariance; it does not provide a few-cluster guarantee.
 
-## Independent reference plan
+## Independent reference design
 
 Use a deterministic Base R fixture with many independently drawn clusters. A
 shared `U_c ~ Gamma(r, rate=r)` and conditionally independent
@@ -48,9 +56,41 @@ likelihood, compute fitted cell probabilities, row scores, the full observed
 information, `C`, cluster influences, covariance and test independently in R.
 Check `C` separately against finite differences of the cell probabilities.
 
-The fixture should validate parameter estimates and each reported GOF quantity.
-Contract checks should cover same-sample use, cluster count and correction in
-structured/terminal output, missing or misaligned group identifiers, robust
-row fits, weights and offsets, too few groups, rank-deficient cluster meat, and
-state-preserving failures. This synthetic validation does not establish
-household/site or source-panel inference.
+The synthetic fixture validates parameter estimates and every reported GOF
+quantity. Contract checks cover same-sample use, cluster count and correction in
+structured/terminal output, missing or misaligned group identifiers, row-robust
+fits, weights and offsets, rank-deficient cluster meat, and state-preserving
+failures.
+
+## Independent validation
+
+`cluster_count_gof_reference.R` is a Base R 4.6.2 reference generator. It writes
+the synthetic input and expected values to
+`crates/tabdat-stats/tests/fixtures/nb2_cluster_count_gof_data.csv` and
+`nb2_cluster_count_gof_reference.csv`. The 480-row sample has 96 clusters and
+uses tail cutoff 4. R fits beta and `lnalpha` jointly, calculates the full
+observed information and score contributions, derives `C` from the NB2 cell
+probability scores, and checks it against finite differences of `dnbinom`.
+R then calculates the adjusted cluster moments, covariance and chi-square
+reference independently.
+
+The reference result is `M=3.72571408404506`, df=4,
+`p=0.444397009701926`, with covariance multiplier `96/95`. Rust matches the
+coefficients, alpha, log likelihood, every entry of the 4-by-4 moment
+covariance, observed/fitted cell counts and test statistic. Runtime and CLI
+checks verify retained-sample use, state preservation, rank-deficiency failure,
+JSON metadata and terminal assumptions.
+
+The source workflow `cluster_count_gof.td` uses the independently audited
+20,186 person-year sample and 5,908 original person IDs from
+`prepare_person.R`; no author data are committed. The separate
+`cluster_count_gof_author_reference.R` reads this ID-enriched CSV, fits beta and
+`lnalpha` jointly in Base R, checks the cell-probability derivative by finite
+differences, and independently computes the person-cluster covariance. The
+checker `check_cluster_count_gof_author_reference.py` compares its output with
+the native workflow. Across149 quantities, maximum absolute difference is
+`2.11003e-10` (log likelihood); `M=62.0783423878654`, df=10,
+`p=1.46222048715161e-9`, with covariance multiplier `5908/5907`. This validates
+the specified independent-person extension on the source rows. It does not
+establish household/site dependence, few-cluster behavior, or a result printed
+by the original author program.

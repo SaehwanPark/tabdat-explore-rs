@@ -1775,9 +1775,8 @@ the first10 cell residuals and all likelihood scores. The chi-square degrees of
 freedom are `J-1=10`, consistent with the book's §8.2.6 rule for 11 cells; the
 November2006 author program instead supplies9. That source df mismatch is
 preserved in reports. The reference assumes independent rows and a correctly
-specified conditional NB2 distribution; no cluster-robust grouped test is
-installed. Repeated person-years make the exact-sample result method evidence,
-not panel-robust inference.
+specified conditional NB2 distribution. Repeated person-years make the
+exact-sample independent-row result method evidence, not panel-robust inference.
 
 R4.6.2/MASS7.3.66 independently polish the exact author ASCII sample
 (`N=20,186`; SHA-256
@@ -1796,6 +1795,37 @@ the tolerance was not widened. The author data remain external. Synthetic
 reference, runtime retained-sample/failure checks, text/JSON CLI contracts and
 the source workflow are documented in
 [`count_gof.md`](../../examples/mma20p1count/count_gof.md).
+
+[PR #470](https://github.com/SaehwanPark/tabdat-explore-rs/pull/470) extends the
+same command to unweighted one-way clustered NB2 fits without offsets. It
+extends the §8.2.3 joint moment/score influence function to independent clusters:
+the full beta/lnalpha score and model-based observed-information bread form
+cluster-summed adjusted cell moments; the uncentered covariance uses
+`G/(G-1)/N`. A chi-square reference is emitted only when all `J-1` moments are
+identified. The test assumes a correctly specified conditional NB2 marginal
+distribution and many independent clusters. `G/(G-1)` does not give a
+few-cluster guarantee. The book supplies the observation-independent
+influence-function method; the cluster covariance is a documented M-test
+extension, not a formula stated verbatim in the text.
+
+R4.6.2 generates a deterministic dependent-within-cluster fixture with 480 rows
+and 96 independent clusters. Shared Gamma effects induce dependence while
+preserving NB2 row marginals. Base R independently calculates the joint fit,
+derivative `C` (and verifies it by finite differences), cluster covariance and
+test. Rust matches the coefficients, alpha, likelihood, all 16 covariance
+entries, cell frequencies and test: `M=3.72571408404506`, df=4,
+`p=0.444397009701926`; multiplier `96/95`.
+
+The original-person key is retained only after `prepare_person.R` audits the
+exact ASCII order against the external DTA. On the exact `N=20,186`, `G=5,908`
+sample, the independent Base R reference and native script match149 quantities
+(18 coefficients, alpha, likelihood, sample/correction, statistic/df/p, 100
+covariance entries and 22 cell counts/fractions). Maximum absolute difference
+is `2.11003e-10` in log likelihood. The cluster result is
+`M=62.0783423878654`, df=10, `p=1.46222048715161e-9`; the author program does
+not print a clustered GOF statistic. Person independence is an assumption and
+does not establish household/site inference. See
+[`cluster_count_gof.md`](../../examples/mma20p1count/cluster_count_gof.md).
 
 ### NB2 Poisson-boundary likelihood-ratio method evidence
 
