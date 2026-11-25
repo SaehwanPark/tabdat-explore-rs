@@ -29,7 +29,7 @@ not by implementing every estimator mentioned in a chapter.
 | 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald, retained-fit Wald restrictions, continuous delta AMEs and bounded 0/1 probability changes | Further model-specific LR/LM/specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | Bounded original177-row PSID Figure9.2 Epanechnikov composition and native centred-rank LOWESS Figure9.3 source-data adaptation; independent source/R/geometry validation | General density, histogram/other kernels/kNN/remaining local or semiparametric regression; historical Figure9.3 tied-curve parity unresolved; no general KDE command or uncertainty |
 | 11–13: Bootstrap, simulation, Bayesian | Bounded seeded IID and whole-cluster OLS pairs, joint IID and whole-cluster quantile pairs and selected whole-cluster Poisson/panel workflows with B-1 covariance and percentile intervals; source-specific refit compositions are independently audited | Residual/parametric/general-estimator bootstrap and automatic FE/RE refits, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
-| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb, continuous retained-X delta AME, numeric 0/1 retained-X discrete probability change and retained-fit Wald tests of general linear restrictions; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | Binary specification tests, factors/interactions, broader categorical contrasts and uncertainty, other illustration outputs/graphics |
+| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, probabilities/xb, continuous retained-X delta AME, numeric 0/1 retained-X discrete probability change and retained-fit Wald tests of general linear restrictions; unweighted model-based grouped Hosmer–Lemeshow calibration after logit/probit; validated native §14.2 published tables/figure and descriptive workflow under explicit conventions | Other binary specification tests, factors/interactions, broader categorical contrasts and uncertainty, other illustration outputs/graphics |
 | 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step author-program workflows, with declared covariance, effects and current predictions | Remaining censoring/truncation, selection/two-part/CLAD workflows and illustrations; two-step is not default ML, causal or RAND parity |
 | 17–19: Survival, heterogeneity, multiple hazards | Validated composed566-strike/artificial80-spell KM/NA workflows plus original3343-spell exponential/Weibull/Gompertz/Cox-Breslow cause-specific regression/full robust inference and net-survival points; owned Cox reference baseline | General declarations/richer parametric/Cox, mixture/frailty and multiple-event analyses; no general survival declaration API or competing-risk incidence support |
@@ -1286,7 +1286,14 @@ panel likelihood is supplied.
   [runnable test and evidence](../../examples/mma14p1binary/wald-test.md).
   Runtime checks cover retained-fit reuse after data edits and state-preserving
   unknown/singular failures. General binary `lincom`, finite-sample or few-cluster
-  inference and specification tests remain unsupported. [PR #452](https://github.com/SaehwanPark/tabdat-explore-rs/pull/452).
+  inference and other specification tests remain unsupported. Grouped
+  Hosmer–Lemeshow calibration is separately bounded to unweighted model-based
+  logit/probit fits, with exact-probability ties kept together, actual-group
+  `G-2` degrees of freedom and Base R4.6.2 evidence on a synthetic 160-row
+  design (159 retained rows; logit/probit `group(10)` each form four groups).
+  Robust/clustered fits and the default covariate-pattern Pearson test remain
+  unsupported. See the [grouped GOF method evidence](../../examples/binary-hosmer-lemeshow/README.md)
+  and [PR #452](https://github.com/SaehwanPark/tabdat-explore-rs/pull/452).
 - **Numeric binary discrete probability change:** `estat margins, discrete(var)`
   sets one exact numeric 0/1 predictor to each level for every original retained
   row and averages the fitted probability difference. Other predictors stay at

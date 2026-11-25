@@ -571,7 +571,9 @@ model-based, robust or one-way clustered covariance and reports an asymptotic
 chi-square test with `df` equal to the number of restrictions. `df_residual` is
 null; the result keeps the existing `TestResult` JSON shape. Current-data edits
 do not change the fitted coefficients or covariance used by the test. This does
-not add `lincom`, few-cluster corrections, or binary specification tests.
+not add `lincom`, few-cluster corrections or other binary specification tests;
+the separate grouped Hosmer–Lemeshow scope is documented at
+[`examples/binary-hosmer-lemeshow`](../binary-hosmer-lemeshow/README.md).
 
 Run the four tests on the verified fishing cohort:
 
@@ -613,4 +615,6 @@ is introduced.
 Weighted/survey forms, categorical/factor/interactions, discrete changes with
 uncertainty, prediction intervals and graphics beyond the bounded SVG
 scatter/line workflow remain open. General binary `lincom`, few-cluster
-inference, specification tests and the rest of the textbook are not claimed.
+inference, other specification tests and the rest of the textbook are not
+claimed. The grouped calibration diagnostic is a separate synthetic method
+fixture, not an additional §14.2 textbook replication.

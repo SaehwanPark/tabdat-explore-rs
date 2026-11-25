@@ -493,6 +493,12 @@ pub enum RuntimeError {
   EstatCountGofRequiresPriorNb2,
   /// A bounded NB2 count goodness-of-fit calculation failed without mutation.
   EstatCountGofFailed { message: String },
+  /// Grouped binary goodness of fit requires a retained logit or probit fit.
+  EstatGofRequiresPriorBinary,
+  /// Hosmer–Lemeshow chi-square calibration is limited to unweighted model-based fits.
+  EstatGofRequiresModelBasedBinary,
+  /// A bounded binary grouped goodness-of-fit calculation failed without mutation.
+  EstatGofFailed { message: String },
   /// Poisson NB2 overdispersion score reports require an owned Poisson fit.
   EstatOverdispersionRequiresPriorPoisson,
   /// A retained-Poisson overdispersion score calculation failed.
@@ -1220,6 +1226,9 @@ impl fmt::Display for RuntimeError {
       Self::EstatCountProbFailed { message } => write!(formatter, "estat countprob: {message}"),
       Self::EstatCountGofRequiresPriorNb2 => formatter.write_str("estat countgof requires a prior unclustered NB2 fit"),
       Self::EstatCountGofFailed { message } => write!(formatter, "estat countgof: {message}"),
+      Self::EstatGofRequiresPriorBinary => formatter.write_str("estat gof, group(#) requires a prior binary logit or probit fit"),
+      Self::EstatGofRequiresModelBasedBinary => formatter.write_str("estat gof, group(#) requires an unweighted model-based logit or probit fit without robust or cluster covariance"),
+      Self::EstatGofFailed { message } => write!(formatter, "estat gof: {message}"),
       Self::EstatOverdispersionRequiresPriorPoisson => formatter.write_str("estat overdispersion requires a prior Poisson fit"),
       Self::EstatOverdispersionFailed { message } => write!(formatter, "estat overdispersion: {message}"),
       Self::PredictLogitUnsupported => formatter.write_str(

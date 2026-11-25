@@ -21,6 +21,36 @@ pub enum BinaryModel {
   Probit,
 }
 
+/// Minimum number of requested bins for a Hosmer–Lemeshow reference test.
+pub const MIN_BINARY_GOODNESS_OF_FIT_GROUPS: usize = 3;
+/// Maximum number of requested bins in the bounded binary GOF command.
+pub const MAX_BINARY_GOODNESS_OF_FIT_GROUPS: usize = 20;
+
+/// One quantile group in a retained binary Hosmer–Lemeshow report.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryHosmerLemeshowGroup {
+  pub group: usize,
+  /// Upper fitted-probability boundary, inclusive.
+  pub probability_upper_bound: f64,
+  pub observation_count: usize,
+  pub observed_events: usize,
+  pub expected_events: f64,
+  pub observed_nonevents: usize,
+  pub expected_nonevents: f64,
+}
+
+/// Quantile-grouped Hosmer–Lemeshow calibration test for a binary fit.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryHosmerLemeshowResult {
+  pub requested_group_count: usize,
+  /// Tied fitted probabilities can make this smaller than requested.
+  pub group_count: usize,
+  pub statistic: f64,
+  pub degrees_of_freedom: usize,
+  pub p_value: f64,
+  pub groups: Vec<BinaryHosmerLemeshowGroup>,
+}
+
 impl BinaryModel {
   fn label(self) -> &'static str {
     match self {
@@ -165,6 +195,240 @@ pub fn binary_wald_test(
     .map(|coefficient| coefficient.value)
     .collect::<Vec<_>>();
   crate::post_estimation::wald_chi_square_test(&parameters, &result.covariance, r_matrix, r_vector)
+}
+
+/// Test grouped calibration on the retained model-based binary estimation sample.
+///
+/// The requested quantiles are formed over ordered fitted probabilities. Rows
+/// with exactly equal fitted probabilities remain together at a cut boundary,
+/// so the returned number of nonempty groups can be smaller than requested.
+/// Robust, clustered and weighted fits are rejected because the standard
+/// Hosmer–Lemeshow chi-square reference does not adjust for them. This follows
+/// the grouped `estat gof, group(#)` construction in the Stata Base Reference
+/// Manual (<https://www.stata.com/manuals/restatgof.pdf>); a bare
+/// covariate-pattern Pearson test is a separate procedure.
+pub fn binary_hosmer_lemeshow_test(
+  problem: &EstimationProblem,
+  result: &BinaryMleResult,
+  requested_group_count: usize,
+) -> Result<BinaryHosmerLemeshowResult, StatsError> {
+  if !(MIN_BINARY_GOODNESS_OF_FIT_GROUPS..=MAX_BINARY_GOODNESS_OF_FIT_GROUPS)
+    .contains(&requested_group_count)
+  {
+    return Err(invalid(
+      result.model,
+      "Hosmer-Lemeshow group count must be an integer from 3 to 20",
+    ));
+  }
+  problem.validate()?;
+  if result.robust
+    || result.cluster.is_some()
+    || problem.weights.is_some()
+    || problem
+      .sample
+      .as_ref()
+      .is_some_and(|sample| sample.weights.is_some() || sample.cluster_groups.is_some())
+  {
+    return Err(invalid(
+      result.model,
+      "Hosmer-Lemeshow calibration requires an unweighted model-based fit without clustering",
+    ));
+  }
+  let observation_count = problem.observation_count();
+  if result.outcome != problem.outcome
+    || result.predictor_names != problem.predictor_names
+    || result.include_intercept != problem.include_intercept
+    || result.sample != problem.sample
+    || result.observation_count != observation_count
+    || result
+      .coefficients
+      .iter()
+      .map(|coefficient| coefficient.name.clone())
+      .collect::<Vec<_>>()
+      != problem.parameter_names()
+    || result.fitted_probabilities.len() != observation_count
+    || result.fitted_weights.len() != observation_count
+    || result
+      .fitted_weights
+      .iter()
+      .any(|weight| !weight.is_finite() || !(0.0..=0.25).contains(weight))
+  {
+    return Err(invalid(
+      result.model,
+      "retained problem and fitted result do not describe the same outcome, design and estimation sample",
+    ));
+  }
+  if problem
+    .sample
+    .as_ref()
+    .is_some_and(|sample| sample.retained_indices.len() != observation_count)
+  {
+    return Err(invalid(
+      result.model,
+      "retained response, fitted probabilities and estimation sample do not align",
+    ));
+  }
+
+  let mut ordered = problem
+    .response
+    .iter()
+    .copied()
+    .zip(result.fitted_probabilities.iter().copied())
+    .zip(result.fitted_weights.iter().copied())
+    .map(|((response, probability), fitted_weight)| {
+      if !matches!(response, 0.0 | 1.0) {
+        return Err(invalid(
+          result.model,
+          "retained response must contain only exact zero and one values",
+        ));
+      }
+      if !probability.is_finite() || !(0.0..=1.0).contains(&probability) {
+        return Err(invalid(
+          result.model,
+          "retained fitted probabilities must be finite values from zero to one",
+        ));
+      }
+      // Recover the non-event tail when a fitted probability rounds to one;
+      // the binary MLE retains p*(1-p) without that subtraction loss.
+      let (event_probability, nonevent_probability) = if probability == 1.0 {
+        if fitted_weight <= 0.0 || fitted_weight > f64::EPSILON {
+          return Err(invalid(
+            result.model,
+            "a fitted probability rounded to one without a recoverable non-event tail",
+          ));
+        }
+        let nonevent_probability = fitted_weight / probability;
+        (1.0 - nonevent_probability, nonevent_probability)
+      } else {
+        (probability, 1.0 - probability)
+      };
+      Ok((
+        probability,
+        response,
+        event_probability,
+        nonevent_probability,
+      ))
+    })
+    .collect::<Result<Vec<_>, _>>()?;
+  if ordered.len() < MIN_BINARY_GOODNESS_OF_FIT_GROUPS {
+    return Err(invalid(
+      result.model,
+      "Hosmer-Lemeshow test requires at least three retained observations",
+    ));
+  }
+  ordered.sort_by(|left, right| left.0.total_cmp(&right.0));
+
+  // Collapse exact probability ties before choosing quantile boundaries. The
+  // reference manual keeps tied probabilities together, even when that makes
+  // group sizes uneven or reduces the number of groups.
+  let mut probability_patterns: Vec<(f64, usize)> = Vec::new();
+  for (probability, _, _, _) in &ordered {
+    if let Some((last_probability, count)) = probability_patterns.last_mut()
+      && *last_probability == *probability
+    {
+      *count += 1;
+    } else {
+      probability_patterns.push((*probability, 1));
+    }
+  }
+
+  let max_probability = probability_patterns
+    .last()
+    .expect("nonempty retained probabilities")
+    .0;
+  let mut boundaries = Vec::with_capacity(requested_group_count - 1);
+  for quantile in 1..requested_group_count {
+    // ceil(quantile * N / requested groups), calculated without multiplying N
+    // by the quantile (which could overflow for a very large retained sample).
+    let target = (observation_count / requested_group_count) * quantile
+      + (observation_count % requested_group_count * quantile).div_ceil(requested_group_count);
+    let mut cumulative = 0;
+    for (probability, count) in &probability_patterns {
+      cumulative += count;
+      if cumulative >= target {
+        if *probability < max_probability && boundaries.last() != Some(probability) {
+          boundaries.push(*probability);
+        }
+        break;
+      }
+    }
+  }
+
+  #[derive(Default)]
+  struct GroupAccumulator {
+    observation_count: usize,
+    observed_events: usize,
+    expected_events: f64,
+    expected_nonevents: f64,
+    probability_upper_bound: f64,
+  }
+  let mut accumulators = (0..=boundaries.len())
+    .map(|_| GroupAccumulator::default())
+    .collect::<Vec<_>>();
+  for (probability, response, event_probability, nonevent_probability) in ordered {
+    // A probability equal to a cut remains in the lower group: intervals are
+    // [p0, p1], (p1, p2], ... as in the reference manual.
+    let group_index = boundaries.partition_point(|boundary| *boundary < probability);
+    let group = &mut accumulators[group_index];
+    group.observation_count += 1;
+    group.observed_events += usize::from(response == 1.0);
+    group.expected_events += event_probability;
+    group.expected_nonevents += nonevent_probability;
+    group.probability_upper_bound = probability;
+  }
+
+  let group_count = accumulators.len();
+  if group_count < MIN_BINARY_GOODNESS_OF_FIT_GROUPS {
+    return Err(invalid(
+      result.model,
+      "fitted-probability ties leave fewer than three nonempty Hosmer-Lemeshow groups",
+    ));
+  }
+  let degrees_of_freedom = group_count - 2;
+  let mut statistic = 0.0;
+  let mut groups = Vec::with_capacity(group_count);
+  for (index, group) in accumulators.into_iter().enumerate() {
+    if group.observation_count == 0
+      || !group.expected_events.is_finite()
+      || !group.expected_nonevents.is_finite()
+      || group.expected_events <= 0.0
+      || group.expected_nonevents <= 0.0
+    {
+      return Err(invalid(
+        result.model,
+        "a Hosmer-Lemeshow group has an empty or zero expected outcome cell",
+      ));
+    }
+    let observed_nonevents = group.observation_count - group.observed_events;
+    let variance =
+      group.expected_events * group.expected_nonevents / group.observation_count as f64;
+    let residual = group.observed_events as f64 - group.expected_events;
+    statistic += residual * residual / variance;
+    groups.push(BinaryHosmerLemeshowGroup {
+      group: index + 1,
+      probability_upper_bound: group.probability_upper_bound,
+      observation_count: group.observation_count,
+      observed_events: group.observed_events,
+      expected_events: group.expected_events,
+      observed_nonevents,
+      expected_nonevents: group.expected_nonevents,
+    });
+  }
+  let p_value = chi_square_tail(statistic, degrees_of_freedom);
+  if !statistic.is_finite() || !p_value.is_finite() || !(0.0..=1.0).contains(&p_value) {
+    return Err(failed(
+      result.model,
+      "Hosmer-Lemeshow statistic or chi-square tail is non-finite",
+    ));
+  }
+  Ok(BinaryHosmerLemeshowResult {
+    requested_group_count,
+    group_count,
+    statistic,
+    degrees_of_freedom,
+    p_value,
+    groups,
+  })
 }
 
 /// Compatibility name for logit results before the shared binary core.

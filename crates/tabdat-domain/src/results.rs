@@ -808,6 +808,15 @@ pub struct CountGoodnessOfFitResult {
   pub test: tabdat_stats::CountGoodnessOfFitResult,
 }
 
+/// Quantile-grouped binary Hosmer–Lemeshow test on a retained estimation sample.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryGoodnessOfFitResult {
+  pub model: tabdat_stats::BinaryModel,
+  pub outcome: String,
+  pub sample: Option<tabdat_stats::EstimationSample>,
+  pub test: tabdat_stats::BinaryHosmerLemeshowResult,
+}
+
 /// Results currently exposed by the bounded runtime slice.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
@@ -954,6 +963,8 @@ pub enum ExecutionResult {
   CountProbabilities(Box<CountProbabilityResult>),
   /// Score-adjusted NB2 grouped frequency goodness-of-fit test.
   CountGoodnessOfFit(Box<CountGoodnessOfFitResult>),
+  /// Quantile-grouped binary Hosmer–Lemeshow calibration test.
+  BinaryGoodnessOfFit(Box<BinaryGoodnessOfFitResult>),
   /// The result of appending fitted values, probabilities or residuals.
   Prediction(PredictionResult),
   /// The result of estimating an affine linear combination of regression coefficients.
