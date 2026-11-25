@@ -176,7 +176,7 @@ impl Fixture {
     Self { root, parquet }
   }
 
-  fn fourteen_instrument_sample() -> Self {
+  fn fifteen_instrument_sample() -> Self {
     let nonce = SystemTime::now()
       .duration_since(UNIX_EPOCH)
       .expect("system clock should be after Unix epoch")
@@ -189,12 +189,12 @@ impl Fixture {
       fixture_id
     ));
     fs::create_dir_all(&root).expect("fixture directory should be created");
-    let csv = root.join("fourteen-instrument.csv");
+    let csv = root.join("fifteen-instrument.csv");
     fs::write(
       &csv,
-      include_str!("../../../examples/robust-ar/robust_ar_fourteen_ci_multiple_data.csv"),
+      include_str!("../../../examples/robust-ar/robust_ar_fifteen_ci_multiple_data.csv"),
     )
-    .expect("fourteen-instrument fixture should be written");
+    .expect("fifteen-instrument fixture should be written");
     let parquet = root.join("iv.parquet");
     let connection = duckdb::Connection::open_in_memory().expect("fixture connection should open");
     let csv_string = csv.to_string_lossy().replace('\'', "''");
@@ -206,7 +206,7 @@ impl Fixture {
         ),
         [&parquet_string],
       )
-      .expect("fourteen-instrument fixture should write to parquet");
+      .expect("fifteen-instrument fixture should write to parquet");
     Self { root, parquet }
   }
 
@@ -893,7 +893,7 @@ fn scalar_ar_confidence_sets_reuse_retained_sample_and_reject_endogenous_nuisanc
 }
 
 #[test]
-fn robust_ar_sets_reuse_retained_fit_and_cap_fourteen_dimensions() {
+fn robust_ar_sets_reuse_retained_fit_and_cap_fifteen_dimensions() {
   let fixture = Fixture::school_like_sample();
   for (option, expected_n) in [("robust", 58), ("cluster(group_id)", 57)] {
     let mut session = load(&fixture);
@@ -1043,13 +1043,13 @@ fn robust_ar_sets_reuse_retained_fit_and_cap_fourteen_dimensions() {
     assert_eq!(session.state(), changed);
   }
 
-  let fourteen_fixture = Fixture::fourteen_instrument_sample();
+  let fifteen_fixture = Fixture::fifteen_instrument_sample();
   for option in ["robust", "cluster(group)"] {
-    let mut session = load(&fourteen_fixture);
+    let mut session = load(&fifteen_fixture);
     session
       .execute(
         parse_command(&format!(
-          "ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 z12 z13 z14) {option}"
+          "ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 z12 z13 z14 z15) {option}"
         ))
         .unwrap(),
       )
@@ -1058,19 +1058,20 @@ fn robust_ar_sets_reuse_retained_fit_and_cap_fourteen_dimensions() {
     let command = parse_command("estat ar, ci").unwrap();
     let result = session.execute(command.clone()).unwrap();
     let ExecutionResult::RobustMultipleInstrumentAndersonRubinConfidenceSet(set) = &result else {
-      panic!("expected robust fourteen-instrument AR confidence set");
+      panic!("expected robust fifteen-instrument AR confidence set");
     };
     assert_eq!(set.endogenous, "x");
     assert_eq!(
       set.excluded_instruments,
       [
-        "z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8", "z9", "z10", "z11", "z12", "z13", "z14"
+        "z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8", "z9", "z10", "z11", "z12", "z13", "z14",
+        "z15"
       ]
     );
-    assert_eq!(set.degrees_of_freedom, 14);
-    assert_eq!(set.observation_count, 336);
-    assert_eq!(set.auxiliary_parameter_count, 16);
-    assert_eq!(set.auxiliary_residual_df, 320);
+    assert_eq!(set.degrees_of_freedom, 15);
+    assert_eq!(set.observation_count, 360);
+    assert_eq!(set.auxiliary_parameter_count, 17);
+    assert_eq!(set.auxiliary_residual_df, 343);
     assert_eq!(
       set.cluster_group_count.is_some(),
       option.starts_with("cluster")
@@ -1085,11 +1086,11 @@ fn robust_ar_sets_reuse_retained_fit_and_cap_fourteen_dimensions() {
     assert_eq!(session.state(), changed);
   }
 
-  let mut session = load(&fourteen_fixture);
+  let mut session = load(&fifteen_fixture);
   session
     .execute(
       parse_command(
-        "ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 z12 z13 z14 row) robust",
+        "ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 z12 z13 z14 z15 row) robust",
       )
       .unwrap(),
     )
@@ -1100,7 +1101,7 @@ fn robust_ar_sets_reuse_retained_fit_and_cap_fourteen_dimensions() {
       .execute(parse_command("estat ar, ci").unwrap())
       .unwrap_err()
       .to_string()
-      .contains("at most fourteen excluded instruments")
+      .contains("at most fifteen excluded instruments")
   );
   assert_eq!(session.state(), before);
 }
