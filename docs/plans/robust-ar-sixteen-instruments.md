@@ -36,4 +36,4 @@ Verification note: all affected package and CLI suites pass. Strict Clippy
 passes for affected packages and changed CLI targets. A workspace-wide
 `-D warnings` attempt also surfaced one pre-existing warning in the unrelated
 `tests/cli_json_count_exposure_contract.rs` target.
-- [ ] Final PR review and merge.
+- [x] Final PR review and merge: PR #502, squash merge 5e832da48dfd83f3288aee20fdbea1f98ab08ea6.
