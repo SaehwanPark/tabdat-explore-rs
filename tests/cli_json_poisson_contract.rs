@@ -46,12 +46,31 @@ impl Fixture {
       .unwrap()
   }
   fn batch(&self, commands: &[&str]) -> Output {
+    self.batch_with_flag("--json", commands)
+  }
+  fn batch_with_flag(&self, flag: &str, commands: &[&str]) -> Output {
     let mut c = Command::new(env!("CARGO_BIN_EXE_tabdat-explore-rs"));
-    c.current_dir(&self.0).arg("--json");
+    c.current_dir(&self.0).arg(flag);
     for text in commands {
       c.args(["-c", text]);
     }
     c.output().unwrap()
+  }
+  fn interactive(&self, input: &str) -> Output {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_tabdat-explore-rs"))
+      .current_dir(&self.0)
+      .stdin(Stdio::piped())
+      .stdout(Stdio::piped())
+      .stderr(Stdio::piped())
+      .spawn()
+      .unwrap();
+    child
+      .stdin
+      .take()
+      .unwrap()
+      .write_all(input.as_bytes())
+      .unwrap();
+    child.wait_with_output().unwrap()
   }
   fn csv(&self) -> Vec<u8> {
     fs::read(self.0.join("poisson_predictions.csv")).unwrap()
@@ -355,4 +374,156 @@ fn no_constant_and_zero_variance_json_never_claim_unavailable_inference() {
     "no_non_intercept_coefficients"
   );
   assert_eq!(r[3]["data"]["effects"], serde_json::json!([]));
+}
+
+#[test]
+fn future_count_intervals_render_three_columns_and_null_rows_in_json_and_text() {
+  let mut source_rows: Vec<String> = sample().lines().map(str::to_owned).collect();
+  let mut missing_row: Vec<String> = source_rows[1].split(',').map(str::to_owned).collect();
+  assert_eq!(missing_row[0], "8");
+  missing_row[2].clear();
+  source_rows[1] = missing_row.join(",");
+  let source = source_rows.join("\n") + "\n";
+  let commands = [
+    "use mma20p1count.csv",
+    "poisson MDU LC IDP",
+    "predict future, n interval level(90)",
+    "head 10",
+  ];
+
+  let json = Fixture::new(&source);
+  let output = json.batch(&commands);
+  success(&output);
+  let results = envelopes(&output);
+  assert_eq!(results.len(), commands.len());
+  assert_eq!(results[1]["data"]["observation_count"], 79);
+  assert_eq!(results[2]["result_type"], "PredictionResult");
+  let dataset_columns = results[2]["data"]["dataset"]["columns"].as_array().unwrap();
+  for column in dataset_columns.iter().rev().take(3) {
+    assert_eq!(column["data_type"], "DOUBLE");
+  }
+  assert_eq!(
+    dataset_columns
+      .iter()
+      .rev()
+      .take(3)
+      .rev()
+      .map(|column| column["name"].as_str().unwrap())
+      .collect::<Vec<_>>(),
+    ["future", "future_lower", "future_upper"]
+  );
+  let table = &results[3]["data"];
+  let columns = table["columns"].as_array().unwrap();
+  assert_eq!(
+    columns
+      .iter()
+      .skip(19)
+      .map(|column| column.as_str().unwrap())
+      .collect::<Vec<_>>(),
+    ["future", "future_lower", "future_upper"]
+  );
+  let index = |name: &str| {
+    columns
+      .iter()
+      .position(|column| column.as_str() == Some(name))
+      .unwrap()
+  };
+  let (id, point, lower, upper) = (
+    index("prepared_row"),
+    index("future"),
+    index("future_lower"),
+    index("future_upper"),
+  );
+  let rows = table["rows"].as_array().unwrap();
+  let missing = rows.iter().find(|row| row[id].as_i64() == Some(8)).unwrap();
+  assert!(missing[point].is_null());
+  assert!(missing[lower].is_null());
+  assert!(missing[upper].is_null());
+  for row in rows.iter().filter(|row| row[id].as_i64() != Some(8)) {
+    let mean = row[point].as_f64().unwrap();
+    let lower = row[lower].as_f64().unwrap();
+    let upper = row[upper].as_f64().unwrap();
+    assert!(mean.is_finite() && mean > 0.0);
+    assert!(lower >= 0.0 && lower.fract() == 0.0);
+    assert!(lower <= upper && upper <= 100000.0 && upper.fract() == 0.0);
+  }
+
+  let text = Fixture::new(&source);
+  let output = text.batch_with_flag("--text", &commands);
+  success(&output);
+  let rendered = String::from_utf8(output.stdout).unwrap();
+  let text_lines: Vec<_> = rendered.lines().collect();
+  let text_header = text_lines
+    .iter()
+    .find(|line| line.split('\t').any(|column| column == "future_lower"))
+    .unwrap();
+  let text_columns: Vec<_> = text_header.split('\t').collect();
+  let text_index = |name: &str| {
+    text_columns
+      .iter()
+      .position(|column| *column == name)
+      .unwrap()
+  };
+  let text_rows: Vec<_> = text_lines
+    .iter()
+    .filter_map(|line| {
+      let row: Vec<_> = line.split('\t').collect();
+      (row.len() == text_columns.len() && row[0].parse::<u64>().is_ok()).then_some(row)
+    })
+    .collect();
+  assert_eq!(text_rows.len(), 10);
+  let text_missing = text_rows
+    .iter()
+    .find(|row| row[0].parse::<u64>() == Ok(8))
+    .unwrap();
+  assert_eq!(text_missing[text_index("future")], "NA");
+  assert_eq!(text_missing[text_index("future_lower")], "NA");
+  assert_eq!(text_missing[text_index("future_upper")], "NA");
+  for row in text_rows
+    .iter()
+    .filter(|row| row[0].parse::<u64>() != Ok(8))
+  {
+    let mean: f64 = row[text_index("future")].parse().unwrap();
+    let lower: f64 = row[text_index("future_lower")].parse().unwrap();
+    let upper: f64 = row[text_index("future_upper")].parse().unwrap();
+    assert!(mean.is_finite() && mean > 0.0);
+    assert!(lower >= 0.0 && lower.fract() == 0.0);
+    assert!(lower <= upper && upper <= 100000.0 && upper.fract() == 0.0);
+  }
+}
+
+#[test]
+fn failed_future_count_cli_intervals_leave_headed_data_unchanged() {
+  let source = sample();
+  for (fit_commands, failure, expected_error) in [
+    (
+      "poisson MDU LC IDP\nreplace LC = 700 if prepared_row == 8\n",
+      "predict too_large, n interval",
+      "count endpoint exceeds the supported cutoff",
+    ),
+    (
+      "generate log_time = 0\npoisson MDU LC IDP, offset(log_time)\nreplace log_time = 8.5\n",
+      "predict too_wide, n interval",
+      "predictive count interval work exceeds",
+    ),
+  ] {
+    let fixture = Fixture::new(&source);
+    let input = format!("use mma20p1count.csv\n{fit_commands}head 1\n{failure}\nhead 1\nexit\n");
+    let output = fixture.interactive(&input);
+    assert!(output.status.success(), "{output:?}");
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains(expected_error), "{stderr}");
+    assert!(!stdout.contains("too_large"));
+    assert!(!stdout.contains("too_wide"));
+    let lines: Vec<_> = stdout.lines().collect();
+    let headers: Vec<_> = lines
+      .iter()
+      .enumerate()
+      .filter(|(_, line)| line.split('\t').next() == Some("prepared_row"))
+      .collect();
+    assert_eq!(headers.len(), 2, "{stdout}");
+    assert_eq!(headers[0].1, headers[1].1);
+    assert_eq!(lines[headers[0].0 + 1], lines[headers[1].0 + 1]);
+  }
 }
