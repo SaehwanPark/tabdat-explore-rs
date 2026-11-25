@@ -190,14 +190,14 @@ covariance invariance, collisions, empty data and invalid current counts. This
 is synthetic method evidence and does not complete a textbook illustration or
 formal goodness-of-fit test.
 
-The q=13 robust scalar AR slice is installed for one endogenous regressor
+The q=14 robust scalar AR slice is installed for one endogenous regressor
 with HC1 and one-way CR1 covariance. It retains included-exogenous nuisance
 treatment, the fitted sample/groups and existing covariance corrections. Two
-independent 312-row Base R designs check both covariances, degree-26 determinants
-at 27 Chebyshev nodes, `polyroot` endpoints and direct Wald probes. Degree-26
-boundaries support up to 26 simple real roots and 14 accepted components. The
+independent 336-row Base R designs check both covariances, degree-28 determinants
+at 29 Chebyshev nodes, `polyroot` endpoints and direct Wald probes. Degree-28
+boundaries support up to 28 simple real roots and 15 accepted components. The
 first-stage JSON availability flag, help, examples, command-results contract
-and coverage ledger report q<=13. Keep q=14+ and other endogenous/covariance
+and coverage ledger report q<=14. Keep q=15+ and other endogenous/covariance
 dimensions unsupported; these synthetic method checks do not claim a
 Cameron–Trivedi illustration.
 
