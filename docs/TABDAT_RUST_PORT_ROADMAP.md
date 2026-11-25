@@ -160,15 +160,24 @@ distributional-law guarantee; separate intervals need not sum to one or be
 monotone across cutoffs.
 
 The next bounded count-uncertainty action is a pointwise future-count prediction
-interval for Poisson/NB2 current rows. Use a two-sided discrete equal-tail
-convention: lower and upper endpoints are the smallest integer counts whose
-retained fitted-law CDF reaches `level/2` and `1-level/2`, respectively. The
-interval describes outcome variation conditional on the retained mean and NB2
-alpha, with current predictors and fixed offsets/exposure held fixed; it does
-not add parameter uncertainty from the retained covariance. State the count-law
-assumption, attained coverage convention for discrete outcomes, missingness and
-work bounds, and extreme-tail behavior, and validate both endpoints and
-coverage against independent Poisson/NB2 references before implementation.
+interval for Poisson/NB2 current rows. Add `predict target, n interval
+[level(95)]`, appending the existing conditional-mean estimate and
+`target_lower`/`target_upper` bounds atomically. Use discrete equal tails with
+`tail = (100-level)/200`: the lower endpoint is the smallest nonnegative integer
+whose retained fitted-law CDF reaches `tail`; the upper endpoint is the smallest
+integer whose retained fitted-law survival above it is at most `tail`. This
+definition preserves the requested tail probability when `1-tail` rounds to
+one. The interval describes outcome variation conditional on the retained
+mean and NB2 alpha, with current predictors and fixed offsets/exposure held
+fixed; it does not add parameter uncertainty from the retained covariance.
+Missing/nonfinite current model inputs give NULL for all three outputs. Bound
+quantiles to the installed count domain 0..100000 and fail atomically when a
+requested upper endpoint exceeds it. Bound cumulative-search work across rows
+to 10,000,000 terms. Validate exact endpoints and attained (at least nominal)
+coverage against independent R `qpois`/`qnbinom` and CDF references, including
+zero/tiny means, large means, NB2 alpha limits, discrete jumps, missing inputs,
+cutoff/work failures, collisions and publication atomicity. Do not use the
+retained covariance to widen this future-outcome interval.
 
 Do not turn the entire textbook inventory into a prerequisite for one bounded
 analysis. Preserve the assumptions and unresolved source differences in the ledger.
