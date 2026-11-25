@@ -137,6 +137,14 @@ printf '%s\n' '8364cf9e53e32c794bcf0313a1590adcedf4e0526ba792884c7978cde169a628 
 Rscript "$repo/examples/mma20p1count/audit_source.R" mma20p1count.asc randdata.dta
 ```
 
+Run the standalone [year-2 hypothesis investigation](investigate_table206_year2.R)
+against the same checksum-verified DTA to reproduce the filtered sample, NB2
+fit, and first three averaged count probabilities:
+
+```sh
+Rscript "$repo/examples/mma20p1count/investigate_table206_year2.R" randdata.dta
+```
+
 ## Statistical and state contract
 
 - Exact nonnegative integer **loaded values** ≤2^53−1, joint finite complete
