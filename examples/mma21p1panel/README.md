@@ -167,7 +167,7 @@ work=$(mktemp -d)
 curl -fsSL https://cameron.econ.ucdavis.edu/mmabook/MOM.dat -o "$work/MOM.dat"
 curl -fsSL https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.do -o "$work/mma21p1panfeandre.do"
 curl -fsSL https://cameron.econ.ucdavis.edu/mmabook/mma21p1panfeandre.txt -o "$work/mma21p1panfeandre.txt"
-examples/mma21p1panel/prepare.sh "$work/MOM.dat" "$work/MOM.csv"
+sh examples/mma21p1panel/prepare.sh "$work/MOM.dat" "$work/MOM.csv"
 (cd "$work" && cargo run --locked --manifest-path "$repo/Cargo.toml" -- --json -f "$repo/examples/mma21p1panel/data_summary.td" > data_summary.jsonl)
 Rscript examples/mma21p1panel/data_summary_reference.R "$work/MOM.dat" "$work/reference"
 python3 examples/mma21p1panel/check_data_summary.py \
@@ -176,8 +176,8 @@ python3 examples/mma21p1panel/check_data_summary.py \
 ```
 
 This is a source-specific workflow, not persistent panel state, a general
-`xtsum`/`xtdes` command, Stata DTA type/label parity, or the author's
-`save mom.dta` behavior.
+`xtdes` command, Stata DTA type/label parity, or the author's `save mom.dta`
+behavior.
 
 ## POLS/FD inference and interpretation
 

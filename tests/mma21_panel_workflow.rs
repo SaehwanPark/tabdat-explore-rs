@@ -652,13 +652,18 @@ fn data_summary_script_reports_complete_panel_and_rejects_changed_cohorts() {
     .filter(|event| event["result_type"] == "TableResult")
     .map(|event| &event["data"])
     .collect();
-  assert_eq!(tables.len(), 4);
-  let xtsum = tables
+  assert_eq!(tables.len(), 3);
+  let xtsum = events
     .iter()
-    .find(|table| table["headers"][0] == "variable")
+    .find(|event| event["result_type"] == "XtSumResult")
     .unwrap();
-  assert_eq!(xtsum["rows"].as_array().unwrap().len(), 6);
-  assert_eq!(xtsum["rows"][0][0], "lnhr");
+  assert_eq!(xtsum["data"]["id_variable"], "id");
+  assert_eq!(xtsum["data"]["rows"].as_array().unwrap().len(), 6);
+  assert_eq!(xtsum["data"]["rows"][0]["variable"], "lnhr");
+  assert_eq!(xtsum["data"]["rows"][0]["overall_n"], 5320);
+  assert_eq!(xtsum["data"]["rows"][0]["between_n"], 532);
+  assert_eq!(xtsum["data"]["rows"][0]["within_n"], 5320);
+  assert_eq!(xtsum["data"]["rows"][0]["mean_t"], 10.0);
   let structure = tables
     .iter()
     .find(|table| table["headers"][0] == "observations")
