@@ -14,8 +14,11 @@ when an input or its product is invalid. Binary `estat margins` reports
 derivatives with respect to original continuous variables using the product
 rule and the selected full covariance. The binary fit retains interaction
 source values aligned to its sample, so those effects remain tied to the fit
-after active data edits. `estat margins, discrete(...)` rejects interaction
-models because changing one input also changes the product column. Binary JSON
+after active data edits. `estat margins, discrete(...)` accepts an original
+exact 0/1 source used in a product term and rebuilds the product for each
+counterfactual. See the separate
+[interaction discrete-change evidence](../binary-interaction-discrete-change/README.md).
+Binary JSON
 labels these as `average_original_continuous_variable_derivative`; additive
 models keep the existing `average_continuous_predictor_column_derivative`
 label.
@@ -44,9 +47,10 @@ The runtime contract compares at 3e-8 absolute tolerance:
   intervals.
 - Binary average marginal derivatives and standard errors for both original
   variables, under full `x z c.x#c.z` and interaction-only designs.
-- Retained-sample behavior after active-data edits, explicit rejection of
-  discrete changes for interaction models, malformed and duplicate syntax,
-  and failed-fit state handling.
+- Retained-sample behavior after active-data edits, discrete changes that
+  rebuild products from an exact 0/1 source, malformed and duplicate syntax,
+  and failed-fit state handling. Independent contrast evidence is in
+  [`binary-interaction-discrete-change`](../binary-interaction-discrete-change/README.md).
 
 Run `Rscript examples/continuous-interaction/reference.R` from the repository
 root to regenerate the data and reference CSVs. The integration contract is

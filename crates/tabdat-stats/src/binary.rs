@@ -793,6 +793,17 @@ pub struct BinaryDiscreteChange {
   pub observation_count: usize,
 }
 
+/// Fit-sample counterfactual rows for one original 0/1 source variable.
+/// Rows include the optional intercept and follow the retained coefficient
+/// order; interaction columns must already reflect each counterfactual value.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BinaryDiscreteChangeDesign {
+  pub predictor_name: String,
+  pub source_values: Vec<f64>,
+  pub from_design_rows: Vec<Vec<f64>>,
+  pub to_design_rows: Vec<Vec<f64>>,
+}
+
 /// One factor level's average fitted-probability difference from the baseline.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BinaryFactorContrast {
@@ -1716,6 +1727,50 @@ pub fn binary_average_discrete_change(
 ) -> Result<BinaryDiscreteChange, StatsError> {
   problem.validate()?;
   let model = result.model;
+  let Some(predictor_index) = problem
+    .predictor_names
+    .iter()
+    .position(|name| name == predictor)
+  else {
+    return Err(invalid(
+      model,
+      &format!("discrete change predictor '{predictor}' is not in the retained model"),
+    ));
+  };
+  let source_values = problem
+    .design_matrix
+    .iter()
+    .map(|row| row[predictor_index])
+    .collect::<Vec<_>>();
+  let mut from_design_rows = full_design(problem);
+  let mut to_design_rows = from_design_rows.clone();
+  let column_index = predictor_index + usize::from(problem.include_intercept);
+  for (from, to) in from_design_rows.iter_mut().zip(&mut to_design_rows) {
+    from[column_index] = 0.0;
+    to[column_index] = 1.0;
+  }
+  binary_average_discrete_change_for_design(
+    problem,
+    result,
+    &BinaryDiscreteChangeDesign {
+      predictor_name: predictor.to_owned(),
+      source_values,
+      from_design_rows,
+      to_design_rows,
+    },
+  )
+}
+
+/// Estimate a discrete probability change from retained counterfactual design
+/// rows. The full delta gradient covers every coefficient and covariance cross
+/// term, including interaction columns changed by the original 0/1 source.
+pub fn binary_average_discrete_change_for_design(
+  problem: &EstimationProblem,
+  result: &BinaryMleResult,
+  design: &BinaryDiscreteChangeDesign,
+) -> Result<BinaryDiscreteChange, StatsError> {
+  problem.validate()?;
+  let model = result.model;
   let n = problem.observation_count();
   let k = problem.parameter_count();
   let parameter_names = problem.parameter_names();
@@ -1754,38 +1809,45 @@ pub fn binary_average_discrete_change(
       "discrete changes require finite fit quantities",
     ));
   }
-  let Some(predictor_index) = problem
-    .predictor_names
-    .iter()
-    .position(|name| name == predictor)
-  else {
+  if design.predictor_name.is_empty() || design.source_values.len() != n {
     return Err(invalid(
       model,
-      &format!("discrete change predictor '{predictor}' is not in the retained model"),
+      "discrete changes require a named source and one retained source value per observation",
     ));
-  };
-  let observed_values = problem
-    .design_matrix
-    .iter()
-    .map(|row| row[predictor_index])
-    .collect::<Vec<_>>();
-  if observed_values
+  }
+  if design
+    .source_values
     .iter()
     .any(|value| *value != 0.0 && *value != 1.0)
   {
     return Err(invalid(
       model,
       &format!(
-        "discrete change predictor '{predictor}' must contain only 0 and 1 in the retained estimation sample"
+        "discrete change predictor '{}' must contain only 0 and 1 in the retained estimation sample",
+        design.predictor_name
       ),
     ));
   }
-  if !observed_values.contains(&0.0) || !observed_values.contains(&1.0) {
+  if !design.source_values.contains(&0.0) || !design.source_values.contains(&1.0) {
     return Err(invalid(
       model,
       &format!(
-        "discrete change predictor '{predictor}' requires both 0 and 1 in the retained estimation sample"
+        "discrete change predictor '{}' requires both 0 and 1 in the retained estimation sample",
+        design.predictor_name
       ),
+    ));
+  }
+  if design.from_design_rows.len() != n
+    || design.to_design_rows.len() != n
+    || design
+      .from_design_rows
+      .iter()
+      .chain(&design.to_design_rows)
+      .any(|row| row.len() != k || row.iter().any(|value| !value.is_finite()))
+  {
+    return Err(invalid(
+      model,
+      "discrete changes require finite retained counterfactual design rows",
     ));
   }
 
@@ -1794,7 +1856,6 @@ pub fn binary_average_discrete_change(
     .iter()
     .map(|coefficient| coefficient.value)
     .collect::<Vec<_>>();
-  let column_index = predictor_index + usize::from(problem.include_intercept);
   let linear_index = |row: &[f64]| {
     row
       .iter()
@@ -1804,13 +1865,9 @@ pub fn binary_average_discrete_change(
   };
   let mut effect_sum = 0.0;
   let mut gradient_sum = vec![0.0; k];
-  for row in full_design(problem) {
-    let mut from = row.clone();
-    let mut to = row;
-    from[column_index] = 0.0;
-    to[column_index] = 1.0;
-    let eta_from = linear_index(&from);
-    let eta_to = linear_index(&to);
+  for (from, to) in design.from_design_rows.iter().zip(&design.to_design_rows) {
+    let eta_from = linear_index(from);
+    let eta_to = linear_index(to);
     if !eta_from.is_finite() || !eta_to.is_finite() {
       return Err(failed(model, "discrete change linear index is non-finite"));
     }
@@ -1850,10 +1907,15 @@ pub fn binary_average_discrete_change(
       "discrete change delta variance is non-finite or nonpositive",
     ));
   }
-  let effect = inference(model, predictor.to_owned(), effect_value, variance.sqrt())?;
+  let effect = inference(
+    model,
+    design.predictor_name.clone(),
+    effect_value,
+    variance.sqrt(),
+  )?;
   Ok(BinaryDiscreteChange {
     model,
-    predictor: predictor.to_owned(),
+    predictor: design.predictor_name.clone(),
     from_value: 0,
     to_value: 1,
     effect,

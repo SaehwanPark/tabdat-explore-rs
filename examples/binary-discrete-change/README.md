@@ -37,11 +37,14 @@ asymptotic normal with a fixed 95% interval. Cluster inference assumes
 independent groups and many-group asymptotics; the correction does not provide
 a few-cluster guarantee.
 
-This method supports one exact numeric 0/1 predictor per call. It does not add
-factor-variable encoding, multilevel contrasts, interactions, weights or a
-causal interpretation. The included Base R reference generates the fixed
-120-row fixture and independently checks point changes and delta inference for
-logit/probit under model-based, independent-row robust and 20-group covariance.
+This additive fixture supports one exact numeric 0/1 predictor per call. It does
+not cover factor-variable encoding, multilevel contrasts, weights or a causal
+interpretation. Discrete changes for sources in continuous product terms are
+validated separately in
+[`binary-interaction-discrete-change`](../binary-interaction-discrete-change/README.md).
+The included Base R reference generates the fixed 120-row fixture and
+independently checks point changes and delta inference for logit/probit under
+model-based, independent-row robust and 20-group covariance.
 Regenerate from the repository root:
 
 ```sh

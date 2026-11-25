@@ -725,7 +725,7 @@ fn select_reference(
     })
 }
 
-fn factor_parameter_name(variable: &str, label: &str) -> String {
+pub(crate) fn factor_parameter_name(variable: &str, label: &str) -> String {
   let variable = sanitize_parameter_part(variable);
   let label = sanitize_parameter_part(label);
   // `sanitize_parameter_part` prefixes labels that would start a column name

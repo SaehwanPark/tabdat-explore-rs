@@ -99,18 +99,19 @@ pub use truncated_gaussian::{
 pub mod ttest;
 
 pub use binary::{
-  BinaryClassificationMetrics, BinaryCluster, BinaryDiscreteChange, BinaryFactorContrast,
-  BinaryFactorContrastDesign, BinaryFactorContrasts, BinaryHosmerLemeshowGroup,
-  BinaryHosmerLemeshowResult, BinaryLogitResult, BinaryMarginalEffectDesign, BinaryMleResult,
-  BinaryModel, BinaryOmnibusWald, BinaryProbabilityPrediction, LogitEstimate, LogitMarginalEffects,
-  LogitOptions, MAX_BINARY_GOODNESS_OF_FIT_GROUPS, MIN_BINARY_GOODNESS_OF_FIT_GROUPS,
-  ProbitOptions, binary_average_discrete_change, binary_average_factor_contrasts,
-  binary_average_marginal_effects, binary_average_marginal_effects_for_columns,
-  binary_average_marginal_effects_for_derivatives, binary_classification,
-  binary_hosmer_lemeshow_test, binary_linear_combination, binary_probability_prediction,
-  binary_wald_test, fit_binary_clustered, fit_binary_logit, fit_binary_logit_with_options,
-  fit_binary_probit, fit_binary_probit_with_options, fit_binary_robust,
-  logit_average_marginal_effects,
+  BinaryClassificationMetrics, BinaryCluster, BinaryDiscreteChange, BinaryDiscreteChangeDesign,
+  BinaryFactorContrast, BinaryFactorContrastDesign, BinaryFactorContrasts,
+  BinaryHosmerLemeshowGroup, BinaryHosmerLemeshowResult, BinaryLogitResult,
+  BinaryMarginalEffectDesign, BinaryMleResult, BinaryModel, BinaryOmnibusWald,
+  BinaryProbabilityPrediction, LogitEstimate, LogitMarginalEffects, LogitOptions,
+  MAX_BINARY_GOODNESS_OF_FIT_GROUPS, MIN_BINARY_GOODNESS_OF_FIT_GROUPS, ProbitOptions,
+  binary_average_discrete_change, binary_average_discrete_change_for_design,
+  binary_average_factor_contrasts, binary_average_marginal_effects,
+  binary_average_marginal_effects_for_columns, binary_average_marginal_effects_for_derivatives,
+  binary_classification, binary_hosmer_lemeshow_test, binary_linear_combination,
+  binary_probability_prediction, binary_wald_test, fit_binary_clustered, fit_binary_logit,
+  fit_binary_logit_with_options, fit_binary_probit, fit_binary_probit_with_options,
+  fit_binary_robust, logit_average_marginal_effects,
 };
 pub use bootstrap::{
   BOOTSTRAP_RNG, BootstrapCoefficient, BootstrapOlsResult, ClusterBootstrapOlsResult,

@@ -464,16 +464,17 @@ Each continuous effect is evaluated at every retained row with that row's
 factor levels and other covariates unchanged. The full gradient still includes
 all factor coefficients and their covariance. A factor-only design fails
 because it has no continuous predictor. Continuous interactions report effects
-for original source variables; discrete changes reject interaction models.
-Factor interactions and `##` expansion remain unsupported.
+for original source variables; discrete changes can also change an exact 0/1
+original input and rebuild its product columns. Factor interactions and `##`
+expansion remain unsupported.
 
 `estat margins, discrete(variable)` after either family returns
-`BinaryDiscreteChangeResult`. It accepts one retained original continuous
-predictor with exactly both 0 and 1 represented, including in an additive
-factor design. Interaction models are rejected because changing one input
-changes its product term. Expanded factor dummy columns are not selectable. For each
-retained row it changes that column to 0 and 1, leaves all other columns at
-their row values, and averages
+`BinaryDiscreteChangeResult`. It accepts one retained original numeric source
+with exactly both 0 and 1 represented, including when it appears in continuous
+product terms or an additive factor design. Expanded factor dummy columns are
+not selectable. For each retained row it changes the source to 0 and 1,
+rebuilds every product involving it, leaves all other source values and factor
+levels fixed, and averages
 `Pr(y=1|X, variable=1) - Pr(y=1|X, variable=0)`. JSON identifies this as
 `effect: "average_discrete_probability_change"`, names the predictor and
 `from_value`/`to_value`, reports `sample: "retained_estimation_design"`, N,
@@ -484,10 +485,12 @@ asymptotic-normal. `causal_interpretation` is false. Current-data edits do not
 change the stored-design result. Unknown/nonbinary/single-level predictors and
 calls without a retained logit/probit fit fail without changing the fit. This
 is a numeric binary probability-contrast slice; `factor(variable)` provides
-the separate retained-category method described below. Interactions,
-multiway/weighted inference and causal effects remain unsupported. The
-independent synthetic R reference and runnable scripts are in
-[`examples/binary-discrete-change`](../../examples/binary-discrete-change/README.md).
+the separate retained-category method described below. Factor interactions,
+multiway/weighted inference and causal effects remain unsupported. Independent
+synthetic R references for additive and continuous-product designs are in
+[`examples/binary-discrete-change`](../../examples/binary-discrete-change/README.md)
+and
+[`examples/binary-interaction-discrete-change`](../../examples/binary-interaction-discrete-change/README.md).
 
 `estat margins, factor(variable)` returns `BinaryFactorContrastsResult` after a
 logit/probit fit with the named retained factor. It reports an average fitted
