@@ -201,6 +201,9 @@ predictor column excluding the intercept, the family-specific average derivative
 
 The average uses the **retained complete-finite estimation design**, not current
 rows. Current-data edits do not rescan, refit or change the estimand.
+This continuous-column formula is currently available only for binary fits
+without factor predictors; factor-specific effects and their uncertainty are
+not implemented in this slice.
 
 Uncertainty is the full delta method using the fit's selected covariance:
 model-based (logit: inverse Fisher information; probit: inverse observed
@@ -227,7 +230,9 @@ estimation attempt; see `help logit`, `help probit`, `help poisson` and `help pr
 
 After logit or probit, run `estat margins, discrete(variable)` for one predictor
 whose values in the retained sample are exactly 0 and 1, with both levels
-present. It reports the average fitted probability difference after setting that
+present. The predictor must be a numeric column in a continuous-only design;
+factor fits are rejected until categorical probability contrasts are defined.
+It reports the average fitted probability difference after setting that
 predictor to 1 versus 0 for every retained row; all other predictor values stay
 at their observed row values. The result is a finite change, not a continuous
 derivative or a causal effect.

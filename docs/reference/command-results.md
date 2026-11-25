@@ -464,8 +464,9 @@ covariance cross term; inference is conditional on observed X and
 asymptotic-normal. `causal_interpretation` is false. Current-data edits do not
 change the stored-design result. Unknown/nonbinary/single-level predictors and
 calls without a retained logit/probit fit fail without changing the fit. This is
-a numeric binary method slice, not automatic factor handling, interactions,
-multiway/weighted inference or a causal effect. The independent synthetic R
+a numeric binary probability-contrast slice; factor-specific contrasts,
+interactions, multiway/weighted inference and causal effects remain unsupported.
+The independent synthetic R
 reference and runnable scripts are in
 [`examples/binary-discrete-change`](../../examples/binary-discrete-change/README.md).
 
@@ -490,8 +491,8 @@ probit wording. Continuous `estat margins` returns
 `estat margins` keeps the established prior-logit message.
 
 See the [exact fishing-mode contract and R reference](../../examples/mma14p1binary/README.md).
-Weighted/survey/multiway binary inference and general factors/interactions or
-broader categorical contrasts remain required work where applicable. The bounded Figure14.1 SVG
+Weighted/survey/multiway binary inference, interactions and factor-specific
+probability contrasts remain required work where applicable. The bounded Figure14.1 SVG
 workflow below does not complete broader illustration graphics.
 
 ## Bounded Heckman two-step selection
@@ -1282,7 +1283,8 @@ weight membership (no production Python dependency).
 
 ## One-way categorical factor design
 
-`regress` accepts explicit one-way categorical terms in the predictor list:
+`regress`, `logit` and `probit` accept explicit additive one-way categorical
+terms in the predictor list:
 
 - `i.var` treats `var` as categorical and omits the first sorted retained level.
 - `ib(level).var` omits the named level instead. Levels may be quoted, and a
@@ -1301,23 +1303,26 @@ weight membership (no production Python dependency).
   absent from the estimation sample, fail with explicit diagnostics.
 
 Retained metadata is additive. A factor fit records `design_terms` in
-`RegressionResult`, `LinearRegressionState` and stored `EstimateSnapshot`
-reports (`linear_design_terms`), listing the ordered terms with each factor's
-typed levels and reference label. Continuous-only fits keep the previous
-envelopes and omit the field. Text reports add a factor-design block naming the
-levels and reference, and stored tables add a factor reference-level row.
+`RegressionResult` and `LinearRegressionState`, or in `BinaryLogitState` for a
+logit/probit fit; stored `EstimateSnapshot` reports expose the ordered terms as
+`linear_design_terms`, listing each factor's typed levels and reference label.
+Continuous-only fits keep the previous envelopes and omit the field. Linear and
+stored-table text reports add a factor-design block naming levels and references.
 
 `predict` after a factor fit reconstructs the retained contrast columns from
 current data rather than looking for columns named like expanded coefficients.
-A missing factor cell, or a level absent from the estimation sample, produces a
-NULL prediction for that row; no new level is folded into the reference.
-`predict ..., residuals` subtracts the same index from the current outcome.
+For OLS it supports xb/residuals; for logit/probit it supports xb/pr. A missing
+factor cell, or a level absent from the estimation sample, produces a NULL
+prediction for that row; no new level is folded into the reference. Binary
+factor-specific margins and probability contrasts remain unsupported.
 
-Factor terms are bounded to `regress`. `summarize`, `logit`, `bootstrap` and the
-other model commands keep rejecting `i.var`. Coefficients, standard errors,
-p-values, R-squared and current-data predictions are checked against a
-development-only R `lm` treatment-contrast reference on a synthetic sample
-(`tools/capture_regress_factor_reference.R`), with no production R dependency.
+Factor terms are supported in `regress`, `logit` and `probit`; `summarize`,
+`bootstrap` and other model commands keep rejecting `i.var`. OLS coefficients,
+standard errors, p-values, R-squared and current-data predictions are checked
+against a development-only R `lm` treatment-contrast reference on a synthetic
+sample (`tools/capture_regress_factor_reference.R`), with no production R
+dependency. Binary factor validation is recorded in
+[`examples/binary-factor-design`](../../examples/binary-factor-design/README.md).
 
 
 ## Ordered-row LOWESS smoothing

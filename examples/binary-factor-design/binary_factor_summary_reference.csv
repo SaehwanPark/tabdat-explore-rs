@@ -1,0 +1,11 @@
+"model","design","observations","events","log_likelihood"
+"logit","default",237,110,-139.232378359422
+"logit","west_reference",237,110,-139.232378359422
+"logit","noconstant",237,110,-139.232378359422
+"logit","numeric_factor",237,110,-139.232378359422
+"logit","boolean_factor",237,110,-139.850180714049
+"probit","default",237,110,-139.244265224517
+"probit","west_reference",237,110,-139.244265224517
+"probit","noconstant",237,110,-139.244265224517
+"probit","numeric_factor",237,110,-139.244265224517
+"probit","boolean_factor",237,110,-139.877646083446

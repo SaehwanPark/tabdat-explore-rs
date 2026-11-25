@@ -1268,7 +1268,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "logit y x1 x2".to_string(),
+      syntax: "logit y x1 i.group".to_string(),
     }),
     "xtgee" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor { name:"outcome".into(),required:true },ArgumentDescriptor { name:"predictors".into(),required:true }],
@@ -1541,7 +1541,7 @@ fn get_command_schema(
           required: false,
         },
       ],
-      syntax: "probit y x1 x2".to_string(),
+      syntax: "probit y x1 i.group".to_string(),
     }),
     "qreg" => Ok(CommandSchemaResult {
       arguments: vec![

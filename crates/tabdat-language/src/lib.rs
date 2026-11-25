@@ -3295,7 +3295,13 @@ fn parse_binary_or_count_response_command(
     .transpose()?
     .unwrap_or_default();
 
-  let parts = parse_simple_body(argument_body, false)?;
+  // Binary GLMs share the existing bounded `i.var` / `ib(level).var` design
+  // syntax with `regress`. Count models remain numeric-only in this slice.
+  let parts = parse_simple_body_with_factor_terms(
+    argument_body,
+    false,
+    matches!(command_name, "logit" | "probit"),
+  )?;
   if parts.has_condition
     || parts.has_options
     || parts.has_assignment

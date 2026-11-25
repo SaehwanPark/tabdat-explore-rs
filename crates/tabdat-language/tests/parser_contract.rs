@@ -5941,7 +5941,7 @@ fn parses_regress_factor_terms_without_broadening_other_commands() {
   assert_eq!(command.predictors, vec!["x", "ib(North East).region"]);
 
   assert!(parse_command("summarize i.region").is_err());
-  assert!(parse_command("logit y i.region").is_err());
+  assert!(parse_command("poisson y i.region").is_err());
 }
 
 #[test]

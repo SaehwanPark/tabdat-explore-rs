@@ -27,8 +27,11 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   intercept; n and residuals use the marginal population mean, not posterior
   group effects. No current ID is required. Point-only, with atomic failures
   for unrepresentable finite-input results; see help xtpoisson.
-- Logit: pr (probability) or xb (log odds).
-- Probit: pr (Gaussian probability) or xb (latent index).
+- Logit: pr (probability) or xb (log odds). Additive `i.var` and
+  `ib(level).var` main effects use the retained typed levels when scoring
+  current rows; missing factor values or levels absent at fit time yield NULL.
+- Probit: pr (Gaussian probability) or xb (latent index), with the same
+  retained factor-level prediction rules as logit.
 - Lower-censored Gaussian Tobit: xb (latent mean), pr (uncensoring probability),
   mean (observed censored mean E[max(lower,Y*)|X]). Not a truncated mean or count n.
   Missing/nonfinite current predictors give NULL; numerical failure aborts before
