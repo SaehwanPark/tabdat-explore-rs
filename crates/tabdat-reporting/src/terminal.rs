@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use tabdat_domain::{CellValue, DatasetInfo, ExecutionResult, SummaryRow};
+use tabdat_domain::{CellValue, DatasetInfo, ExecutionResult, SummaryRow, XtSumResult};
 
 fn nls_expression(model: &tabdat_domain::NlsModel, node: &tabdat_domain::NlsExpression) -> String {
   use tabdat_domain::NlsExpression::*;
@@ -1151,6 +1151,45 @@ fn render_summary_rows(rows: &[SummaryRow]) -> String {
   output
 }
 
+fn render_xtsum_rows(result: &XtSumResult) -> String {
+  let mut output = format!(
+    "Panel identifier: {}\nVariable\tComponent\tN/n/T\tMean\tStd. dev.\tMin\tMax\n",
+    result.id_variable.escape_debug()
+  );
+  for row in &result.rows {
+    writeln!(
+      output,
+      "{}\toverall\tN={}\t{}\t{}\t{}\t{}",
+      row.variable.escape_debug(),
+      row.overall_n,
+      optional_number(row.overall_mean),
+      optional_number(row.overall_sd),
+      optional_number(row.overall_min),
+      optional_number(row.overall_max),
+    )
+    .unwrap();
+    writeln!(
+      output,
+      "\tbetween\tn={}\t\t{}\t{}\t{}",
+      row.between_n,
+      optional_number(row.between_sd),
+      optional_number(row.between_min),
+      optional_number(row.between_max),
+    )
+    .unwrap();
+    writeln!(
+      output,
+      "\twithin\tT-bar={}\t\t{}\t{}\t{}",
+      optional_number(row.mean_t),
+      optional_number(row.within_sd),
+      optional_number(row.within_min),
+      optional_number(row.within_max),
+    )
+    .unwrap();
+  }
+  output
+}
+
 fn plot_artifact(result: &tabdat_domain::PlotArtifactResult) -> String {
   let mut output = format!(
     "SVG scatter saved to {} ({} x {})\nCandidate rows = {}; scatter {} versus {}: finite points = {}; omitted missing/nonfinite = {}\n",
@@ -1914,6 +1953,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
     }
     ExecutionResult::Count(count) => format!("{} rows\n", count.row_count),
     ExecutionResult::Summarize(summary) => render_summary_rows(&summary.rows),
+    ExecutionResult::XtSum(result) => render_xtsum_rows(result),
     ExecutionResult::SummarizeDetail(result) => {
       let mut output = String::from("Detailed finite summary: type-7 linear DOUBLE percentiles\n");
       for row in &result.rows {

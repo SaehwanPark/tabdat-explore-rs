@@ -8,7 +8,7 @@ use tabdat_language::{
   RecodeRangeEndpoint, RecodeRule, RecodeTarget, RecodeValue, RegressCommand, RegressEstimator,
   ReshapeCommand, ReshapeDirection, RowLimit, ScatterCommand, SettingName, SortKey,
   TabulateCommand, TestCommand, XtAbondCommand, XtDataCommand, XtDataTransform, XtLogitCommand,
-  XtRegCommand, XtRegEstimator, parse_command,
+  XtRegCommand, XtRegEstimator, XtSumCommand, parse_command,
 };
 
 #[test]
@@ -382,6 +382,72 @@ fn xtdata_preserves_bounded_parser_diagnostics() {
     ("xtdata wage, `within`", "option names must be identifiers"),
   ];
 
+  for (input, expected) in cases {
+    assert_eq!(
+      parse_command(input).unwrap_err().message(),
+      expected,
+      "{input:?}"
+    );
+  }
+}
+
+#[test]
+fn xtsum_parses_explicit_panel_identifier_and_ordered_varlist() {
+  assert_eq!(
+    parse_command("xtsum wage hours, i(id)").unwrap(),
+    Command::XtSum {
+      command: XtSumCommand {
+        variables: vec!["wage".to_owned(), "hours".to_owned()],
+        id_variable: "id".to_owned(),
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("XTSUM `annual wage` wage wage, i(`firm id`)").unwrap(),
+    Command::XtSum {
+      command: XtSumCommand {
+        variables: vec![
+          "annual wage".to_owned(),
+          "wage".to_owned(),
+          "wage".to_owned()
+        ],
+        id_variable: "firm id".to_owned(),
+      },
+    }
+  );
+  assert_eq!(
+    parse_command("xtsum, i(id)").unwrap(),
+    Command::XtSum {
+      command: XtSumCommand {
+        variables: vec![],
+        id_variable: "id".to_owned(),
+      },
+    }
+  );
+}
+
+#[test]
+fn xtsum_rejects_missing_or_ambiguous_panel_options_and_filters() {
+  let cases = [
+    ("xtsum", "xtsum expects exactly one i(panelvar) option"),
+    ("xtsum wage", "xtsum expects exactly one i(panelvar) option"),
+    (
+      "xtsum wage, i(id group)",
+      "xtsum expects exactly one i(panelvar) option",
+    ),
+    (
+      "xtsum wage, i(id) i(group)",
+      "xtsum option i may only be supplied once",
+    ),
+    (
+      "xtsum wage, i(id) detail",
+      "xtsum unsupported option: detail",
+    ),
+    (
+      "xtsum wage if year > 2000, i(id)",
+      "xtsum expects syntax: xtsum [varlist], i(panelvar)",
+    ),
+  ];
   for (input, expected) in cases {
     assert_eq!(
       parse_command(input).unwrap_err().message(),

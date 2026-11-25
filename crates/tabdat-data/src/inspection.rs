@@ -121,6 +121,123 @@ impl DuckDbBackend {
       percentiles,
     })
   }
+  pub fn xtsum_has_invalid_panel_ids(
+    &self,
+    id_variable: &str,
+    numeric: bool,
+  ) -> Result<bool, DataError> {
+    let id = quote_identifier(id_variable);
+    let invalid = if numeric {
+      format!("{id} IS NULL OR NOT isfinite(CAST({id} AS DOUBLE))")
+    } else {
+      format!("{id} IS NULL")
+    };
+    self
+      .connection
+      .query_row(
+        &format!("SELECT COUNT(*) FILTER (WHERE {invalid}) > 0 FROM {ACTIVE_TABLE}"),
+        [],
+        |row| row.get(0),
+      )
+      .map_err(|_| DataError)
+  }
+  pub fn xtsum_variable(&self, variable: &str, id_variable: &str) -> Result<XtSumRow, DataError> {
+    let value = quote_identifier(variable);
+    let id = quote_identifier(id_variable);
+    // Keep a variable-specific finite sample. The overall singleton supplies
+    // the pooled center for within values, including unbalanced panels.
+    let sql = format!(
+      r#"
+WITH valid AS (
+  SELECT {id} AS panel_id, CAST({value} AS DOUBLE) AS x
+  FROM {ACTIVE_TABLE}
+  WHERE {value} IS NOT NULL AND isfinite(CAST({value} AS DOUBLE))
+), overall AS (
+  SELECT COUNT(*) AS overall_n, AVG(x) AS overall_mean,
+    STDDEV_SAMP(x) AS overall_sd, MIN(x) AS overall_min, MAX(x) AS overall_max
+  FROM valid
+), panel_means AS (
+  SELECT panel_id, COUNT(*) AS observations, AVG(x) AS panel_mean
+  FROM valid GROUP BY panel_id
+), between_stats AS (
+  SELECT COUNT(*) AS between_n, STDDEV_SAMP(panel_mean) AS between_sd,
+    MIN(panel_mean) AS between_min, MAX(panel_mean) AS between_max,
+    AVG(observations) AS mean_t
+  FROM panel_means
+), within_values AS (
+  SELECT v.x - p.panel_mean + o.overall_mean AS x
+  FROM valid AS v
+  JOIN panel_means AS p USING (panel_id)
+  CROSS JOIN overall AS o
+), within_stats AS (
+  SELECT COUNT(*) AS within_n, STDDEV_SAMP(x) AS within_sd,
+    MIN(x) AS within_min, MAX(x) AS within_max
+  FROM within_values
+)
+SELECT o.overall_n, o.overall_mean, o.overall_sd, o.overall_min, o.overall_max,
+  b.between_n, b.between_sd, b.between_min, b.between_max,
+  w.within_n, w.within_sd, w.within_min, w.within_max, b.mean_t
+FROM overall AS o CROSS JOIN between_stats AS b CROSS JOIN within_stats AS w
+"#
+    );
+    let mut statement = self.connection.prepare(&sql).map_err(|_| DataError)?;
+    let mut rows = statement.query([]).map_err(|_| DataError)?;
+    let row = rows.next().map_err(|_| DataError)?.ok_or(DataError)?;
+    let overall_n =
+      u64::try_from(row.get::<_, i64>(0).map_err(|_| DataError)?).map_err(|_| DataError)?;
+    let overall_mean: Option<f64> = row.get(1).map_err(|_| DataError)?;
+    let overall_sd: Option<f64> = row.get(2).map_err(|_| DataError)?;
+    let overall_min: Option<f64> = row.get(3).map_err(|_| DataError)?;
+    let overall_max: Option<f64> = row.get(4).map_err(|_| DataError)?;
+    let between_n =
+      u64::try_from(row.get::<_, i64>(5).map_err(|_| DataError)?).map_err(|_| DataError)?;
+    let between_sd: Option<f64> = row.get(6).map_err(|_| DataError)?;
+    let between_min: Option<f64> = row.get(7).map_err(|_| DataError)?;
+    let between_max: Option<f64> = row.get(8).map_err(|_| DataError)?;
+    let within_n =
+      u64::try_from(row.get::<_, i64>(9).map_err(|_| DataError)?).map_err(|_| DataError)?;
+    let within_sd: Option<f64> = row.get(10).map_err(|_| DataError)?;
+    let within_min: Option<f64> = row.get(11).map_err(|_| DataError)?;
+    let within_max: Option<f64> = row.get(12).map_err(|_| DataError)?;
+    let mean_t: Option<f64> = row.get(13).map_err(|_| DataError)?;
+    let numeric = [
+      overall_mean,
+      overall_sd,
+      overall_min,
+      overall_max,
+      between_sd,
+      between_min,
+      between_max,
+      within_sd,
+      within_min,
+      within_max,
+      mean_t,
+    ];
+    if numeric
+      .into_iter()
+      .flatten()
+      .any(|value| !value.is_finite())
+    {
+      return Err(DataError);
+    }
+    Ok(XtSumRow {
+      variable: variable.to_owned(),
+      overall_n,
+      overall_mean,
+      overall_sd,
+      overall_min,
+      overall_max,
+      between_n,
+      between_sd,
+      between_min,
+      between_max,
+      within_n,
+      within_sd,
+      within_min,
+      within_max,
+      mean_t,
+    })
+  }
   pub fn codebook_variable(
     &self,
     variable: &str,

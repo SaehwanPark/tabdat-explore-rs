@@ -91,6 +91,102 @@ impl Session {
   ) -> Result<ExecutionResult, RuntimeError> {
     self.execute_summary_query(variables, None, false)
   }
+  pub(crate) fn execute_xtsum(
+    &self,
+    command: XtSumCommand,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let dataset = self
+      .active_dataset
+      .as_ref()
+      .ok_or(RuntimeError::NoActiveDataset { command: "xtsum" })?;
+    let Some(id_column) = dataset
+      .columns
+      .iter()
+      .find(|column| column.name == command.id_variable)
+    else {
+      return Err(RuntimeError::XtSumUnknownPanelVariable {
+        variable: command.id_variable,
+      });
+    };
+    let id_numeric = is_numeric_data_type(&id_column.data_type);
+    let id_string = matches!(id_column.data_type.as_str(), "VARCHAR" | "TEXT" | "STRING");
+    if !id_numeric && !id_string {
+      return Err(RuntimeError::XtSumPanelIdentifierType {
+        variable: id_column.name.clone(),
+      });
+    }
+
+    let column_types = dataset
+      .columns
+      .iter()
+      .map(|column| (column.name.as_str(), column.data_type.as_str()))
+      .collect::<HashMap<_, _>>();
+    let unknown = command
+      .variables
+      .iter()
+      .filter(|variable| !column_types.contains_key(variable.as_str()))
+      .cloned()
+      .collect::<Vec<_>>();
+    if !unknown.is_empty() {
+      return Err(RuntimeError::XtSumUnknownVariable { variables: unknown });
+    }
+    let requested = if command.variables.is_empty() {
+      dataset
+        .columns
+        .iter()
+        .filter(|column| is_numeric_data_type(&column.data_type))
+        .map(|column| column.name.clone())
+        .collect::<Vec<_>>()
+    } else {
+      command.variables
+    };
+    if requested.is_empty() {
+      return Err(RuntimeError::XtSumNoNumericColumns);
+    }
+    let non_numeric = requested
+      .iter()
+      .filter(|variable| {
+        column_types
+          .get(variable.as_str())
+          .is_none_or(|data_type| !is_numeric_data_type(data_type))
+      })
+      .cloned()
+      .collect::<Vec<_>>();
+    if !non_numeric.is_empty() {
+      return Err(RuntimeError::XtSumRequiresNumeric {
+        variables: non_numeric,
+      });
+    }
+
+    let backend = self
+      .backend
+      .as_ref()
+      .ok_or(RuntimeError::BackendInitialization)?;
+    if backend
+      .xtsum_has_invalid_panel_ids(&command.id_variable, id_numeric)
+      .map_err(|_| RuntimeError::XtSumPanelCheckFailed {
+        variable: command.id_variable.clone(),
+      })?
+    {
+      return Err(RuntimeError::XtSumInvalidPanelIdentifier {
+        variable: command.id_variable,
+      });
+    }
+    let rows = requested
+      .iter()
+      .map(|variable| {
+        backend
+          .xtsum_variable(variable, &command.id_variable)
+          .map_err(|_| RuntimeError::XtSumFailed {
+            variable: variable.clone(),
+          })
+      })
+      .collect::<Result<Vec<_>, _>>()?;
+    Ok(ExecutionResult::XtSum(XtSumResult {
+      id_variable: command.id_variable,
+      rows,
+    }))
+  }
   pub(crate) fn execute_summary_query(
     &self,
     variables: Vec<String>,

@@ -157,6 +157,7 @@ impl Session {
       Command::XtReg { command } if command.estimator == XtRegEstimator::FixedEffects => {
         self.execute_fixed_effects(&command)
       }
+      Command::XtSum { command } => self.execute_xtsum(command),
       Command::XtReg { command } if command.id_variable.is_some() => {
         self.execute_random_effects(&command)
       }

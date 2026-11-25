@@ -78,7 +78,7 @@ order. Each row describes a bounded end-to-end outcome, not every option.
 | **IV/2SLS** | Exogenous/endogenous/instrument design, exact sample and rank checks, classical and appropriate robust/cluster inference, first-stage diagnostics, endogeneity and overidentification tests where identified, and weak-instrument-robust inference where required. Bounded homoskedastic tests/sets include the DATA66 `grade76` AR projection with other endogenous coefficients unrestricted; HC1/one-way CR0 Wooldridge overidentification scores, HC1/CR1 scalar AR sets for one endogenous regressor and one to nine excluded instruments, and closed robust AR projection for exactly two endogenous regressors/two excluded instruments are also installed. Broader robust projection and endogenous-subvector tests remain. Conventional first-stage F does not certify validity. |
 | **Logit/probit** | Domain and separation/convergence failures, model-based/robust/cluster inference, probability and linear-index predictions, continuous average marginal effects plus a bounded numeric 0/1 probability change with explicit estimands and delta uncertainty, and retained-fit Wald tests of general linear restrictions. |
 | **Poisson/NB2** | Count-domain checks, offsets/exposure, explicit variance parameterization, model-specific diagnostics, conditional means/effects and covariance conventions, retained-fit Wald tests and linear combinations of mean coefficients, a Poisson NB2-direction score test with selected model/row/cluster score variance, and bounded model-based unclustered plus one-way cluster-robust NB2 grouped score-adjusted goodness-of-fit tests. Distinguish Poisson QMLE from distributional claims. |
-| **Linear panels** | Explicit unit/time keys, gaps and duplicates, lag/lead/difference semantics, pooled/within/Between/FD/RE fits, model comparisons, predictions and inference. Persistent panel state and broader diagnostics remain open. |
+| **Linear panels** | Explicit unit/time keys, gaps and duplicates, lag/lead/difference semantics, pooled/within/Between/FD/RE fits, model comparisons, predictions and inference. The reusable [`xtsum`](commands/xtsum.md) diagnostic takes an explicit panel identifier but does not retain panel state; broader diagnostics remain open. |
 | **Quantile regression** | Conditional quantiles, current-row predictions, IID uncertainty and a bounded whole-cluster pairs bootstrap with explicit resampling unit. Analytic clustered covariance, general restrictions, simultaneous bands, effects and Figure 4.1 remain. |
 | **Seeded resampling** | Explicit seed/stream, IID and cluster units, B−1 uncertainty, percentile conventions and failure policy. Current OLS, quantile and selected Poisson/panel compositions are bounded source workflows, not a general automatic bootstrap API. |
 
@@ -140,7 +140,8 @@ Select one of these outcomes with an exact ledger-defined contract, then add its
 evidence beside the workflow. Keep the choice responsive to correctness defects
 and demonstrated dependencies rather than treating the list as phase gates.
 
-1. Advance one required econometric analysis or bounded panel diagnostic. The
+1. Advance one required econometric analysis or bounded panel diagnostic beyond
+   the reusable descriptive `xtsum`. The
    [Chapter 21 workflows](../examples/mma21p1panel/README.md) provide explicit
    panel samples, designs and open comparison/diagnostic choices, while the
    [coverage ledger](reference/microeconometrics-coverage.md) records the next

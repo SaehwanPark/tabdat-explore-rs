@@ -147,6 +147,8 @@ pub enum Command {
   Panel { command: PanelCommand },
   /// Apply a panel within/between transform (execution is deferred).
   XtData { command: XtDataCommand },
+  /// Report overall, between-panel, and within-panel descriptive statistics.
+  XtSum { command: XtSumCommand },
   /// Fit a bounded instrumental-variables model (2SLS is executable).
   IvRegress { command: IvRegressCommand },
   /// Read-only seeded IID or whole-cluster pairs-bootstrap OLS report on current complete cases.
@@ -525,6 +527,15 @@ pub struct XtDataCommand {
   pub variables: Vec<String>,
   /// The requested within- or between-entity transform.
   pub transform: XtDataTransform,
+}
+
+/// A bounded explicit-ID panel-summary request.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct XtSumCommand {
+  /// Ordered numeric variables to summarize; empty selects numeric schema columns.
+  pub variables: Vec<String>,
+  /// The numeric or string panel identifier.
+  pub id_variable: String,
 }
 
 /// The estimator forms accepted by the parser-only `regress` command.

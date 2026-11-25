@@ -131,6 +131,33 @@ pub struct SummarizeResult {
   pub rows: Vec<SummaryRow>,
 }
 
+/// Overall, between-panel and within-panel statistics for one variable.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct XtSumRow {
+  pub variable: String,
+  pub overall_n: u64,
+  pub overall_mean: Option<f64>,
+  pub overall_sd: Option<f64>,
+  pub overall_min: Option<f64>,
+  pub overall_max: Option<f64>,
+  pub between_n: u64,
+  pub between_sd: Option<f64>,
+  pub between_min: Option<f64>,
+  pub between_max: Option<f64>,
+  pub within_n: u64,
+  pub within_sd: Option<f64>,
+  pub within_min: Option<f64>,
+  pub within_max: Option<f64>,
+  pub mean_t: Option<f64>,
+}
+
+/// The ordered result returned by a read-only panel-summary request.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct XtSumResult {
+  pub id_variable: String,
+  pub rows: Vec<XtSumRow>,
+}
+
 /// Fixed percentiles reported by the bounded finite-sample detail workflow.
 pub const SUMMARY_PERCENTILES: [u8; 9] = [1, 5, 10, 25, 50, 75, 90, 95, 99];
 
@@ -750,6 +777,8 @@ pub enum ExecutionResult {
   /// Descriptive statistics for selected numeric columns.
   Summarize(SummarizeResult),
   SummarizeDetail(SummarizeDetailResult),
+  /// Overall, between-panel, and within-panel descriptive statistics.
+  XtSum(XtSumResult),
   /// Profiles selected columns in the active dataset.
   Codebook(CodebookResult),
   /// Reports SQL-NULL missingness for selected columns.

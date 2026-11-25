@@ -70,6 +70,15 @@ fn run(d: &TestDir) -> std::process::Output {
     .unwrap()
 }
 
+fn run_text(d: &TestDir) -> std::process::Output {
+  tabdat_bin()
+    .current_dir(d.path())
+    .args(["--text", "-f"])
+    .arg(root().join("examples/mma23p1pannonlin/xtsum.td"))
+    .output()
+    .unwrap()
+}
+
 fn events(out: &std::process::Output) -> Vec<Value> {
   assert!(
     out.status.success(),
@@ -86,8 +95,7 @@ fn events(out: &std::process::Output) -> Vec<Value> {
 fn rows(events: &[Value]) -> &Vec<Value> {
   events
     .iter()
-    .filter(|event| event["result_type"] == "TableResult")
-    .nth(1)
+    .find(|event| event["result_type"] == "XtSumResult")
     .unwrap()["data"]["rows"]
     .as_array()
     .unwrap()
@@ -117,7 +125,7 @@ fn xtsum_reports_source_variable_samples_and_rejects_changed_patterns() {
       "IsidResult",
       "DescribeResult",
       "TableResult",
-      "TableResult"
+      "XtSumResult"
     ]
   );
   assert!(
@@ -138,68 +146,70 @@ fn xtsum_reports_source_variable_samples_and_rejects_changed_patterns() {
       .collect::<Vec<_>>(),
     FIELDS
   );
-  let tables: Vec<_> = result
-    .iter()
-    .filter(|event| event["result_type"] == "TableResult")
-    .collect();
-  assert_eq!(tables[0]["data"]["rows"], serde_json::json!([[3460]]));
-  let table = &tables[1]["data"];
-  assert_eq!(
-    table["headers"],
-    serde_json::json!([
-      "variable",
-      "overall_N",
-      "overall_mean",
-      "overall_sd",
-      "overall_min",
-      "overall_max",
-      "between_n",
-      "between_sd",
-      "between_min",
-      "between_max",
-      "within_N",
-      "within_sd",
-      "within_min",
-      "within_max",
-      "mean_T"
-    ])
-  );
+  assert_eq!(result[3]["data"]["rows"], serde_json::json!([[3460]]));
+  let table = &result[4]["data"];
+  assert_eq!(table["id_variable"], "id");
   let table_rows = rows(&result);
   assert_eq!(table_rows.len(), 21);
-  assert_eq!(table_rows[0][0], "id");
-  assert_eq!(table_rows[3][0], "ardssic");
-  assert_eq!(table_rows[12][0], "logrl1");
-  assert_eq!(table_rows[16][0], "logrl5");
-  assert_eq!(table_rows[20][0], "dyear5");
+  assert_eq!(table_rows[0]["variable"], "id");
+  assert_eq!(table_rows[3]["variable"], "ardssic");
+  assert_eq!(table_rows[12]["variable"], "logrl1");
+  assert_eq!(table_rows[16]["variable"], "logrl5");
+  assert_eq!(table_rows[20]["variable"], "dyear5");
   assert_eq!(
-    (table_rows[0][1].as_i64(), table_rows[0][6].as_i64()),
+    (
+      table_rows[0]["overall_n"].as_i64(),
+      table_rows[0]["between_n"].as_i64()
+    ),
     (Some(3460), Some(346))
   );
-  close(&table_rows[0][2], 173.5);
-  close(&table_rows[0][7], 100.025_829_997_389_51);
-  close(&table_rows[0][11], 0.0);
+  close(&table_rows[0]["overall_mean"], 173.5);
+  close(&table_rows[0]["between_sd"], 100.025_829_997_389_51);
+  close(&table_rows[0]["within_sd"], 0.0);
   assert_eq!(
-    (table_rows[3][1].as_i64(), table_rows[3][6].as_i64()),
+    (
+      table_rows[3]["overall_n"].as_i64(),
+      table_rows[3]["between_n"].as_i64()
+    ),
     (Some(3360), Some(336))
   );
-  close(&table_rows[1][2], 74.5);
-  close(&table_rows[1][12], 70.0);
-  close(&table_rows[1][13], 79.0);
-  close(&table_rows[3][14], 10.0);
+  close(&table_rows[1]["overall_mean"], 1974.5);
+  close(&table_rows[1]["within_min"], 1970.0);
+  close(&table_rows[1]["within_max"], 1979.0);
+  close(&table_rows[3]["mean_t"], 10.0);
   assert_eq!(
-    (table_rows[12][1].as_i64(), table_rows[12][6].as_i64()),
+    (
+      table_rows[12]["overall_n"].as_i64(),
+      table_rows[12]["between_n"].as_i64()
+    ),
     (Some(3114), Some(346))
   );
-  close(&table_rows[12][14], 9.0);
+  close(&table_rows[12]["mean_t"], 9.0);
   assert_eq!(
-    (table_rows[16][1].as_i64(), table_rows[16][6].as_i64()),
+    (
+      table_rows[16]["overall_n"].as_i64(),
+      table_rows[16]["between_n"].as_i64()
+    ),
     (Some(1730), Some(346))
   );
-  close(&table_rows[16][14], 5.0);
+  close(&table_rows[16]["mean_t"], 5.0);
   assert_eq!(
     fs::read_to_string(d.path().join("patents_decade_prepared.csv")).unwrap(),
     csv
   );
+  let text = run_text(&d);
+  assert!(
+    text.status.success(),
+    "{}\n{}",
+    String::from_utf8_lossy(&text.stdout),
+    String::from_utf8_lossy(&text.stderr)
+  );
+  let text = String::from_utf8_lossy(&text.stdout);
+  assert!(text.contains("Panel identifier: id"));
+  assert!(text.contains("Variable\tComponent\tN/n/T\tMean\tStd. dev.\tMin\tMax"));
+  assert!(text.contains("overall\tN=3460"));
+  assert!(text.contains("between\tn=346"));
+  assert!(text.contains("within\tT-bar=10"));
 
   let cases = [
     (1, 3, ""),        // ARDSSIC is missing within a contributing firm.

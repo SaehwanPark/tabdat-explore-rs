@@ -91,6 +91,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "xtlogit",
   "xtpoisson",
   "xtreg",
+  "xtsum",
   "zinb",
   "zip",
 ];
@@ -480,6 +481,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
       name: "xtreg".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "xtsum".to_string(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
@@ -2059,6 +2064,19 @@ fn get_command_schema(
       ],
       syntax: "xtdata varlist [, within between]".to_string(),
     }),
+    "xtsum" => Ok(CommandSchemaResult {
+      arguments: vec![ArgumentDescriptor {
+        name: "varlist".to_string(),
+        required: false,
+      }],
+      help_topic,
+      name: "xtsum".to_string(),
+      options: vec![OptionDescriptor {
+        name: "i(panelvar)".to_string(),
+        required: true,
+      }],
+      syntax: "xtsum [varlist], i(panelvar)".to_string(),
+    }),
     "xtlogit" => Ok(CommandSchemaResult {
       arguments: vec![
         ArgumentDescriptor {
@@ -2246,7 +2264,7 @@ mod tests {
   #[test]
   fn test_catalog_counts_and_sorting() {
     let catalog = command_catalog_result();
-    assert_eq!(catalog.commands.len(), 90);
+    assert_eq!(catalog.commands.len(), 91);
     assert_eq!(
       catalog
         .commands
@@ -2314,17 +2332,36 @@ mod tests {
       .find(|e| e.name == "summarize")
       .unwrap();
     assert_eq!(summarize_entry.help_topic.as_deref(), Some("summarize"));
+    let xtsum_entry = catalog
+      .commands
+      .iter()
+      .find(|entry| entry.name == "xtsum")
+      .unwrap();
+    assert_eq!(xtsum_entry.help_topic.as_deref(), Some("xtsum"));
+    let xtsum_schema = describe_command_result("xtsum").unwrap();
+    assert_eq!(xtsum_schema.syntax, "xtsum [varlist], i(panelvar)");
+    assert_eq!(xtsum_schema.options.len(), 1);
+    assert_eq!(xtsum_schema.options[0].name, "i(panelvar)");
   }
 
   #[test]
   fn test_command_effects_coverage() {
     let effects = command_effect_catalog_result();
-    assert_eq!(effects.commands.len(), 90);
+    assert_eq!(effects.commands.len(), 91);
     assert_eq!(
       effects
         .commands
         .iter()
         .find(|c| c.name == "xtpoisson")
+        .unwrap()
+        .effects,
+      vec![CommandEffect::Read]
+    );
+    assert_eq!(
+      effects
+        .commands
+        .iter()
+        .find(|entry| entry.name == "xtsum")
         .unwrap()
         .effects,
       vec![CommandEffect::Read]

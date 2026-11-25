@@ -46,6 +46,7 @@ fn add_count_cluster_metadata(
 /// SummarizeResult. Conditional/option-bearing grouped summaries stay unsupported.
 pub fn supports_batch_command(command: &Command) -> bool {
   match command {
+    Command::XtSum { .. } => true,
     Command::Heckman { command } => command.twostep,
     Command::TabulateQuery {
       command,
@@ -599,6 +600,29 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
     ),
     ExecutionResult::Codebook(result) => (codebook_result_data(result), "CodebookResult"),
     ExecutionResult::Summarize(summary) => (summarize_result_data(summary), "SummarizeResult"),
+    ExecutionResult::XtSum(result) => (
+      json!({
+        "id_variable": result.id_variable,
+        "rows": result.rows.iter().map(|row| json!({
+          "variable": row.variable,
+          "overall_n": row.overall_n,
+          "overall_mean": row.overall_mean,
+          "overall_sd": row.overall_sd,
+          "overall_min": row.overall_min,
+          "overall_max": row.overall_max,
+          "between_n": row.between_n,
+          "between_sd": row.between_sd,
+          "between_min": row.between_min,
+          "between_max": row.between_max,
+          "within_n": row.within_n,
+          "within_sd": row.within_sd,
+          "within_min": row.within_min,
+          "within_max": row.within_max,
+          "mean_t": row.mean_t,
+        })).collect::<Vec<_>>()
+      }),
+      "XtSumResult",
+    ),
     ExecutionResult::SummarizeDetail(result) => (
       json!({
         "quantile_method": "linear_type_7",
@@ -1924,6 +1948,39 @@ fn dataset_info_data(dataset: &DatasetInfo) -> Value {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn xtsum_json_envelope_preserves_order_counts_and_undefined_moments() {
+    let result = ExecutionResult::XtSum(tabdat_domain::XtSumResult {
+      id_variable: "firm".into(),
+      rows: vec![tabdat_domain::XtSumRow {
+        variable: "x".into(),
+        overall_n: 2,
+        overall_mean: Some(3.0),
+        overall_sd: Some(2.0_f64.sqrt()),
+        overall_min: Some(1.0),
+        overall_max: Some(5.0),
+        between_n: 1,
+        between_sd: None,
+        between_min: Some(3.0),
+        between_max: Some(3.0),
+        within_n: 2,
+        within_sd: Some(2.0_f64.sqrt()),
+        within_min: Some(2.0),
+        within_max: Some(4.0),
+        mean_t: Some(2.0),
+      }],
+    });
+    let value: Value = serde_json::from_str(&serialize_execution_result(&result).unwrap()).unwrap();
+    assert_eq!(value["schema_version"], 1);
+    assert_eq!(value["result_type"], "XtSumResult");
+    assert_eq!(value["data"]["id_variable"], "firm");
+    assert_eq!(value["data"]["rows"][0]["overall_n"], 2);
+    assert_eq!(value["data"]["rows"][0]["between_n"], 1);
+    assert_eq!(value["data"]["rows"][0]["within_n"], 2);
+    assert_eq!(value["data"]["rows"][0]["between_sd"], Value::Null);
+    assert_eq!(value["data"]["rows"][0]["mean_t"], 2.0);
+  }
 
   #[test]
   fn unbalanced_random_effects_gls_uses_its_own_type_and_retained_count_metadata() {

@@ -167,6 +167,22 @@ pub enum RuntimeError {
   SummaryUnsupportedPredicate,
   /// DuckDB could not produce or own one summary row.
   SummaryFailed { variable: String },
+  /// The panel summary names an identifier absent from the active schema.
+  XtSumUnknownPanelVariable { variable: String },
+  /// The panel identifier is not numeric or string data.
+  XtSumPanelIdentifierType { variable: String },
+  /// The panel identifier contains a missing or nonfinite value.
+  XtSumInvalidPanelIdentifier { variable: String },
+  /// DuckDB could not validate the panel identifier.
+  XtSumPanelCheckFailed { variable: String },
+  /// The panel summary names variables absent from the active schema.
+  XtSumUnknownVariable { variables: Vec<String> },
+  /// The panel summary names variables that are not numeric.
+  XtSumRequiresNumeric { variables: Vec<String> },
+  /// No numeric columns are available for a default panel summary.
+  XtSumNoNumericColumns,
+  /// DuckDB could not produce or own one panel summary row.
+  XtSumFailed { variable: String },
   /// The codebook request named variables absent from the active schema.
   CodebookUnknownVariable { variables: Vec<String> },
   /// DuckDB could not produce or own one codebook row.
@@ -721,6 +737,26 @@ impl fmt::Display for RuntimeError {
       Self::SummaryFailed { variable } => {
         write!(formatter, "summarize failed for variable: {variable}")
       }
+      Self::XtSumUnknownPanelVariable { variable } => {
+        write!(formatter, "xtsum unknown panel variable: {variable}")
+      }
+      Self::XtSumPanelIdentifierType { variable } => {
+        write!(formatter, "xtsum panel identifier must be numeric or string: {variable}")
+      }
+      Self::XtSumInvalidPanelIdentifier { variable } => {
+        write!(formatter, "xtsum panel identifier contains missing or nonfinite values: {variable}")
+      }
+      Self::XtSumPanelCheckFailed { variable } => {
+        write!(formatter, "xtsum failed to validate panel identifier: {variable}")
+      }
+      Self::XtSumUnknownVariable { variables } => {
+        write!(formatter, "xtsum unknown variable: {}", variables.join(", "))
+      }
+      Self::XtSumRequiresNumeric { variables } => {
+        write!(formatter, "xtsum requires numeric variables: {}", variables.join(", "))
+      }
+      Self::XtSumNoNumericColumns => formatter.write_str("xtsum found no numeric columns"),
+      Self::XtSumFailed { variable } => write!(formatter, "xtsum failed for variable: {variable}"),
       Self::CodebookUnknownVariable { variables } => {
         write!(
           formatter,

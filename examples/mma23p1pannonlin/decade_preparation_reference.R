@@ -28,19 +28,26 @@ s<-rbind(summary_rows(d,'full'),summary_rows(selected,'selected'))
 for(name in names(s)[-(1:2)])s[[name]]<-ifelse(is.na(s[[name]]),'',sprintf('%.17g',s[[name]]))
 write.table(s,file.path(a[2],'summaries.csv'),sep=',',row.names=FALSE,col.names=TRUE,quote=FALSE,na='')
 
-xtsum_rows<-function(data)do.call(rbind,lapply(names(data),function(variable){
- x<-data[[variable]];if(variable=='year')x<-x-1900
- ok<-is.finite(x);groups<-split(x[ok],data$id[ok]);counts<-lengths(groups)
- stopifnot(length(groups)>0,length(unique(counts))==1L)
+xtsum_rows<-function(data,author_year_scale=FALSE,id_variable='id',variables=names(data))do.call(rbind,lapply(variables,function(variable){
+ x<-data[[variable]];if(author_year_scale&&variable=='year')x<-x-1900
+  ok<-is.finite(x);groups<-split(x[ok],data[[id_variable]][ok]);counts<-lengths(groups)
+  stopifnot(length(groups)>0)
  panel_means<-vapply(groups,mean,numeric(1));overall_mean<-mean(x[ok])
  within<-unlist(Map(function(values,center)values-center+overall_mean,groups,panel_means),use.names=FALSE)
- data.frame(variable=variable,overall_N=sum(ok),overall_mean=mean(x[ok]),overall_sd=sd(x[ok]),
+ data.frame(variable=variable,overall_n=sum(ok),overall_mean=mean(x[ok]),overall_sd=sd(x[ok]),
    overall_min=min(x[ok]),overall_max=max(x[ok]),between_n=length(panel_means),
    between_sd=sd(panel_means),between_min=min(panel_means),between_max=max(panel_means),
-   within_N=length(within),within_sd=sd(within),within_min=min(within),within_max=max(within),
-   mean_T=mean(counts),stringsAsFactors=FALSE)
+   within_n=length(within),within_sd=sd(within),within_min=min(within),within_max=max(within),
+   mean_t=mean(counts),stringsAsFactors=FALSE)
 }))
 write.csv(xtsum_rows(d),file.path(a[2],'xtsum.csv'),row.names=FALSE,na='')
+
+# Uneven synthetic panels make the pooled mean differ from the equal-panel mean.
+unbalanced<-data.frame(firm=c('A','A','A','B','B','C'),
+  x=c(0,2,4,10,NA,NA),y=c(1,3,NA,10,14,20))
+write.csv(unbalanced,file.path(a[2],'xtsum_unbalanced_input.csv'),row.names=FALSE,na='')
+write.csv(xtsum_rows(unbalanced,id_variable='firm',variables=c('x','y')),
+  file.path(a[2],'xtsum_unbalanced.csv'),row.names=FALSE,na='')
 
 # Reconstruct the stored Stata floats and generated numeric fields separately.
 as_float32<-function(x)readBin(writeBin(as.double(x),raw(),size=4),what='double',n=length(x),size=4)
@@ -55,5 +62,5 @@ for(j in 1:5){
  lagged<-unlist(lapply(split(d_author_xtsum$logr,d_author_xtsum$id),function(x)c(rep(NA_real_,j),x[seq_len(10-j)])),use.names=FALSE)
  d_author_xtsum[[name]]<-as_float32(lagged)
 }
-write.csv(xtsum_rows(d_author_xtsum),file.path(a[2],'author_float32_xtsum.csv'),row.names=FALSE,na='')
+write.csv(xtsum_rows(d_author_xtsum,TRUE),file.path(a[2],'author_float32_xtsum.csv'),row.names=FALSE,na='')
 cat(R.version.string,';',nrow(d),'full/',nrow(selected),'selected records; direct raw history; variable-wise N and N-1 SD; 21 balanced xtsum rows\n')

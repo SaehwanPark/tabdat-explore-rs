@@ -6,8 +6,9 @@ Reproduce the March 2005 author program's `xtsum, i(id)` block (program line
 154) on the full 1970–1979 transformed long data, before selecting 1975–1979
 for the fitted models. Report overall, between and within summaries for all 21
 numeric fields retained by the existing [full-decade preparation](decade_preparation.md).
-This closes P-XTSUM only; it does not add a general `xtsum` command, persistent
-panel declaration, wide-data summaries or Stata DTA restoration.
+This closes P-XTSUM through the reusable [panel `xtsum` command contract](../../docs/commands/xtsum.md).
+It does not add persistent panel state, wide-data summaries or Stata DTA
+restoration.
 
 ## Input and missingness contract
 
@@ -38,24 +39,28 @@ are `x_it - xbar_i + xbar`, where `xbar` is the pooled overall mean; report
 their sample SD, minimum and maximum. The mean of panel means equals the pooled
 mean here because each variable is balanced across its contributing firms.
 Preserve each variable's overall N, contributing-panel count `n`, and mean
-observed periods `T`. For the `year` summary only, translate normalized years
-1970–1979 back to the author's suffix scale 70–79; the prepared file keeps full
-years for keys and lag semantics. Do not substitute regression samples or
-variance components.
+observed periods `T`. Keep source calendar years 1970–1979 on the native
+summary; do not rewrite active data to imitate Stata's reshaped suffix values
+70–79. The independent author-log comparison applies that fixed -1900 scale
+conversion to the Stata float32 reference only. Do not substitute regression
+samples or variance components.
 
 The author program calls [`xtsum, i(id)`](https://cameron.econ.ucdavis.edu/mmabook/mma23p1pannonlin.do)
 on the reshaped two-digit years. The StataCorp [xtsum decomposition note](https://www.stata.com/support/faqs/statistics/decomposed-variances-in-xtsum/)
 documents the sample corrections and the unweighted mean of panel means used
 for between calculations; Stata shifts within deviations by the overall mean.
-The source-scale `year` summary preserves the author's reported `70`–`79`
-values while `patents_decade_prepared.csv` keeps normalized years for calendar
-keys.
+The prepared `year` remains normalized for calendar keys; the raw-token
+reference checks native years directly and shifts only the separate author-
+float32 comparison to the author's `70`–`79` scale.
 
 ## Acceptance evidence
 
 - Compare all 21 rows, including variable-specific N/n/T, all reported moments
   and extrema, against Base R calculations made directly from the raw 25-token
   source rather than prepared native output.
+- Compare all fields for an uneven three-panel Base R control with separate
+  missingness in `x` and `y`. Its pooled mean differs from the unweighted mean
+  of panel means, so it detects the centering and weighting distinction.
 - Check rounded author-log values with the Stata float32 storage path and the
   exact printed-decimal half-unit tolerance; native raw-double values remain
   separately visible.
@@ -84,8 +89,10 @@ sh examples/mma23p1pannonlin/prepare.sh "$work/patr7079.asc" "$work/patents_deca
 (cd "$work" && cargo run --locked --manifest-path "$repo/Cargo.toml" -- --json -f "$repo/examples/mma23p1pannonlin/decade_preparation.td" > result.jsonl)
 (cd "$work" && cargo run --locked --manifest-path "$repo/Cargo.toml" -- --json -f "$repo/examples/mma23p1pannonlin/xtsum.td" > xtsum.jsonl)
 Rscript examples/mma23p1pannonlin/decade_preparation_reference.R "$work/patr7079.asc" "$work/reference"
+(cd "$work" && cargo run --locked --manifest-path "$repo/Cargo.toml" -- --json -f "$repo/examples/mma23p1pannonlin/xtsum_control.td" > xtsum_unbalanced.jsonl)
 python3 examples/mma23p1pannonlin/check_decade_preparation.py "$work" "$work/patr7079.asc" "$work/reference"
 python3 examples/mma23p1pannonlin/check_xtsum.py \
   "$work" "$work/reference" "$work/patr7079.asc" \
-  "$work/mma23p1pannonlin.do" "$work/mma23p1pannonlin.txt"
+  "$work/mma23p1pannonlin.do" "$work/mma23p1pannonlin.txt" \
+  "$work/xtsum_unbalanced.jsonl"
 ```
