@@ -75,7 +75,7 @@ order. Each row describes a bounded end-to-end outcome, not every option.
 
 | Workflow | Minimum complete outcome |
 | --- | --- |
-| **IV/2SLS** | Exogenous/endogenous/instrument design, exact sample and rank checks, classical and appropriate robust/cluster inference, first-stage diagnostics, endogeneity and overidentification tests where identified, and weak-instrument-robust inference where required. Bounded homoskedastic tests/sets include the DATA66 `grade76` AR projection with other endogenous coefficients unrestricted; HC1/one-way CR0 Wooldridge overidentification scores, HC1/CR1 scalar AR sets for one endogenous regressor and one to ten excluded instruments, and closed robust AR projection for exactly two endogenous regressors/two excluded instruments are also installed. Broader robust projection and endogenous-subvector tests remain. Conventional first-stage F does not certify validity. |
+| **IV/2SLS** | Exogenous/endogenous/instrument design, exact sample and rank checks, classical and appropriate robust/cluster inference, first-stage diagnostics, endogeneity and overidentification tests where identified, and weak-instrument-robust inference where required. Bounded homoskedastic tests/sets include the DATA66 `grade76` AR projection with other endogenous coefficients unrestricted; HC1/one-way CR0 Wooldridge overidentification scores, HC1/CR1 scalar AR sets for one endogenous regressor and one to eleven excluded instruments, and closed robust AR projection for exactly two endogenous regressors/two excluded instruments are also installed. Broader robust projection and endogenous-subvector tests remain. Conventional first-stage F does not certify validity. |
 | **Logit/probit** | Domain and separation/convergence failures, model-based/robust/cluster inference, additive one-way factor main effects and two-variable continuous products with retained probability/index predictions, current-row probability delta SEs and link-scale intervals under the selected covariance, delta-method average probability contrasts, continuous product-rule average marginal effects, numeric 0/1 probability changes for original sources in additive and continuous-product designs, and retained-fit Wald tests of general linear restrictions. Factor interactions, endogenous/fractional models and remaining illustration outputs stay open. |
 | **Poisson/NB2** | Count-domain checks, offsets/exposure, explicit variance parameterization, model-specific diagnostics, conditional means/effects and covariance conventions, retained-fit Wald tests and linear combinations of mean coefficients, Poisson NB1- and NB2-direction score tests with selected model/row/cluster score variance, bounded model-based unclustered plus one-way cluster-robust NB2 grouped score-adjusted goodness-of-fit tests, and current-row PMF/CDF predictions with pointwise delta-method SEs and logit-Wald intervals under the retained covariance plus discrete equal-tail future-count intervals under fitted means/law and raw response, Pearson and deviance residuals on current Poisson/NB2 rows. Distinguish Poisson QMLE from distributional claims. |
 | **Linear panels** | Explicit unit/time keys, gaps and duplicates, lag/lead/difference semantics, pooled/within/Between/FD/RE fits, model comparisons, predictions and inference. Read-only [`xtdes`](commands/xtdes.md) and [`xtsum`](commands/xtsum.md) take explicit keys without retaining panel state; broader model comparisons and diagnostics remain open. |
@@ -190,15 +190,15 @@ covariance invariance, collisions, empty data and invalid current counts. This
 is synthetic method evidence and does not complete a textbook illustration or
 formal goodness-of-fit test.
 
-The q=10 robust scalar AR slice is installed for one endogenous regressor
+The q=11 robust scalar AR slice is installed for one endogenous regressor
 with HC1 and one-way CR1 covariance. It retains included-exogenous nuisance
 treatment, the fitted sample/groups and existing covariance corrections. The
 independent 240-row Base R reference checks both covariances on primary and
-secondary designs, numeric determinants at 21 Chebyshev nodes, `polyroot`
-endpoints, and direct Wald probes. Degree-20 boundaries support up to 20 simple
-real roots and 11 accepted components. The first-stage JSON availability flag,
-help, examples, command-results contract and coverage ledger now report q<=10.
-Keep q=11+ and other endogenous/covariance dimensions unsupported; these
+secondary designs, numeric determinants at 23 Chebyshev nodes, `polyroot`
+endpoints, and direct Wald probes. Degree-22 boundaries support up to 22 simple
+real roots and 12 accepted components. The first-stage JSON availability flag,
+help, examples, command-results contract and coverage ledger report q<=11.
+Keep q=12+ and other endogenous/covariance dimensions unsupported; these
 synthetic method checks do not claim a Cameron–Trivedi illustration.
 
 Do not turn the entire textbook inventory into a prerequisite for one bounded

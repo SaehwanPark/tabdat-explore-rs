@@ -176,7 +176,7 @@ impl Fixture {
     Self { root, parquet }
   }
 
-  fn ten_instrument_sample() -> Self {
+  fn eleven_instrument_sample() -> Self {
     let nonce = SystemTime::now()
       .duration_since(UNIX_EPOCH)
       .expect("system clock should be after Unix epoch")
@@ -189,12 +189,12 @@ impl Fixture {
       fixture_id
     ));
     fs::create_dir_all(&root).expect("fixture directory should be created");
-    let csv = root.join("ten-instrument.csv");
+    let csv = root.join("eleven-instrument.csv");
     fs::write(
       &csv,
-      include_str!("../../../examples/robust-ar/robust_ar_ten_ci_multiple_data.csv"),
+      include_str!("../../../examples/robust-ar/robust_ar_eleven_ci_multiple_data.csv"),
     )
-    .expect("ten-instrument fixture should be written");
+    .expect("eleven-instrument fixture should be written");
     let parquet = root.join("iv.parquet");
     let connection = duckdb::Connection::open_in_memory().expect("fixture connection should open");
     let csv_string = csv.to_string_lossy().replace('\'', "''");
@@ -206,7 +206,7 @@ impl Fixture {
         ),
         [&parquet_string],
       )
-      .expect("ten-instrument fixture should write to parquet");
+      .expect("eleven-instrument fixture should write to parquet");
     Self { root, parquet }
   }
 
@@ -893,7 +893,7 @@ fn scalar_ar_confidence_sets_reuse_retained_sample_and_reject_endogenous_nuisanc
 }
 
 #[test]
-fn three_through_six_instrument_robust_ar_sets_reuse_retained_fit_and_cap_ten_dimensions() {
+fn robust_ar_sets_reuse_retained_fit_and_cap_eleven_dimensions() {
   let fixture = Fixture::school_like_sample();
   for (option, expected_n) in [("robust", 58), ("cluster(group_id)", 57)] {
     let mut session = load(&fixture);
@@ -1043,12 +1043,55 @@ fn three_through_six_instrument_robust_ar_sets_reuse_retained_fit_and_cap_ten_di
     assert_eq!(session.state(), changed);
   }
 
-  let ten_fixture = Fixture::ten_instrument_sample();
-  let mut session = load(&ten_fixture);
+  let eleven_fixture = Fixture::eleven_instrument_sample();
+  for option in ["robust", "cluster(group)"] {
+    let mut session = load(&eleven_fixture);
+    session
+      .execute(
+        parse_command(&format!(
+          "ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11) {option}"
+        ))
+        .unwrap(),
+      )
+      .unwrap();
+    let before = session.state();
+    let command = parse_command("estat ar, ci").unwrap();
+    let result = session.execute(command.clone()).unwrap();
+    let ExecutionResult::RobustMultipleInstrumentAndersonRubinConfidenceSet(set) = &result else {
+      panic!("expected robust eleven-instrument AR confidence set");
+    };
+    assert_eq!(set.endogenous, "x");
+    assert_eq!(
+      set.excluded_instruments,
+      [
+        "z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8", "z9", "z10", "z11"
+      ]
+    );
+    assert_eq!(set.degrees_of_freedom, 11);
+    assert_eq!(set.observation_count, 240);
+    assert_eq!(set.auxiliary_parameter_count, 13);
+    assert_eq!(set.auxiliary_residual_df, 227);
+    assert_eq!(
+      set.cluster_group_count.is_some(),
+      option.starts_with("cluster")
+    );
+    assert_eq!(session.state(), before);
+    session
+      .execute(parse_command("replace y = 999").unwrap())
+      .unwrap();
+    session.execute(parse_command("drop z1").unwrap()).unwrap();
+    let changed = session.state();
+    assert_eq!(session.execute(command).unwrap(), result);
+    assert_eq!(session.state(), changed);
+  }
+
+  let mut session = load(&eleven_fixture);
   session
     .execute(
-      parse_command("ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 row) robust")
-        .unwrap(),
+      parse_command(
+        "ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 row) robust",
+      )
+      .unwrap(),
     )
     .unwrap();
   let before = session.state();
@@ -1057,7 +1100,7 @@ fn three_through_six_instrument_robust_ar_sets_reuse_retained_fit_and_cap_ten_di
       .execute(parse_command("estat ar, ci").unwrap())
       .unwrap_err()
       .to_string()
-      .contains("at most ten excluded instruments")
+      .contains("at most eleven excluded instruments")
   );
   assert_eq!(session.state(), before);
 }
