@@ -148,23 +148,23 @@ fn robust_scalar_ci_scripts_report_independent_sets_and_reuse_the_fit_sample() {
 }
 
 #[test]
-fn robust_ar_ci_rejects_seven_instruments_before_later_effects() {
+fn robust_ar_ci_rejects_eight_instruments_before_later_effects() {
   let fixture = Fixture::new();
   fs::write(
-    fixture.0.join("robust_ar_six_ci_multiple_data.csv"),
-    include_str!("../examples/robust-ar/robust_ar_six_ci_multiple_data.csv"),
+    fixture.0.join("robust_ar_seven_ci_multiple_data.csv"),
+    include_str!("../examples/robust-ar/robust_ar_seven_ci_multiple_data.csv"),
   )
   .unwrap();
   fs::write(
     fixture.0.join("multiple.td"),
-    "use robust_ar_six_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 row) robust\nestat ar, ci\nexport should-not-exist.csv\n",
+    "use robust_ar_seven_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 row) robust\nestat ar, ci\nexport should-not-exist.csv\n",
   )
   .unwrap();
   let output = fixture.run("--json", "multiple.td");
   assert_eq!(output.status.code(), Some(1));
   assert!(
     String::from_utf8_lossy(&output.stderr)
-      .contains("currently support at most six excluded instruments")
+      .contains("currently support at most seven excluded instruments")
   );
   assert!(!fixture.0.join("should-not-exist.csv").exists());
 }

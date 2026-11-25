@@ -45,6 +45,16 @@ impl Fixture {
       include_str!("../examples/robust-ar/robust_ar_six_ci_secondary_data.csv"),
     )
     .unwrap();
+    fs::write(
+      root.join("robust_ar_seven_ci_multiple_data.csv"),
+      include_str!("../examples/robust-ar/robust_ar_seven_ci_multiple_data.csv"),
+    )
+    .unwrap();
+    fs::write(
+      root.join("robust_ar_seven_ci_secondary_data.csv"),
+      include_str!("../examples/robust-ar/robust_ar_seven_ci_secondary_data.csv"),
+    )
+    .unwrap();
     Self(root)
   }
 
@@ -308,23 +318,61 @@ fn six_instrument_hc1_and_cr1_workflows_report_reference_sets() {
 }
 
 #[test]
-fn seven_robust_excluded_instruments_stop_before_later_script_effects() {
+fn seven_instrument_hc1_and_cr1_workflows_report_reference_sets() {
   let fixture = Fixture::new();
+  for (script_name, covariance, correction, groups, expected) in [
+    (
+      "seven_instrument_ci.td",
+      "robust_hc1",
+      1.05660377358491,
+      Value::Null,
+      [0.87058126469739, 1.50944638151829],
+    ),
+    (
+      "seven_instrument_ci_clustered.td",
+      "cluster(group)",
+      1.09598031173093,
+      serde_json::json!(24),
+      [1.03741500489376, 1.47495371597571],
+    ),
+  ] {
+    let script = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+      .join("examples/robust-ar")
+      .join(script_name);
+    let rows = json_lines(&fixture.run("--json", script.to_str().unwrap()));
+    assert_eq!(rows.len(), 3);
+    assert_eq!(
+      rows[2]["result_type"],
+      "RobustMultipleInstrumentAndersonRubinConfidenceSet"
+    );
+    let data = &rows[2]["data"];
+    assert_eq!(data["covariance"], covariance);
+    assert_eq!(
+      data["excluded_instruments"],
+      serde_json::json!(["z1", "z2", "z3", "z4", "z5", "z6", "z7"])
+    );
+    assert_eq!(data["degrees_of_freedom"], 7);
+    assert_eq!(data["observation_count"], 168);
+    assert_eq!(data["auxiliary_parameter_count"], 9);
+    assert_eq!(data["auxiliary_residual_df"], 159);
+    assert_eq!(data["cluster_group_count"], groups);
+    assert_eq!(data["shape"], "bounded");
+    close(&data["covariance_correction"], correction, 2e-14);
+    close(&data["critical_chi_square"], 14.0671404493402, 2e-12);
+    close(&data["intervals"][0]["lower"], expected[0], 3e-8);
+    close(&data["intervals"][0]["upper"], expected[1], 3e-8);
+  }
+
   fs::write(
-    fixture.0.join("robust_ar_six_ci_multiple_data.csv"),
-    include_str!("../examples/robust-ar/robust_ar_six_ci_multiple_data.csv"),
+    fixture.0.join("eight-instruments.td"),
+    "use robust_ar_seven_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 row) robust\nestat ar, ci\nexport should-not-exist.csv\n",
   )
   .unwrap();
-  fs::write(
-    fixture.0.join("unsupported.td"),
-    "use robust_ar_six_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 row) robust\nestat ar, ci\nexport should-not-exist.csv\n",
-  )
-  .unwrap();
-  let output = fixture.run("--json", "unsupported.td");
+  let output = fixture.run("--json", "eight-instruments.td");
   assert_eq!(output.status.code(), Some(1));
   assert!(
     String::from_utf8_lossy(&output.stderr)
-      .contains("currently support at most six excluded instruments")
+      .contains("currently support at most seven excluded instruments")
   );
   assert!(!fixture.0.join("should-not-exist.csv").exists());
 }
