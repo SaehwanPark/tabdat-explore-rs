@@ -29,7 +29,7 @@ not by implementing every estimator mentioned in a chapter.
 | 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald, retained-fit Wald restrictions, continuous delta AMEs and bounded 0/1 probability changes | Further model-specific LR/LM/specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | Bounded original177-row PSID Figure9.2 Epanechnikov composition and native centred-rank LOWESS Figure9.3 source-data adaptation; independent source/R/geometry validation | General density, histogram/other kernels/kNN/remaining local or semiparametric regression; historical Figure9.3 tied-curve parity unresolved; no general KDE command or uncertainty |
 | 11–13: Bootstrap, simulation, Bayesian | Bounded seeded IID and whole-cluster OLS pairs, joint IID and whole-cluster quantile pairs and selected whole-cluster Poisson/panel workflows with B-1 covariance and percentile intervals; source-specific refit compositions are independently audited | Residual/parametric/general-estimator bootstrap and automatic FE/RE refits, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
-| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, additive one-way categorical main effects, probabilities/xb, continuous retained-X delta AMEs and numeric 0/1 retained-X discrete changes for original continuous terms in mixed designs, factor-level average probability contrasts with delta uncertainty, retained-fit Wald restrictions and unweighted model-based grouped Hosmer–Lemeshow calibration; validated native §14.2 tables/figure under explicit conventions | Interactions, other binary specification tests, endogenous/fractional models and remaining illustration outputs/graphics |
+| 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit, additive one-way categorical main effects, probabilities/xb, continuous retained-X delta AMEs and numeric 0/1 retained-X discrete changes for original continuous terms in mixed designs, factor-level average probability contrasts with delta uncertainty, retained-fit Wald restrictions, unweighted model-based grouped Hosmer–Lemeshow calibration and descriptive retained-sample cutoff classification; validated native §14.2 tables/figure under explicit conventions | Interactions, other binary specification tests, endogenous/fractional models and remaining illustration outputs/graphics |
 | 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
 | 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step author-program workflows, with declared covariance, effects and current predictions | Remaining censoring/truncation, selection/two-part/CLAD workflows and illustrations; two-step is not default ML, causal or RAND parity |
 | 17–19: Survival, heterogeneity, multiple hazards | Validated composed566-strike/artificial80-spell KM/NA workflows plus original3343-spell exponential/Weibull/Gompertz/Cox-Breslow cause-specific regression/full robust inference and net-survival points; owned Cox reference baseline | General declarations/richer parametric/Cox, mixture/frailty and multiple-event analyses; no general survival declaration API or competing-risk incidence support |
@@ -1338,6 +1338,17 @@ panel likelihood is supplied.
   textbook illustration;
   interactions remain unsupported. See the
   [fixture and independent reference](../../examples/binary-factor-design/README.md).
+- **Retained binary classification method slice:** `estat classification[, cutoff(#)]`
+  uses the exact retained outcome/probabilities after either link, classifies
+  `p >= cutoff` as positive, defaults to 0.5 and reports TP/FP/FN/TN,
+  class totals and nine descriptive percentages. A deterministic 240-row mixed
+  factor fixture (237 complete cases) is compared with Base R 4.6.2 for both
+  links and cutoffs 0.5/.35 (four comparisons); counts match exactly and every
+  percentage matches within 2e-8 absolute tolerance. Runtime/CLI checks cover
+  retained results after active-data edits, cutoff boundaries and undefined
+  zero-denominator metrics. This is a synthetic in-sample summary, not a
+  probability calibration/specification test or new textbook illustration.
+  See the [contract and evidence](../../examples/binary-classification/README.md).
 - **Numeric binary discrete probability change:** `estat margins, discrete(var)`
   sets one exact numeric 0/1 original continuous predictor to each level for
   every retained row and averages the fitted probability difference.

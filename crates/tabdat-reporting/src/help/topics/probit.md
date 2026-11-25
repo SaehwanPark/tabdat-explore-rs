@@ -50,6 +50,8 @@ categorical columns):
   designs
 - `estat margins, factor(region)` — average probability contrasts of retained
   levels versus the fit-time reference
+- `estat classification` — retained-sample class counts and descriptive
+  percentages at the default probability cutoff of 0.5
 - `predict probability, pr`
 - `predict index_b, xb`
 - `head 8`
@@ -106,7 +108,8 @@ Convergence and supported limits:
   JSON returns `BinaryProbitResult`; continuous `estat margins` returns
   `ProbitMarginalEffectsResult`, `discrete()` returns
   `BinaryDiscreteChangeResult`, and `factor()` returns
-  `BinaryFactorContrastsResult`. Prediction retains metadata-only `PredictionResult`.
+  `BinaryFactorContrastsResult`; `estat classification` returns
+  `BinaryClassificationResult`. Prediction retains metadata-only `PredictionResult`.
 
 Reference example: `examples/mma14p1binary/README.md` (Cameron–Trivedi 2005,
 §14.2 fishing-mode binary illustration, independent R validation).

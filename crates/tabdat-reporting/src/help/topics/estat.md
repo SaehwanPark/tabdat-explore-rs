@@ -16,6 +16,7 @@ How to invoke:
 `estat countgof [, max(10)]` (after a model-based unclustered or one-way
 clustered NB2 fit)
 `estat gof, group(10)` (after an unweighted model-based logit or probit fit)
+`estat classification [, cutoff(#)]` (after logit or probit; default cutoff 0.5)
 
 What it does:
 For `vif`, report variance-inflation factors from the retained linear-regression predictor design, in predictor order; an active dataset and prior successful bounded `regress` fit are required. The IV forms below provide Anderson–Rubin coefficient inference, Sargan overidentification testing, and joint Wu–Hausman endogeneity testing from a retained 2SLS design.
@@ -190,6 +191,31 @@ default Pearson test across covariate patterns or any other binary
 specification test. See
 [`examples/binary-hosmer-lemeshow/README.md`](../../../../../examples/binary-hosmer-lemeshow/README.md)
 for the independent Base R comparison and edge-case evidence.
+
+## Binary classification table
+
+After a successful `logit` or `probit` fit, `estat classification` classifies
+each retained estimation-sample observation as positive when its fitted
+probability is greater than or equal to the cutoff. The default cutoff is 0.5;
+`cutoff(#)` accepts a finite value from 0 through 1. The event is exactly
+`outcome == 1`.
+
+The table reports actual/predicted class totals and true-positive,
+false-positive, false-negative and true-negative counts. It also reports
+sensitivity, specificity, positive/negative predictive values, false-positive
+and false-negative rates among actual classes and predicted classes, and the
+correct-classification percentage. Percentages use a 0–100 scale. A percentage
+is `NA` if its denominator is zero. The result is descriptive in-sample
+classification: it has no standard error or hypothesis test and does not select
+a cutoff or assess probability calibration/specification. Robust and clustered
+fits use the same retained probabilities; their covariance does not affect
+classification counts.
+
+The calculation uses the response and probabilities owned by the successful
+fit, so current-data edits do not change it. The command does not accept `all`,
+row qualifiers, weights, ROC curves or cutpoint selection. JSON returns
+`BinaryClassificationResult`; see the corresponding result contract and the
+[independent synthetic reference](../../../../../examples/binary-classification/README.md).
 
 ## Binary continuous average partial effects
 

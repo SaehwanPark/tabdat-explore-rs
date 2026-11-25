@@ -119,6 +119,115 @@ pub struct BinaryOmnibusWald {
   pub unavailable_reason: Option<String>,
 }
 
+/// Descriptive binary classification counts and percentages at one probability cutpoint.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BinaryClassificationMetrics {
+  pub cutoff: f64,
+  pub observation_count: usize,
+  pub actual_positive_count: usize,
+  pub actual_negative_count: usize,
+  pub predicted_positive_count: usize,
+  pub predicted_negative_count: usize,
+  pub true_positive: usize,
+  pub false_positive: usize,
+  pub false_negative: usize,
+  pub true_negative: usize,
+  /// Percentages on a 0–100 scale; absent when the denominator is zero.
+  pub sensitivity: Option<f64>,
+  pub specificity: Option<f64>,
+  pub positive_predictive_value: Option<f64>,
+  pub negative_predictive_value: Option<f64>,
+  pub false_positive_rate_given_negative: Option<f64>,
+  pub false_negative_rate_given_positive: Option<f64>,
+  pub false_positive_rate_given_positive: Option<f64>,
+  pub false_negative_rate_given_negative: Option<f64>,
+  pub correctly_classified: Option<f64>,
+}
+
+/// Summarize binary predictions, classifying `p >= cutoff` as positive.
+///
+/// This is descriptive in-sample classification: it does not estimate
+/// uncertainty, choose a cutpoint or imply a probability-model diagnostic.
+pub fn binary_classification(
+  outcomes: &[f64],
+  predicted_probabilities: &[f64],
+  cutoff: f64,
+) -> Result<BinaryClassificationMetrics, StatsError> {
+  if outcomes.len() != predicted_probabilities.len() {
+    return Err(StatsError::DimensionMismatch(format!(
+      "outcome length ({}) must match probability length ({})",
+      outcomes.len(),
+      predicted_probabilities.len()
+    )));
+  }
+  if outcomes.is_empty() {
+    return Err(StatsError::EmptySample);
+  }
+  if !cutoff.is_finite() || !(0.0..=1.0).contains(&cutoff) {
+    return Err(StatsError::InvalidEstimation(
+      "classification cutoff must be finite and between 0 and 1".into(),
+    ));
+  }
+
+  let mut true_positive = 0usize;
+  let mut false_positive = 0usize;
+  let mut false_negative = 0usize;
+  let mut true_negative = 0usize;
+  for (&outcome, &probability) in outcomes.iter().zip(predicted_probabilities) {
+    if !outcome.is_finite() || !probability.is_finite() {
+      return Err(StatsError::NonFiniteValue(
+        "classification outcomes and probabilities must be finite".into(),
+      ));
+    }
+    if outcome != 0.0 && outcome != 1.0 {
+      return Err(StatsError::InvalidEstimation(
+        "classification outcomes must be exactly 0 or 1".into(),
+      ));
+    }
+    if !(0.0..=1.0).contains(&probability) {
+      return Err(StatsError::InvalidEstimation(
+        "classification probabilities must be between 0 and 1".into(),
+      ));
+    }
+    match (outcome == 1.0, probability >= cutoff) {
+      (true, true) => true_positive += 1,
+      (false, true) => false_positive += 1,
+      (true, false) => false_negative += 1,
+      (false, false) => true_negative += 1,
+    }
+  }
+
+  let actual_positive_count = true_positive + false_negative;
+  let actual_negative_count = false_positive + true_negative;
+  let predicted_positive_count = true_positive + false_positive;
+  let predicted_negative_count = false_negative + true_negative;
+  let percent = |numerator: usize, denominator: usize| {
+    (denominator > 0).then(|| 100.0 * numerator as f64 / denominator as f64)
+  };
+
+  Ok(BinaryClassificationMetrics {
+    cutoff,
+    observation_count: outcomes.len(),
+    actual_positive_count,
+    actual_negative_count,
+    predicted_positive_count,
+    predicted_negative_count,
+    true_positive,
+    false_positive,
+    false_negative,
+    true_negative,
+    sensitivity: percent(true_positive, actual_positive_count),
+    specificity: percent(true_negative, actual_negative_count),
+    positive_predictive_value: percent(true_positive, predicted_positive_count),
+    negative_predictive_value: percent(true_negative, predicted_negative_count),
+    false_positive_rate_given_negative: percent(false_positive, actual_negative_count),
+    false_negative_rate_given_positive: percent(false_negative, actual_positive_count),
+    false_positive_rate_given_positive: percent(false_positive, predicted_positive_count),
+    false_negative_rate_given_negative: percent(false_negative, predicted_negative_count),
+    correctly_classified: percent(true_positive + true_negative, outcomes.len()),
+  })
+}
+
 #[derive(Clone, Copy)]
 enum BinaryCovariance<'a> {
   ModelBased,

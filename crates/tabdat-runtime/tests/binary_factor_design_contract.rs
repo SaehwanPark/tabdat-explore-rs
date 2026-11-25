@@ -201,6 +201,15 @@ fn binary_lincom_reference(model: &str, covariance_type: &str) -> Vec<Vec<&'stat
   .collect()
 }
 
+fn binary_classification_reference(model: &str, cutoff: f64) -> Vec<Vec<&'static str>> {
+  rows(include_str!(
+    "../../../examples/binary-factor-design/binary_factor_classification_reference.csv"
+  ))
+  .into_iter()
+  .filter(|row| field(row, 0) == model && field(row, 1).parse::<f64>().unwrap() == cutoff)
+  .collect()
+}
+
 fn retained_result(session: &Session) -> tabdat_stats::BinaryMleResult {
   match session.state().estimation.unwrap() {
     EstimationState::Logit(state) | EstimationState::Probit(state) => state.result,
@@ -970,4 +979,154 @@ fn binary_lincom_matches_base_r_for_factor_coefficients_and_selected_covariances
       }
     }
   }
+}
+
+#[test]
+fn retained_classification_matches_base_r_at_default_and_custom_cutoffs() {
+  let fixture = Fixture::new();
+  for model in ["logit", "probit"] {
+    let mut session = fixture.load();
+    run(&mut session, &format!("{model} y x i.region"));
+    let fit_state = session.state().estimation;
+
+    for (cutoff, command) in [
+      (0.5, "estat classification"),
+      (0.35, "estat classification, cutoff(.35)"),
+    ] {
+      let ExecutionResult::BinaryClassification(actual) = run(&mut session, command) else {
+        panic!("expected retained classification after {model}")
+      };
+      let reference = binary_classification_reference(model, cutoff);
+      assert_eq!(reference.len(), 1, "{model} cutoff {cutoff}");
+      assert_eq!(
+        actual.model,
+        if model == "logit" {
+          BinaryModel::Logit
+        } else {
+          BinaryModel::Probit
+        }
+      );
+      assert_eq!(actual.outcome, "y");
+      assert_eq!(actual.metrics.cutoff, cutoff);
+      assert_eq!(actual.metrics.observation_count, 237);
+      assert_eq!(actual.sample.as_ref().unwrap().retained_indices.len(), 237);
+      for (name, value, index) in [
+        ("N", actual.metrics.observation_count, 2),
+        ("actual positive", actual.metrics.actual_positive_count, 3),
+        ("actual negative", actual.metrics.actual_negative_count, 4),
+        (
+          "predicted positive",
+          actual.metrics.predicted_positive_count,
+          5,
+        ),
+        (
+          "predicted negative",
+          actual.metrics.predicted_negative_count,
+          6,
+        ),
+        ("true positive", actual.metrics.true_positive, 7),
+        ("false positive", actual.metrics.false_positive, 8),
+        ("false negative", actual.metrics.false_negative, 9),
+        ("true negative", actual.metrics.true_negative, 10),
+      ] {
+        assert_eq!(
+          value,
+          field(&reference[0], index).parse::<usize>().unwrap(),
+          "{model} {cutoff} {name}"
+        );
+      }
+      for (name, value, index) in [
+        ("sensitivity", actual.metrics.sensitivity, 11),
+        ("specificity", actual.metrics.specificity, 12),
+        (
+          "positive predictive value",
+          actual.metrics.positive_predictive_value,
+          13,
+        ),
+        (
+          "negative predictive value",
+          actual.metrics.negative_predictive_value,
+          14,
+        ),
+        (
+          "false-positive rate among actual negatives",
+          actual.metrics.false_positive_rate_given_negative,
+          15,
+        ),
+        (
+          "false-negative rate among actual positives",
+          actual.metrics.false_negative_rate_given_positive,
+          16,
+        ),
+        (
+          "false-positive rate among predicted positives",
+          actual.metrics.false_positive_rate_given_positive,
+          17,
+        ),
+        (
+          "false-negative rate among predicted negatives",
+          actual.metrics.false_negative_rate_given_negative,
+          18,
+        ),
+        (
+          "correct classification",
+          actual.metrics.correctly_classified,
+          19,
+        ),
+      ] {
+        close_named(
+          value.unwrap(),
+          field(&reference[0], index).parse().unwrap(),
+          &format!("{model} {cutoff} {name}"),
+        );
+      }
+      assert_eq!(session.state().estimation, fit_state);
+    }
+
+    run(&mut session, "replace y = 1 - y if id == 1");
+    run(&mut session, "replace x = x + 100 if id == 2");
+    run(&mut session, "replace region = 'Unused' if id == 3");
+    let ExecutionResult::BinaryClassification(after_edit) =
+      run(&mut session, "estat classification, cutoff(.35)")
+    else {
+      panic!("expected retained classification after {model} data edits")
+    };
+    assert_eq!(after_edit.metrics.cutoff, 0.35);
+    assert_eq!(after_edit.metrics.observation_count, 237);
+    assert_eq!(session.state().estimation, fit_state);
+  }
+}
+
+#[test]
+fn classification_boundary_cutoffs_and_missing_fit_fail_without_mutation() {
+  let fixture = Fixture::new();
+  let mut session = fixture.load();
+  assert!(matches!(
+    fail(&mut session, "estat classification"),
+    RuntimeError::EstatClassificationRequiresPriorBinary
+  ));
+  assert!(session.state().estimation.is_none());
+
+  run(&mut session, "logit y x");
+  let fit_state = session.state().estimation;
+  let ExecutionResult::BinaryClassification(at_zero) =
+    run(&mut session, "estat classification, cutoff(0)")
+  else {
+    panic!("expected classification at zero cutoff")
+  };
+  assert_eq!(at_zero.metrics.predicted_positive_count, 238);
+  assert_eq!(at_zero.metrics.true_negative, 0);
+  assert_eq!(at_zero.metrics.specificity, Some(0.0));
+  assert_eq!(at_zero.metrics.negative_predictive_value, None);
+  assert_eq!(at_zero.metrics.false_negative_rate_given_negative, None);
+  let ExecutionResult::BinaryClassification(at_one) =
+    run(&mut session, "estat classification, cutoff(1)")
+  else {
+    panic!("expected classification at one cutoff")
+  };
+  assert_eq!(at_one.metrics.predicted_positive_count, 0);
+  assert_eq!(at_one.metrics.true_positive, 0);
+  assert_eq!(at_one.metrics.positive_predictive_value, None);
+  assert_eq!(at_one.metrics.false_positive_rate_given_positive, None);
+  assert_eq!(session.state().estimation, fit_state);
 }
