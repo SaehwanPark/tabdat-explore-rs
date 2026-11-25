@@ -27,4 +27,33 @@ dir.create(a[2]);exact_csv(d,file.path(a[2],'full.csv'));exact_csv(selected,file
 s<-rbind(summary_rows(d,'full'),summary_rows(selected,'selected'))
 for(name in names(s)[-(1:2)])s[[name]]<-ifelse(is.na(s[[name]]),'',sprintf('%.17g',s[[name]]))
 write.table(s,file.path(a[2],'summaries.csv'),sep=',',row.names=FALSE,col.names=TRUE,quote=FALSE,na='')
-cat(R.version.string,';',nrow(d),'full/',nrow(selected),'selected records; direct raw history; variable-wise N and N-1 SD\n')
+
+xtsum_rows<-function(data)do.call(rbind,lapply(names(data),function(variable){
+ x<-data[[variable]];if(variable=='year')x<-x-1900
+ ok<-is.finite(x);groups<-split(x[ok],data$id[ok]);counts<-lengths(groups)
+ stopifnot(length(groups)>0,length(unique(counts))==1L)
+ panel_means<-vapply(groups,mean,numeric(1));overall_mean<-mean(x[ok])
+ within<-unlist(Map(function(values,center)values-center+overall_mean,groups,panel_means),use.names=FALSE)
+ data.frame(variable=variable,overall_N=sum(ok),overall_mean=mean(x[ok]),overall_sd=sd(x[ok]),
+   overall_min=min(x[ok]),overall_max=max(x[ok]),between_n=length(panel_means),
+   between_sd=sd(panel_means),between_min=min(panel_means),between_max=max(panel_means),
+   within_N=length(within),within_sd=sd(within),within_min=min(within),within_max=max(within),
+   mean_T=mean(counts),stringsAsFactors=FALSE)
+}))
+write.csv(xtsum_rows(d),file.path(a[2],'xtsum.csv'),row.names=FALSE,na='')
+
+# Reconstruct the stored Stata floats and generated numeric fields separately.
+as_float32<-function(x)readBin(writeBin(as.double(x),raw(),size=4),what='double',n=length(x),size=4)
+d_author_xtsum<-d
+for(variable in c('id','year','cusip','ardssic','scisect','logk','sumpat','logr','pat'))
+ d_author_xtsum[[variable]]<-as_float32(d_author_xtsum[[variable]])
+d_author_xtsum$lpat<-as_float32(log(ifelse(d_author_xtsum$pat==0,.5,d_author_xtsum$pat)))
+d_author_xtsum$dpat<-as.integer(d_author_xtsum$pat>0)
+d_author_xtsum$randd<-as_float32(exp(d_author_xtsum$logr))
+for(j in 1:5){
+ name<-paste0('logrl',j)
+ lagged<-unlist(lapply(split(d_author_xtsum$logr,d_author_xtsum$id),function(x)c(rep(NA_real_,j),x[seq_len(10-j)])),use.names=FALSE)
+ d_author_xtsum[[name]]<-as_float32(lagged)
+}
+write.csv(xtsum_rows(d_author_xtsum),file.path(a[2],'author_float32_xtsum.csv'),row.names=FALSE,na='')
+cat(R.version.string,';',nrow(d),'full/',nrow(selected),'selected records; direct raw history; variable-wise N and N-1 SD; 21 balanced xtsum rows\n')

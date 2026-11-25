@@ -58,8 +58,9 @@ long values; ten firms have missing nonmodel metadata. The default
 needed for1975–79, using source-record ordinal ID, not CUSIP, and full years
 1975..1979. The separate [full-decade preparation](decade_preparation.md) now
 validates all3460 long records/21 derived fields and the1730-row selection after
-lag construction; it does not reproduce the historical wide describe/DTA or
-between/within `xtsum` output.
+lag construction; it does not reproduce the historical wide describe/DTA.
+The separate [bounded P-XTSUM workflow](xtsum.md) reports all21 long-data
+variables with source-specific variable-level missingness and N/n/T checks.
 
 All fit/graph rows below use346 firms/1730 observations in1975–79, with LOGR as
 the sole slope (`xextra` is empty), no weights/offset/year effects. Missing
@@ -97,7 +98,7 @@ are not automatically named immutable model comparisons.
 | P-LAGS / 127–137 | Declare ID/year; five LOGR lags, before dropping1970–74 | Validated bounded [full-decade preparation](decade_preparation.md): complete unique ten-year keys, lag j missing exactly its first j years, and all five lags formed before the1975 restriction. No lag enters the empty-xextra fits. |
 | P-YEAR / 139–146 | Indicators for source years76..79, generated but unused in fits | Validated bounded [full-decade preparation](decade_preparation.md): all four indicators exported/summarized and kept out of the single-LOGR fitted design. |
 | P-SAVE / 149–153 | Describe/summarize full derived long data, drop NEWPAT, save DTA, resummarize | Partial: [full-decade preparation](decade_preparation.md) exports both cohorts with native labels and variable-wise summaries, and other guides validate canonical CSV ownership; no historical DTA byte/float32/label restoration or wide describe report. |
-| P-XTSUM / 154 | Overall/between/within summaries of all long-source variables | Open: the preparation reports overall variable-wise summaries only; regression variance components/within R² are not a source `xtsum` audit and require explicit differing nonmissing counts and panel summary conventions. |
+| P-XTSUM / 154 | Overall/between/within summaries of all long-source variables | Validated bounded: [source-specific `xtsum` workflow](xtsum.md)/[script](xtsum.td), raw-token Base R reference and checker reproduce all21 full-decade rows, variable-specific N/n/T, and rounded author-log values under float32 storage; source year is translated back to70–79 for this summary only. General `xtsum`/unbalanced per-variable missingness, DTA and label parity remain open. |
 | P-SPEC / 160–165 | B500 and empty additional-regressor global | Validated bounded designs/B500 in linked fit/bootstrap guides below. No omitted year/lag/static covariate is silently added; historical seed/usable-count ambiguity remains. |
 | P-SAMPLE / 178–179, 211–212 | Reload saved data and select years75..79 before linear/count models | Validated bounded: [full-decade preparation](decade_preparation.md) proves lags use pre-restriction history, and linked raw-source/R audits enforce1730 canonical rows/346 firms; FE's additional zero-total exclusion is explicit. Native full-year keys differ representationally, not in selected periods. |
 
@@ -150,8 +151,9 @@ are not automatically named immutable model comparisons.
   an executed alternate source fit. Independent R dummy GLM is real validation
   evidence for conditional FE, not evidence that Stata ran this commented code.
 - Log196 gives346→3460 reshape;425–508 reports full-decade xtsum, not1730-row
-  model summaries. The completed preparation reports overall variable-wise
-  summaries only, not between/within `xtsum`. LOGRL5 has1730 available rows
+  model summaries. `xtsum.td` separately reproduces this full-decade block with
+  variable-specific N/n/T; the decade preparation's ordinary summarize output
+  is still overall-only. LOGRL5 has1730 available rows
   (log493), but this does not mean all summary variables share that sample.
   Native estimation projection cannot substitute for source-wide variable-specific
   summaries/lag histories.
@@ -193,8 +195,9 @@ P-REPORT-LIN remains partial rather than being closed by those scalar/matrix
 facts. The [full-decade preparation](decade_preparation.md) now closes the
 bounded P-RESHAPE/P-LPAT/P-DPAT/P-RANDD/P-LAGS/P-YEAR gaps with all3460/1730
 records, pre-restriction lags, variable-wise summaries, independent R/raw checks
-and hostile-artifact controls; P-READ/P-SAVE remain partial for historical wide
-describe/DTA output and P-XTSUM remains open. Reassess missing graduate methods
+and hostile-artifact controls; the separate [P-XTSUM audit](xtsum.md) now
+validates all21 overall/between/within rows and source-log display values.
+P-READ/P-SAVE remain partial for historical wide describe/DTA output. Reassess missing graduate methods
 and source priorities before another slice; no inventory ordering is a mandatory
 phase gate. Named pooled/mixed/GEE reports also remain required. Unavailable
 historical core/RNG evidence is a blocker to literal parity, not a reason to widen
