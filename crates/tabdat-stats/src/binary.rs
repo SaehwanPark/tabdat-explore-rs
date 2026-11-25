@@ -1141,14 +1141,30 @@ fn fit_binary_mle(
   ))
 }
 
-/// Average continuous predictor-column effects over the *retained training X*.
-/// Caller must provide the exact problem used for this fit. Uncertainty is the
-/// normal delta method conditional on observed X, through the fitted family's
-/// own covariance convention, including intercept/slopes' covariance. It does
-/// not estimate the sampling variation of X's distribution.
+/// Average effects for every numeric predictor column over the *retained
+/// training X*. Use [`binary_average_marginal_effects_for_columns`] to select a
+/// subset of columns in an expanded design. Caller must provide the exact
+/// problem used for this fit. Uncertainty is the normal delta method
+/// conditional on observed X, through the fitted family's own covariance
+/// convention, including intercept/slopes' covariance. It does not estimate the
+/// sampling variation of X's distribution.
 pub fn binary_average_marginal_effects(
   problem: &EstimationProblem,
   result: &BinaryMleResult,
+) -> Result<LogitMarginalEffects, StatsError> {
+  let predictor_columns = (0..problem.predictor_names.len()).collect::<Vec<_>>();
+  binary_average_marginal_effects_for_columns(problem, result, &predictor_columns)
+}
+
+/// Average continuous predictor-column effects over the retained training X,
+/// computing only the requested columns. Column indices refer to
+/// `problem.predictor_names`; gradients and uncertainty still use the full
+/// fitted coefficient vector and covariance. The caller must provide the exact
+/// problem used for the fit.
+pub fn binary_average_marginal_effects_for_columns(
+  problem: &EstimationProblem,
+  result: &BinaryMleResult,
+  predictor_columns: &[usize],
 ) -> Result<LogitMarginalEffects, StatsError> {
   problem.validate()?;
   let model = result.model;
@@ -1189,6 +1205,16 @@ pub fn binary_average_marginal_effects(
     return Err(failed(
       model,
       "marginal effects require finite fit quantities",
+    ));
+  }
+  let mut selected_columns = BTreeSet::new();
+  if predictor_columns
+    .iter()
+    .any(|column| *column >= problem.predictor_names.len() || !selected_columns.insert(*column))
+  {
+    return Err(invalid(
+      model,
+      "marginal effect columns must be unique retained predictors",
     ));
   }
   let x = full_design(problem);
@@ -1244,7 +1270,8 @@ pub fn binary_average_marginal_effects(
     }
   };
   let mut effects = Vec::new();
-  for (column, name) in problem.predictor_names.iter().enumerate() {
+  for &column in predictor_columns {
+    let name = &problem.predictor_names[column];
     let index = column + usize::from(problem.include_intercept);
     let beta = result.coefficients[index].value;
     let mut gradient: Vec<f64> = mean_link_change.iter().map(|d| beta * d).collect();

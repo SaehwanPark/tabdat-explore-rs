@@ -103,9 +103,10 @@ pub use binary::{
   BinaryMleResult, BinaryModel, BinaryOmnibusWald, LogitEstimate, LogitMarginalEffects,
   LogitOptions, MAX_BINARY_GOODNESS_OF_FIT_GROUPS, MIN_BINARY_GOODNESS_OF_FIT_GROUPS,
   ProbitOptions, binary_average_discrete_change, binary_average_factor_contrasts,
-  binary_average_marginal_effects, binary_hosmer_lemeshow_test, binary_wald_test,
-  fit_binary_clustered, fit_binary_logit, fit_binary_logit_with_options, fit_binary_probit,
-  fit_binary_probit_with_options, fit_binary_robust, logit_average_marginal_effects,
+  binary_average_marginal_effects, binary_average_marginal_effects_for_columns,
+  binary_hosmer_lemeshow_test, binary_wald_test, fit_binary_clustered, fit_binary_logit,
+  fit_binary_logit_with_options, fit_binary_probit, fit_binary_probit_with_options,
+  fit_binary_robust, logit_average_marginal_effects,
 };
 pub use bootstrap::{
   BOOTSTRAP_RNG, BootstrapCoefficient, BootstrapOlsResult, ClusterBootstrapOlsResult,

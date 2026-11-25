@@ -202,9 +202,13 @@ predictor column excluding the intercept, the family-specific average derivative
 
 The average uses the **retained complete-finite estimation design**, not current
 rows. Current-data edits do not rescan, refit or change the estimand.
-This continuous-column formula is currently available only for binary fits
-without factor predictors. Use `factor(variable)` below for retained-factor
-probability contrasts and their uncertainty.
+Only original continuous predictor terms are reported; expanded factor dummy
+columns are not treated as continuous slopes. In additive factor designs, each
+continuous effect keeps every retained row's factor levels and other covariates
+at their observed values. The full gradient includes the factor coefficients,
+so their uncertainty contributes through the selected covariance. Factor-only
+designs have no continuous effect and fail clearly. Use `factor(variable)` below
+for retained-factor probability contrasts and their uncertainty.
 
 Uncertainty is the full delta method using the fit's selected covariance:
 model-based (logit: inverse Fisher information; probit: inverse observed

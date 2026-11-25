@@ -154,10 +154,35 @@ fn factor_contrast_reference(
   .collect()
 }
 
+fn continuous_marginal_effect_reference(
+  model: &str,
+  design: &str,
+  covariance_type: &str,
+) -> Vec<Vec<&'static str>> {
+  rows(include_str!(
+    "../../../examples/binary-factor-design/binary_factor_marginal_effect_reference.csv"
+  ))
+  .into_iter()
+  .filter(|row| {
+    field(row, 0) == model && field(row, 1) == design && field(row, 2) == covariance_type
+  })
+  .collect()
+}
+
 fn retained_result(session: &Session) -> tabdat_stats::BinaryMleResult {
   match session.state().estimation.unwrap() {
     EstimationState::Logit(state) | EstimationState::Probit(state) => state.result,
     _ => panic!("expected retained binary model"),
+  }
+}
+
+fn continuous_marginal_effect_result(
+  result: ExecutionResult,
+) -> tabdat_stats::LogitMarginalEffects {
+  match result {
+    ExecutionResult::LogitMarginalEffects(result) => result,
+    ExecutionResult::ProbitMarginalEffects(result) => *result,
+    other => panic!("expected continuous probability effects, got {other:?}"),
   }
 }
 
@@ -372,10 +397,11 @@ fn factor_reference_covariance_and_failed_fit_state_follow_existing_contracts() 
       },
     ]
   );
-  assert!(matches!(
-    fail(&mut explicit, "estat margins"),
-    RuntimeError::EstatMarginsFailed { .. }
-  ));
+  let ExecutionResult::ProbitMarginalEffects(margins) = run(&mut explicit, "estat margins") else {
+    panic!("expected continuous probability effects alongside a retained factor")
+  };
+  assert_eq!(margins.effects.len(), 1);
+  assert_eq!(margins.effects[0].name, "x");
 
   let before = explicit.state();
   assert!(matches!(
@@ -424,6 +450,116 @@ fn factor_fits_keep_binary_diagnostics_tests_and_estimate_report_metadata() {
   };
   assert_eq!(table.models.len(), 1);
   assert_eq!(table.models[0].linear_design_terms, design_terms);
+}
+
+#[test]
+fn continuous_margins_after_factor_fits_match_base_r_and_use_only_retained_continuous_terms() {
+  let fixture = Fixture::new();
+  for model in ["logit", "probit"] {
+    for (design, covariance) in [
+      ("default", "model_based"),
+      ("default", "robust"),
+      ("default", "cluster"),
+      ("west_reference", "model_based"),
+      ("noconstant", "model_based"),
+      ("numeric_factor", "model_based"),
+      ("boolean_factor", "model_based"),
+    ] {
+      let (base_fit, expected_model) = estimate_binary_design(model, design);
+      let fit = match covariance {
+        "model_based" => base_fit,
+        "robust" => format!("{base_fit}, robust"),
+        "cluster" => format!("{base_fit}, cluster(cluster)"),
+        _ => unreachable!(),
+      };
+      let mut session = fixture.load();
+      run(&mut session, &fit);
+      let before = session.state().estimation;
+      let actual = continuous_marginal_effect_result(run(&mut session, "estat margins"));
+      let reference = continuous_marginal_effect_reference(model, design, covariance);
+      assert_eq!(actual.observation_count, 237, "{fit}");
+      assert_eq!(actual.robust, covariance != "model_based", "{fit}");
+      assert_eq!(actual.cluster.is_some(), covariance == "cluster", "{fit}");
+      assert_eq!(actual.effects.len(), 1, "{fit}");
+      assert_eq!(actual.effects[0].name, "x", "{fit}");
+      assert_eq!(reference.len(), 1, "{fit}");
+      assert_eq!(
+        expected_model,
+        if model == "logit" {
+          BinaryModel::Logit
+        } else {
+          BinaryModel::Probit
+        },
+        "{fit}"
+      );
+      for (name, value, index) in [
+        ("estimate", actual.effects[0].value, 4),
+        ("standard error", actual.effects[0].standard_error, 5),
+        ("statistic", actual.effects[0].statistic, 6),
+        ("p-value", actual.effects[0].p_value, 7),
+        ("lower interval", actual.effects[0].confidence_lower, 8),
+        ("upper interval", actual.effects[0].confidence_upper, 9),
+      ] {
+        close_named(
+          value,
+          field(&reference[0], index).parse().unwrap(),
+          &format!("{fit} {name}"),
+        );
+      }
+      assert_eq!(session.state().estimation, before, "{fit}");
+      if design == "default" && covariance == "model_based" {
+        run(&mut session, "replace region = 'Unused' if id == 1");
+        run(&mut session, "replace x = x + 100 if id == 2");
+        assert_eq!(
+          continuous_marginal_effect_result(run(&mut session, "estat margins")),
+          actual,
+          "margins use retained design after current data edits"
+        );
+      }
+    }
+  }
+}
+
+#[test]
+fn factor_only_margins_fail_without_changing_the_retained_fit() {
+  let fixture = Fixture::new();
+  let mut session = fixture.load();
+  run(&mut session, "logit y i.region");
+  let before = session.state().estimation;
+  let error = fail(&mut session, "estat margins");
+  assert!(matches!(
+    error,
+    RuntimeError::EstatMarginsFailed { message }
+      if message.contains("at least one continuous predictor")
+  ));
+  assert_eq!(session.state().estimation, before);
+}
+
+#[test]
+fn continuous_margins_map_predictors_when_the_factor_term_comes_first() {
+  let fixture = Fixture::new();
+  for model in ["logit", "probit"] {
+    let mut session = fixture.load();
+    run(&mut session, &format!("{model} y i.region x"));
+    let actual = continuous_marginal_effect_result(run(&mut session, "estat margins"));
+    let reference = continuous_marginal_effect_reference(model, "default", "model_based");
+    assert_eq!(actual.effects.len(), 1);
+    assert_eq!(actual.effects[0].name, "x");
+    for (value, index) in [
+      (actual.effects[0].value, 4),
+      (actual.effects[0].standard_error, 5),
+      (actual.effects[0].statistic, 6),
+      (actual.effects[0].p_value, 7),
+      (actual.effects[0].confidence_lower, 8),
+      (actual.effects[0].confidence_upper, 9),
+    ] {
+      close_named(
+        value,
+        field(&reference[0], index).parse().unwrap(),
+        &format!("{model} factor-first margin"),
+      );
+    }
+  }
 }
 
 #[test]

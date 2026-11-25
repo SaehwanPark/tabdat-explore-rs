@@ -315,15 +315,17 @@ impl Session {
     let Some(EstimationState::Logit(state)) = &self.estimation else {
       return Err(RuntimeError::EstatMarginsRequiresPriorLogit);
     };
-    if crate::regress_design::has_factor_terms(&state.design_terms) {
-      return Err(RuntimeError::EstatMarginsFailed {
-        message: "margins after binary fits with factor predictors is not supported".into(),
-      });
-    }
-    let result = tabdat_stats::logit_average_marginal_effects(&state.problem, &state.result)
-      .map_err(|e| RuntimeError::EstatMarginsFailed {
-        message: e.to_string(),
-      })?;
+    let predictor_columns =
+      binary_continuous_predictor_columns(&state.problem, &state.design_terms)
+        .map_err(|message| RuntimeError::EstatMarginsFailed { message })?;
+    let result = tabdat_stats::binary_average_marginal_effects_for_columns(
+      &state.problem,
+      &state.result,
+      &predictor_columns,
+    )
+    .map_err(|e| RuntimeError::EstatMarginsFailed {
+      message: e.to_string(),
+    })?;
     Ok(ExecutionResult::LogitMarginalEffects(result))
   }
 
@@ -331,15 +333,17 @@ impl Session {
     &self,
     state: &BinaryProbitState,
   ) -> Result<ExecutionResult, RuntimeError> {
-    if crate::regress_design::has_factor_terms(&state.design_terms) {
-      return Err(RuntimeError::EstatMarginsFailed {
-        message: "margins after binary fits with factor predictors is not supported".into(),
-      });
-    }
-    let result = tabdat_stats::binary_average_marginal_effects(&state.problem, &state.result)
-      .map_err(|e| RuntimeError::EstatMarginsFailed {
-        message: e.to_string(),
-      })?;
+    let predictor_columns =
+      binary_continuous_predictor_columns(&state.problem, &state.design_terms)
+        .map_err(|message| RuntimeError::EstatMarginsFailed { message })?;
+    let result = tabdat_stats::binary_average_marginal_effects_for_columns(
+      &state.problem,
+      &state.result,
+      &predictor_columns,
+    )
+    .map_err(|e| RuntimeError::EstatMarginsFailed {
+      message: e.to_string(),
+    })?;
     Ok(ExecutionResult::ProbitMarginalEffects(Box::new(result)))
   }
 
@@ -759,6 +763,71 @@ fn binary_factor_contrast_design(
   }
   selected
     .ok_or_else(|| format!("factor '{variable}' is not a categorical term in the retained model"))
+}
+
+fn binary_continuous_predictor_columns(
+  problem: &tabdat_stats::EstimationProblem,
+  design_terms: &[LinearDesignTerm],
+) -> Result<Vec<usize>, String> {
+  if design_terms.is_empty() {
+    return Ok((0..problem.predictor_names.len()).collect());
+  }
+  let mut predictor_column = 0usize;
+  let mut continuous_columns = Vec::new();
+  for term in design_terms {
+    match term {
+      LinearDesignTerm::Continuous { name } => {
+        if problem
+          .predictor_names
+          .get(predictor_column)
+          .is_none_or(|retained_name| retained_name != name)
+        {
+          return Err("retained continuous metadata does not match the binary design".into());
+        }
+        continuous_columns.push(predictor_column);
+        predictor_column += 1;
+      }
+      LinearDesignTerm::Factor {
+        variable,
+        reference,
+        levels,
+      } => {
+        if levels.len() < 2 {
+          return Err(format!(
+            "factor '{variable}' has fewer than two retained levels"
+          ));
+        }
+        let omitted_index = if problem.include_intercept {
+          let reference = reference.as_deref().ok_or_else(|| {
+            format!("retained factor '{variable}' is missing its intercept reference")
+          })?;
+          Some(
+            levels
+              .iter()
+              .position(|level| level.label() == reference)
+              .ok_or_else(|| {
+                format!("retained reference for factor '{variable}' is absent from its levels")
+              })?,
+          )
+        } else {
+          if reference.is_some() {
+            return Err(format!(
+              "retained factor '{variable}' has a reference without an intercept"
+            ));
+          }
+          None
+        };
+        predictor_column += levels.len() - usize::from(omitted_index.is_some());
+      }
+    }
+  }
+  if predictor_column != problem.predictor_names.len() {
+    return Err("retained design metadata does not match the binary predictors".into());
+  }
+  if continuous_columns.is_empty() && !design_terms.is_empty() {
+    return Err("margins require at least one continuous predictor in the fitted design".into());
+  }
+  Ok(continuous_columns)
 }
 
 fn binary_probability(model: BinaryModel, xb: f64) -> f64 {
