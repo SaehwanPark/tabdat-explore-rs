@@ -864,7 +864,18 @@ overflowing means become NULL, finite negative exponential underflow is zero.
 Means are not probabilities and are not clipped at one. Prediction publication
 preserves labels/order/fit and fails atomically on invalid schema/existing targets.
 `PredictionResult` is still metadata-only. Noncount families reject `n`; Poisson
-rejects `pr`, residuals and auxiliary prediction options.
+and NB2 reject `pr` and unsupported auxiliary prediction options.
+
+After a retained Poisson or NB2 fit, `predict target, residuals` appends the raw
+current-row response residual `y-mu`; `predict target, pearson` appends the
+unscaled family Pearson residual; `predict target, deviance` appends the signed
+square root of family unit deviance. These use current outcomes, predictors and
+fixed offset/exposure with the retained mean coefficients and, for NB2, retained
+alpha. Missing/nonfinite current inputs and undefined residuals yield NULL; a
+present outcome outside the exact family count domain fails atomically. Pearson
+at a zero mean is undefined; deviance is zero when both outcome and mean are
+zero and undefined for positive outcome at zero mean. The residuals do not use
+the selected covariance, estimated scale, leverage or studentization.
 
 Domain command snapshots add `PredictKind::MeanCount` (`mean_count` on wire).
 Owned executable state is `EstimationState::PoissonFit` (`family: "poisson_fit"`);
@@ -1026,7 +1037,7 @@ or X beta+ln(exposure)); missing/nonnumeric fixed-term columns fail without
 clearing the retained fit or publishing a target. Retained effects/count bins keep
 original fitted means/fixed terms/alpha despite
 current-data edits. Bare predict stays xb.
-Noncount fits reject n; NB2 rejects pr/residual/auxiliary forms. The existing
+Noncount fits reject n; NB2 rejects pr and unsupported auxiliary forms. The existing
 `PredictMeanCountRequiresPoisson` error identity is retained with wording extended
 to installed count fits. Executable owned state uses
 `negative_binomial_fit`; the old `negative_binomial` placeholder remains readable,

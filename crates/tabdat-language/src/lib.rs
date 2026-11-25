@@ -5427,6 +5427,8 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
           | "xbu"
           | "u"
           | "residuals"
+          | "pearson"
+          | "deviance"
           | "pr"
           | "n"
           | "mean"
@@ -5466,6 +5468,8 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         | "xbu"
         | "u"
         | "residuals"
+        | "pearson"
+        | "deviance"
         | "pr"
         | "n"
         | "mean"
@@ -5497,6 +5501,8 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         | "xbu"
         | "u"
         | "residuals"
+        | "pearson"
+        | "deviance"
         | "pr"
         | "n"
         | "mean"
@@ -5535,6 +5541,8 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         "predict option mean cannot be combined with another prediction kind"
       } else if kinds_present.contains(&"n") {
         "predict option n cannot be combined with another prediction kind"
+      } else if kinds_present.contains(&"pearson") || kinds_present.contains(&"deviance") {
+        "predict count residual options cannot be combined with another prediction kind"
       } else {
         "predict options xb, residuals, pr, spatial_lag, and posterior_predictive cannot be combined"
       },
@@ -5610,6 +5618,10 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     PredictKind::FixedEffect
   } else if options.iter().any(|opt| opt.name == "residuals") {
     PredictKind::Residuals
+  } else if options.iter().any(|opt| opt.name == "pearson") {
+    PredictKind::PearsonResiduals
+  } else if options.iter().any(|opt| opt.name == "deviance") {
+    PredictKind::DevianceResiduals
   } else if options.iter().any(|opt| opt.name == "pr") {
     PredictKind::Pr
   } else if options.iter().any(|opt| opt.name == "hazard") {

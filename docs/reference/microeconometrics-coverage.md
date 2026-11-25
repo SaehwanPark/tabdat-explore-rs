@@ -2216,12 +2216,17 @@ intervals condition on the fitted mean and NB2 alpha without parameter
 uncertainty. Base-R finite differences, R quantile/coverage references and
 runtime covariance/offset/exposure controls are recorded in the
 [workflow](../../examples/count-probability/README.md). Formal calibration and printed
-Table20.6 NB2 reconciliation remain unresolved. Raw current-row response residuals
-are separately validated for Poisson/NB2 against a 36-row base-R `glm`/MASS
-`glm.nb` fixed-offset reference after current outcome, predictor and offset edits;
-runtime and CLI contracts cover NULL inputs, covariance invariance, invalid count
-domains, collisions, empty data and failure atomicity. These are raw residuals,
-not Pearson/deviance diagnostics. Underlying count-fit contracts are preserved.
+Table20.6 NB2 reconciliation remain unresolved. Current-row response, unscaled
+Pearson and deviance residuals are separately validated for Poisson/NB2 against
+a 36-row base-R `glm`/MASS `glm.nb` reference with changed current outcomes,
+predictors, offsets/exposures and model/robust/cluster covariance. The
+[synthetic count-residual workflow](../../examples/count-residuals/README.md)
+records exact formulas and independent R output. Runtime and CLI contracts cover
+NULL inputs, zero-mean boundaries, covariance invariance, invalid count domains,
+collisions, empty data and failure atomicity. Residuals do not apply Pearson
+scale corrections, studentization or leverage, and do not establish formal
+goodness-of-fit. This is method evidence, not another textbook illustration.
+Underlying count-fit contracts are preserved.
 
 ### MMA-PANEL p719 classical FE–RE Hausman comparison
 

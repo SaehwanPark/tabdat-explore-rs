@@ -18,6 +18,7 @@ pub use conditional_poisson::{
 };
 mod count_goodness_of_fit;
 mod count_probabilities;
+mod count_residuals;
 mod cox;
 pub mod diagnostics;
 mod distributions;
@@ -131,6 +132,7 @@ pub use count_probabilities::{
   count_point_pmf_interval, count_point_pmf_standard_error, count_point_predictive_interval,
   count_point_probabilities, count_probability_table,
 };
+pub use count_residuals::{CountResidualKind, count_diagnostic_residual};
 pub use diagnostics::variance_inflation_factors;
 pub use distributions::{normal_cdf, normal_pdf, normal_quantile};
 pub use error::StatsError;

@@ -1,5 +1,45 @@
 use tabdat_domain::{Command, PredictKind};
 use tabdat_language::parse_command;
+
+#[test]
+fn count_diagnostic_residual_kinds_are_explicit_and_exclusive() {
+  for (text, kind, wire_name) in [
+    (
+      "predict pearson_resid, pearson",
+      PredictKind::PearsonResiduals,
+      "pearson_residuals",
+    ),
+    (
+      "predict deviance_resid, deviance",
+      PredictKind::DevianceResiduals,
+      "deviance_residuals",
+    ),
+  ] {
+    let Command::Predict { command } = parse_command(text).unwrap() else {
+      panic!("predict")
+    };
+    assert_eq!(command.kind, kind);
+    assert_eq!(
+      serde_json::to_value(command.kind).unwrap(),
+      serde_json::json!(wire_name)
+    );
+    assert_eq!(command.count_cutoff_variable, None);
+    assert!(!command.interval);
+  }
+
+  for text in [
+    "predict residual, pearson=true",
+    "predict residual, deviance=false",
+    "predict residual, pearson deviance",
+    "predict residual, residuals pearson",
+    "predict residual, residuals deviance",
+    "predict residual, pearson n",
+    "predict residual, deviance interval",
+  ] {
+    assert!(parse_command(text).is_err(), "{text}");
+  }
+}
+
 #[test]
 fn bounded_count_kinds_are_explicit_and_exclusive() {
   for (text, kind) in [
