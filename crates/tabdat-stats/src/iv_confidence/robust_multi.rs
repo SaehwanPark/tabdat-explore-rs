@@ -7,7 +7,7 @@ use crate::{CovarianceType, InstrumentalVariablesProblem, StatsError};
 use super::{ArConfidenceInterval, ArConfidenceSetShape, interval, invalid, residualize};
 
 /// HC1/one-way CR1 AR confidence set for one endogenous regressor and two through
-/// nine excluded instruments. The joint-null degrees of freedom
+/// ten excluded instruments. The joint-null degrees of freedom
 /// equal the number of excluded instruments.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RobustMultipleInstrumentAndersonRubinConfidenceSet {
@@ -817,7 +817,9 @@ fn scaled_polynomial(polynomial: &[f64]) -> Result<(Polynomial, f64), StatsError
     return Ok((polynomial, 1.0));
   }
   let leading = polynomial[degree].abs();
-  if leading <= 1e-13 {
+  // The logarithmic root bound handles small normal coefficients; zero or
+  // subnormal leading terms cannot reliably establish the polynomial degree.
+  if leading < f64::MIN_POSITIVE {
     return Err(invalid("robust AR root degree is numerically ambiguous"));
   }
   let leading_log = leading.ln();
@@ -940,9 +942,9 @@ fn confidence_set_from_boundary(
   let normalized = polynomial_scale(polynomial, 1.0 / maximum);
   let (scaled, variable_scale) = scaled_polynomial(&normalized)?;
   let roots_in_scale = roots_on_unit_interval(&scaled)?;
-  if roots_in_scale.len() > 18 {
+  if roots_in_scale.len() > 20 {
     return Err(invalid(
-      "robust AR boundary has more than eighteen real roots",
+      "robust AR boundary has more than twenty real roots",
     ));
   }
   let derivative = polynomial_derivative(&scaled);
@@ -1004,9 +1006,9 @@ fn confidence_set_from_boundary(
   if sign_to_left < 0 {
     intervals.push(interval(lower, None));
   }
-  if intervals.len() > 10 {
+  if intervals.len() > 11 {
     return Err(invalid(
-      "robust AR confidence set has more than ten components",
+      "robust AR confidence set has more than eleven components",
     ));
   }
   for pair in intervals.windows(2) {
@@ -1235,7 +1237,7 @@ fn confidence_set_probes(intervals: &[ArConfidenceInterval], center: f64) -> (Ve
 }
 
 /// Invert the HC1/one-way CR1 joint AR Wald test for one endogenous regressor
-/// and two through nine excluded instruments. The confidence boundary has degree
+/// and two through ten excluded instruments. The confidence boundary has degree
 /// at most twice the instrument count; every real root is
 /// isolated by recursive derivative partitioning, without evaluating a finite
 /// beta grid.
@@ -1252,9 +1254,9 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     ));
   }
   let instrument_count = problem.instrument_names.len();
-  if problem.endogenous_names.len() != 1 || !(2..=9).contains(&instrument_count) {
+  if problem.endogenous_names.len() != 1 || !(2..=10).contains(&instrument_count) {
     return Err(invalid(
-      "robust multi-instrument AR confidence sets require one endogenous regressor and two to nine excluded instruments",
+      "robust multi-instrument AR confidence sets require one endogenous regressor and two to ten excluded instruments",
     ));
   }
   if !level.is_finite() || level <= 0.0 || level >= 100.0 {
@@ -2474,6 +2476,42 @@ mod tests {
         interval(Some(9.0), None),
       ],
     );
+  }
+
+  #[test]
+  fn degree_twenty_boundary_supports_twenty_roots_and_eleven_components() {
+    let roots = [
+      -10.0, -9.0, -8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
+      7.0, 8.0, 9.0, 10.0,
+    ];
+    let (shape, intervals) =
+      confidence_set_from_boundary(&polynomial_with_roots(&roots, -1.0), 0.0).unwrap();
+    assert_eq!(shape, ArConfidenceSetShape::Multiple);
+    assert_intervals_close(
+      &intervals,
+      &[
+        interval(None, Some(-10.0)),
+        interval(Some(-9.0), Some(-8.0)),
+        interval(Some(-7.0), Some(-6.0)),
+        interval(Some(-5.0), Some(-4.0)),
+        interval(Some(-3.0), Some(-2.0)),
+        interval(Some(-1.0), Some(1.0)),
+        interval(Some(2.0), Some(3.0)),
+        interval(Some(4.0), Some(5.0)),
+        interval(Some(6.0), Some(7.0)),
+        interval(Some(8.0), Some(9.0)),
+        interval(Some(10.0), None),
+      ],
+    );
+  }
+
+  #[test]
+  fn degree_twenty_boundary_with_a_repeated_root_fails_closed() {
+    let roots = [
+      -10.0, -9.0, -8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
+      7.0, 8.0, 9.0, 9.0,
+    ];
+    assert!(confidence_set_from_boundary(&polynomial_with_roots(&roots, -1.0), 0.0).is_err());
   }
 
   #[test]

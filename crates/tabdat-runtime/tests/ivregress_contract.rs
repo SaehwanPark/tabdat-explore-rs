@@ -176,6 +176,40 @@ impl Fixture {
     Self { root, parquet }
   }
 
+  fn ten_instrument_sample() -> Self {
+    let nonce = SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .expect("system clock should be after Unix epoch")
+      .as_nanos();
+    let fixture_id = NEXT_FIXTURE_ID.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!(
+      "tabdat-runtime-iv-{}-{}-{}",
+      std::process::id(),
+      nonce,
+      fixture_id
+    ));
+    fs::create_dir_all(&root).expect("fixture directory should be created");
+    let csv = root.join("ten-instrument.csv");
+    fs::write(
+      &csv,
+      include_str!("../../../examples/robust-ar/robust_ar_ten_ci_multiple_data.csv"),
+    )
+    .expect("ten-instrument fixture should be written");
+    let parquet = root.join("iv.parquet");
+    let connection = duckdb::Connection::open_in_memory().expect("fixture connection should open");
+    let csv_string = csv.to_string_lossy().replace('\'', "''");
+    let parquet_string = parquet.to_string_lossy().into_owned();
+    connection
+      .execute(
+        &format!(
+          "COPY (SELECT * FROM read_csv_auto('{csv_string}', header = true)) TO ? (FORMAT PARQUET)"
+        ),
+        [&parquet_string],
+      )
+      .expect("ten-instrument fixture should write to parquet");
+    Self { root, parquet }
+  }
+
   fn school_like_sample() -> Self {
     Self::new_with_sql(
       "WITH base AS (\
@@ -859,7 +893,7 @@ fn scalar_ar_confidence_sets_reuse_retained_sample_and_reject_endogenous_nuisanc
 }
 
 #[test]
-fn three_through_six_instrument_robust_ar_sets_reuse_retained_fit_and_cap_nine_dimensions() {
+fn three_through_six_instrument_robust_ar_sets_reuse_retained_fit_and_cap_ten_dimensions() {
   let fixture = Fixture::school_like_sample();
   for (option, expected_n) in [("robust", 58), ("cluster(group_id)", 57)] {
     let mut session = load(&fixture);
@@ -1009,11 +1043,11 @@ fn three_through_six_instrument_robust_ar_sets_reuse_retained_fit_and_cap_nine_d
     assert_eq!(session.state(), changed);
   }
 
-  let nine_fixture = Fixture::nine_instrument_sample();
-  let mut session = load(&nine_fixture);
+  let ten_fixture = Fixture::ten_instrument_sample();
+  let mut session = load(&ten_fixture);
   session
     .execute(
-      parse_command("ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 row) robust")
+      parse_command("ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 row) robust")
         .unwrap(),
     )
     .unwrap();
@@ -1023,7 +1057,7 @@ fn three_through_six_instrument_robust_ar_sets_reuse_retained_fit_and_cap_nine_d
       .execute(parse_command("estat ar, ci").unwrap())
       .unwrap_err()
       .to_string()
-      .contains("at most nine excluded instruments")
+      .contains("at most ten excluded instruments")
   );
   assert_eq!(session.state(), before);
 }

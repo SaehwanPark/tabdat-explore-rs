@@ -1,9 +1,9 @@
-# Robust AR confidence sets with two through nine excluded instruments
+# Robust AR confidence sets with two through ten excluded instruments
 
 ## Implemented contract
 
 After an HC1 or one-way CR1 2SLS fit with exactly one endogenous regressor and
-two through nine excluded instruments, `estat ar, ci [level(95)]` inverts the
+two through ten excluded instruments, `estat ar, ci [level(95)]` inverts the
 joint auxiliary-regression Wald test. Included exogenous coefficients remain
 unrestricted. The reference is asymptotic chi-square(q), where q is the number
 of excluded instruments. Both dimensions use the
@@ -13,13 +13,49 @@ The HC1 correction is N/(N−K_aux). CR1 uses
 G/(G−1)*(N−1)/(N−K_aux), with K_aux counting the intercept, included controls
 and all excluded instruments. Auxiliary residuals supply row or cluster
 scores. The boundary has degree at most four, six, eight, ten, twelve,
-fourteen, sixteen or eighteen for two through nine instruments.
+fourteen, sixteen, eighteen or twenty for two through ten instruments.
 Every real boundary root is isolated through recursive derivative roots and
 monotone-segment bisection; each set region and finite endpoint is checked
 against the direct AR Wald test. The algorithm uses no finite beta grid. The
 score covariance must stay nonsingular and numerically conditioned over the
 real line; ambiguous roots, rank failure and numerical-range errors are
-explicit. The current upper bound is nine instruments; q10 and above are rejected.
+explicit. The current upper bound is ten instruments; q11 and above are rejected.
+
+
+## Ten-instrument reference
+
+[`ten_instrument_ci.td`](ten_instrument_ci.td) and
+[`ten_instrument_ci_clustered.td`](ten_instrument_ci_clustered.td) extend the
+same scalar workflow to ten excluded instruments. The deterministic designs have
+240 rows, one included control, K_aux=12 and residual DF=228. The 95%
+chi-square(10) critical value is 18.3070380532751; HC1 and CR1 corrections are
+1.05263157894737 and 1.09382151029748 (24 groups).
+
+| Design | Covariance | Confidence set |
+| --- | --- | --- |
+| multiple | HC1 | [0.954530263639083, 1.303078784421] |
+| multiple | CR1 | [0.967341667827175, 1.2132537558033] |
+| secondary | HC1 | [1.08640362505417, 1.35816576012896] |
+| secondary | CR1 | [1.22845849212421, 1.35889967966114] |
+
+The independent Base R 4.6.2 reference checks degree-twenty determinant
+coefficients at 21 Chebyshev nodes and compares endpoints plus six direct Wald
+probes per design/covariance. Rust checks endpoints within 3e-8, corrections,
+metadata, instrument rescaling, q=11 failure atomicity and JSON/text output. The
+boundary solver is tested with twenty real roots and eleven accepted
+components. Regenerate the data and reference with:
+
+```sh
+work=$(mktemp -d)
+Rscript crates/tabdat-stats/tests/fixtures/robust_ar_ten_ci_reference.R "$work" \
+  > "$work/robust_ar_ten_ci_reference.csv"
+cmp examples/robust-ar/robust_ar_ten_ci_multiple_data.csv \
+  "$work/robust_ar_ten_ci_multiple_data.csv"
+cmp examples/robust-ar/robust_ar_ten_ci_secondary_data.csv \
+  "$work/robust_ar_ten_ci_secondary_data.csv"
+cmp crates/tabdat-stats/tests/fixtures/robust_ar_ten_ci_reference.csv \
+  "$work/robust_ar_ten_ci_reference.csv"
+```
 
 ## Independent evidence
 
@@ -126,7 +162,7 @@ direct auxiliary-OLS HC1/CR1 Wald statistics. Rust tests compare every reference
 endpoint and probe within 3e-8, check metadata and rescaling, and exercise
 retained-fit behavior. A polynomial unit test covers all twelve possible roots
 and seven accepted components. The supported scalar result covers exactly one
-endogenous regressor and at most nine excluded instruments; robust projected
+endogenous regressor and at most ten excluded instruments; robust projected
 inference remains separately bounded to two endogenous regressors and two
 excluded instruments.
 
@@ -164,7 +200,7 @@ chi-square(8) critical value is 15.5073130558655; corrections are
 
 The reference checks every endpoint and six direct Wald probes for all four
 design/covariance combinations. Rust tests also check correction and retained
-fit metadata, rescaling, JSON/text output, and q10 rejection. The degree-sixteen
+fit metadata, rescaling, JSON/text output, and q11 rejection. The degree-sixteen
 method supports sixteen real roots and nine accepted components; a polynomial
 unit test covers all sixteen roots. Regenerate the inputs and reference from
 the repository root with Base R 4.6.2:
@@ -216,13 +252,13 @@ cmp crates/tabdat-stats/tests/fixtures/robust_ar_nine_ci_reference.csv \
   "$work/robust_ar_nine_ci_reference.csv"
 ```
 
-Ten or more excluded instruments remain unsupported.
+Eleven or more excluded instruments remain unsupported.
 
 The all-real fixtures retain nonzero first-stage relevance. These are synthetic
 method checks, not a Cameron–Trivedi illustration, coverage simulation or
 evidence that instruments are valid. HC1 assumes independent rows. CR1 assumes
 independent groups and many-group asymptotics, with no finite-sample or
 few-cluster guarantee. This scalar result type covers exactly one endogenous
-regressor and at most nine excluded instruments. Robust projected inference is
+regressor and at most ten excluded instruments. Robust projected inference is
 separate and bounded to exactly two endogenous regressors and two excluded
 instruments; larger dimensions and HAC/survey covariance remain unsupported.
