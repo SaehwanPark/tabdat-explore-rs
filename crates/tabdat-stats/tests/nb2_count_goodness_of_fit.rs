@@ -63,6 +63,9 @@ fn grouped_cgf_matches_independent_base_r_auxiliary_regression() {
   );
   close(result.statistic, scalar_reference("statistic"), 2e-8);
   close(result.p_value, scalar_reference("p_value"), 2e-10);
+  let wire = serde_json::to_value(&result).unwrap();
+  assert!(wire.get("cluster").is_none());
+  assert!(wire.get("moment_covariance").is_none());
   close(
     result.observation_count as f64,
     scalar_reference("observation_count"),

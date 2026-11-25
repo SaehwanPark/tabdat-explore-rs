@@ -117,8 +117,8 @@ pub use conditional_poisson_bootstrap::{
   ConditionalPoissonBootstrapResult, bootstrap_conditional_poisson_clustered,
 };
 pub use count_goodness_of_fit::{
-  CountGoodnessOfFitResult, MAX_NB2_COUNT_GOF_QR_WORK, MAX_NB2_COUNT_GOF_TAIL,
-  nb2_count_goodness_of_fit,
+  CountGoodnessOfFitCluster, CountGoodnessOfFitResult, MAX_NB2_COUNT_GOF_QR_WORK,
+  MAX_NB2_COUNT_GOF_TAIL, nb2_count_goodness_of_fit,
 };
 pub use count_probabilities::{
   CountProbabilityBin, CountProbabilityLaw, CountProbabilityTable, MAX_COUNT_POINT_CUTOFF,

@@ -341,6 +341,10 @@ struct Evaluation {
   deviance: f64,
   pearson: f64,
 }
+pub(crate) struct Nb2ScoreInformation {
+  pub(crate) scores: Vec<Vec<f64>>,
+  pub(crate) information: Vec<Vec<f64>>,
+}
 fn evaluate(
   x: &[Vec<f64>],
   y: &[f64],
@@ -455,6 +459,40 @@ fn evaluate(
     ));
   }
   Ok(result)
+}
+
+/// Re-evaluate the retained row scores and full observed information in the
+/// original parameter units for post-estimation diagnostics.
+pub(crate) fn scores_and_information_for_fit(
+  problem: &EstimationProblem,
+  result: &Nb2Result,
+) -> Result<Nb2ScoreInformation, StatsError> {
+  let x: Vec<Vec<f64>> = problem
+    .design_matrix
+    .iter()
+    .map(|row| {
+      std::iter::repeat_n(1.0, usize::from(problem.include_intercept))
+        .chain(row.iter().copied())
+        .collect()
+    })
+    .collect();
+  let mut gamma: Vec<f64> = result
+    .coefficients
+    .iter()
+    .map(|coefficient| coefficient.value)
+    .collect();
+  gamma.push(result.dispersion.log_alpha);
+  let evaluation = evaluate(
+    &x,
+    &problem.response,
+    &gamma,
+    1.0,
+    &vec![0.0; problem.observation_count()],
+  )?;
+  Ok(Nb2ScoreInformation {
+    scores: evaluation.scores,
+    information: evaluation.information,
+  })
 }
 
 // Positive curvature is required for the FINAL undamped information, not just
