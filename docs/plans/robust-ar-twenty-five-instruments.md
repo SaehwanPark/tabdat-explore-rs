@@ -40,7 +40,7 @@ other endogenous/covariance dimensions remain unsupported.
 - [x] Open draft PR before implementation.
 - [x] Implement q=25 support and independent reference fixtures.
 - [x] Update runtime/CLI coverage, current limits and examples.
-- [ ] Verify numerical references, retained state, failure atomicity and resource use.
+- [x] Verify numerical references, retained state, failure atomicity and resource use.
 - [ ] Review the final diff, mark ready, satisfy repository checks and merge.
 
 ## Verification progress
@@ -59,3 +59,7 @@ other endogenous/covariance dimensions remain unsupported.
   in 3,624.37 seconds with 4,995,940,352 bytes maximum RSS.
 - The q=24 HC1 instrument-rescaling regression passes in 1,823.82 seconds with
   4,992,090,112 bytes maximum RSS.
+- The q=25 HC1/CR1 CLI integration test passes through JSON HC1, JSON CR1 and text
+  HC1 workflows in 5,900.64 seconds with 9,467,969,536 bytes maximum RSS.
+- q=25 CLI discovery/JSON contracts and q=26 rejection-before-later-file-effects
+  checks pass; the scoped CLI contract tests each report one passing test.
