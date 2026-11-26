@@ -53,3 +53,5 @@ other endogenous/covariance dimensions remain unsupported.
   tests serially; the q=25 reference case is substantially more expensive than q=24.
 - The runtime retained-fit/q=26 rejection test passes in 8,339.18 seconds with
   10,309,320,704 bytes maximum RSS.
+- The q=25 HC1 instrument-rescaling invariance test passes in 4,112.01 seconds
+  with 10,231,824,384 bytes maximum RSS.
