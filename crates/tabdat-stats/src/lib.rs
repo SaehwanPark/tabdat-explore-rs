@@ -48,6 +48,7 @@ mod iv_overid_score;
 pub mod least_squares;
 mod lowess;
 pub mod matrix;
+mod maximum_score;
 mod multinomial;
 mod nb2;
 mod nested_logit;
@@ -182,6 +183,11 @@ pub use lowess::{LowessSmoothing, MAX_LOWESS_OBSERVATIONS, MAX_LOWESS_WORK, smoo
 pub use matrix::{
   covariance_matrix, f_distribution_survival_probability, invert, mean, multiply, multiply_vector,
   sample_covariance, sample_variance, scale, student_t_pvalue, student_t_quantile, transpose,
+};
+pub use maximum_score::{
+  MAX_MAXIMUM_SCORE_OBSERVATIONS, MaximumScoreClassification, MaximumScoreDirection,
+  MaximumScoreRegion, MaximumScoreResult, MaximumScoreRule, fit_binary_maximum_score,
+  maximum_score_predict,
 };
 pub use multinomial::{
   MultinomialEstimate, MultinomialLogitResult, MultinomialMarginalEffects, MultinomialOptions,
