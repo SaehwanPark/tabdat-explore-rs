@@ -792,13 +792,12 @@ fn three_instrument_robust_ar_confidence_sets_report_json_and_text() {
     );
     let text = String::from_utf8(text.stdout).unwrap();
     assert!(text.contains("asymptotic chi-square(3)"));
-    assert!(text.contains("two through twenty-two excluded instruments"));
+    assert!(text.contains("two through twenty-three excluded instruments"));
   }
 }
 
 #[test]
-fn four_instrument_robust_ar_confidence_sets_report_json_text_and_reject_twenty_three_instruments()
-{
+fn four_instrument_robust_ar_confidence_sets_report_json_text_and_reject_twenty_four_instruments() {
   let fixture = Fixture::new();
   for name in ["multiple", "four_roots", "all_real"] {
     fs::write(
@@ -914,7 +913,7 @@ fn four_instrument_robust_ar_confidence_sets_report_json_text_and_reject_twenty_
   assert!(text.status.success());
   let text = String::from_utf8(text.stdout).unwrap();
   assert!(text.contains("asymptotic chi-square(4)"));
-  assert!(text.contains("two through twenty-two excluded instruments"));
+  assert!(text.contains("two through twenty-three excluded instruments"));
 
   let script =
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/robust-ar/five_instrument_ci.td");
@@ -922,7 +921,7 @@ fn four_instrument_robust_ar_confidence_sets_report_json_text_and_reject_twenty_
   assert!(text.status.success());
   let text = String::from_utf8(text.stdout).unwrap();
   assert!(text.contains("asymptotic chi-square(5)"));
-  assert!(text.contains("two through twenty-two excluded instruments"));
+  assert!(text.contains("two through twenty-three excluded instruments"));
 
   fs::write(
     fixture.0.join("robust_ar_ten_ci_multiple_data.csv"),
@@ -940,14 +939,36 @@ fn four_instrument_robust_ar_confidence_sets_report_json_text_and_reject_twenty_
   )
   .unwrap();
   fs::write(
-    fixture.0.join("twenty-three-instruments.td"),
-    "use robust_ar_twenty_two_ci_multiple_data.csv\nivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 z12 z13 z14 z15 z16 z17 z18 z19 z20 z21 z22 row) robust\nestat ar, ci\nexport should-not-exist.csv\n",
+    fixture
+      .0
+      .join("robust_ar_twenty_three_ci_multiple_data.csv"),
+    include_str!("../examples/robust-ar/robust_ar_twenty_three_ci_multiple_data.csv"),
   )
   .unwrap();
-  let output = fixture.run(&["--json", "-f", "twenty-three-instruments.td"]);
+  let twenty_four_instrument_fit = "ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 z12 z13 z14 z15 z16 z17 z18 z19 z20 z21 z22 z23 row) robust";
+  fs::write(
+    fixture.0.join("twenty-four-instrument-fit-only.td"),
+    format!("use robust_ar_twenty_three_ci_multiple_data.csv\n{twenty_four_instrument_fit}\n"),
+  )
+  .unwrap();
+  let fit_rows = json_lines(&fixture.run(&["--json", "-f", "twenty-four-instrument-fit-only.td"]));
+  assert!(
+    !fit_rows[1]["data"]["first_stage"]["scalar_ar_confidence_set_available"]
+      .as_bool()
+      .unwrap()
+  );
+
+  fs::write(
+    fixture.0.join("twenty-four-instruments.td"),
+    format!(
+      "use robust_ar_twenty_three_ci_multiple_data.csv\n{twenty_four_instrument_fit}\nestat ar, ci\nexport should-not-exist.csv\n"
+    ),
+  )
+  .unwrap();
+  let output = fixture.run(&["--json", "-f", "twenty-four-instruments.td"]);
   assert_eq!(output.status.code(), Some(1));
   assert!(
-    String::from_utf8_lossy(&output.stderr).contains("at most twenty-two excluded instruments")
+    String::from_utf8_lossy(&output.stderr).contains("at most twenty-three excluded instruments")
   );
   assert!(!fixture.0.join("should-not-exist.csv").exists());
 }
