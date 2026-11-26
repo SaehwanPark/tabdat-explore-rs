@@ -620,3 +620,22 @@ intervals. Survey estimators, few-cluster inference, broader specification
 tests, graphics beyond the bounded SVG scatter/line workflow and the rest of the
 textbook remain outside this illustration. The grouped calibration diagnostic
 is a separate synthetic method fixture, not an additional §14.2 replication.
+
+## MMA §14.7.5 maximum-score source reference
+
+The separate [Base R reference](reference_maxscore.R) prepares the original
+630-row pier/charter cohort and enumerates every one-predictor threshold region
+in both slope directions, including constant classifiers. It verifies the
+536/630 classification maximum, both tied regions and the author output's
+TP/FP/FN/TN counts of 421/63/31/115. Run it after converting the checked
+`Nldata.asc` source to `Nldata.csv` with `nldata_to_csv.awk`:
+
+```sh
+Rscript examples/mma14p1binary/reference_maxscore.R \
+  /path/to/Nldata.csv /tmp/maximum-score-reference.csv
+```
+
+This is independent point-estimation evidence for the planned §14.7.5 native
+workflow. It does not provide standard errors or establish a formal inference
+method; those outputs remain unresolved because the author's 50-replication
+bootstrap standard errors are approximate.
