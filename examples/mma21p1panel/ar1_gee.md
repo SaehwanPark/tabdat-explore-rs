@@ -10,11 +10,14 @@ uses **keyed calendar order**, not physical adjacency, for all 4,788 annual pair
 It fits a marginal association, not fixed effects or a causal effect. No formal
 serial-correlation test or correct-mean/few-cluster guarantee is implied.
 
-The script composes native SQL, pooled OLS, predictions, named tables and exports;
-there is no general native `xtgee` or new estimator state. The retained model is
-**pooled OLS**, so later generic `predict` is pooled OLS, not AR1 GEE. GEE means,
-residuals and scores are explicit in-sample columns/exports. The printed OLS t/F
-inference differs from the GEE report; a preceding scope note distinguishes them.
+The script composes native SQL, pooled OLS, predictions, named tables and
+exports; it does not retain its own AR1 GEE state. The separate native `xtgee`
+command retains bounded Gaussian GEE fits, including a
+[period-standardized unstructured variant](unstructured_gee.md). This script's
+retained model remains **pooled OLS**, so later generic `predict` is pooled OLS,
+not AR1 GEE. GEE means, residuals and scores are explicit in-sample columns/
+exports. The printed OLS t/F inference differs from the GEE report; a preceding
+scope note distinguishes them.
 
 ## Exact estimation and inference
 
@@ -114,5 +117,7 @@ Neither R nor Python is a production dependency.
 
 The separate source AR1 B500 bootstrap omits `t(year)` in its bootstrap command;
 resampling/refitting, duplicate-ID, RNG and historical exact behavior remain
-open. Unstructured correlation, full mixed reporting, exact historical iteration
-and remaining chapter/book illustrations also remain required.
+open. A bounded [unstructured `xtgee` command](unstructured_gee.md) now exists
+with its own period-standardized formula; exact Stata formula/output parity,
+full mixed reporting, exact historical iteration and remaining chapter/book
+illustrations also remain required.

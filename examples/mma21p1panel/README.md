@@ -37,8 +37,13 @@ adds the source-specific G/(G-1) person sandwich and normal/chi-square inference
 validated against R gee/dense matrices and25 printed facts. The separate [AR1
 GEE composition](ar1_gee.md) validates keyed annual pairs, full working/unit
 covariances and all source/prediction rows against R gee/dense matrices. These
-retain pooled OLS, not GEE state; the historical72-of-500 bootstrap discrepancy,
-AR1 bootstrap, unstructured correlation and mixed reporting stay open.
+source-specific compositions retain pooled OLS rather than their own GEE fits.
+The separate native [unstructured `xtgee` workflow](unstructured_gee.md) keeps
+its selected period-standardized fit for prediction and named reporting, with
+full Base-R calculation checks. That method differs from the current Stata
+formula and the historical author output, so exact Stata unstructured parity,
+the historical72-of-500 discrepancy, AR1 bootstrap and full mixed reporting
+remain open.
 The [manual-program inventory](manual_inventory.md) now
 separates29 auxiliary-OLS/reporting requirements, resolves the actual companion
 filenames, and records the source/log GLS-HC1 row stored under an ML label.
@@ -70,10 +75,13 @@ The bounded [Gaussian PA GEE composition](gaussian_pa.md) now validates legacy
 Pearson exchangeable correlation/RSS-N scale, full working and uncorrected
 unit-sandwich covariance/normal95, all5,320 predictions/532 unit scores and12
 printed author facts against R gee/dense matrices. Positive and negative
-correlation controls pass. Native retained state remains pooled OLS: no owned
-GEE/general API; the original report has no p-values, while the P4 extension
-above supplies them. Explicit GEE prediction columns and readable/CLI-v1 reports
-are provided. The distinct [normalized FE level-intercept bootstrap](fe_level_bootstrap.md)
+correlation controls pass. This source-specific composition retains pooled
+OLS; the separate native `xtgee` command owns exchangeable and bounded
+period-standardized unstructured fits, with the latter documented in
+[its workflow](unstructured_gee.md). The original report has no p-values, while
+the P4 extension above supplies them. Explicit GEE prediction columns and
+readable/CLI-v1 reports are provided. The distinct [normalized FE
+level-intercept bootstrap](fe_level_bootstrap.md)
 now refits500 within slopes/sample normalizations, validates full B-1 coefficient
 covariance/type7 intervals against raw-copy R QR and retains all native original
 FE predictions. Zero empirical slope variance is retained. The distinct native

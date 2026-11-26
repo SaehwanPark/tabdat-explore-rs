@@ -7,6 +7,7 @@ source and fixtures below are relative to the repository root; use in-session
 
 - [Session status](#session-status)
 - [Named fit reports and comparison](#named-fit-reports-and-comparison)
+- [Gaussian GEE result contracts](#gaussian-gee-result-contracts)
 - [Summaries and percentiles](#summaries-and-percentiles)
 - [Frequencies and conditional cohorts](#frequencies-and-conditional-cohorts)
 - [Selected-cohort regression](#selected-cohort-regression)
@@ -141,6 +142,39 @@ records; tests cover alignment, immutable ownership, samples, inference DF,
 missing/zero-variance terms, limits, failure atomicity and script/terminal/JSON.
 This bounded reporting subset is not full Stata estimates parity, stored-model
 prediction, disk persistence or whole-illustration completion.
+
+## Gaussian GEE result contracts
+
+The existing exchangeable Gaussian path retains its `GaussianGeeResult` JSON
+shape. `corr(unstructured)` returns a separate CLI-v1
+`UnstructuredGaussianGeeResult`; it does not add fields to or reinterpret the
+exchangeable result. Its `data` includes outcome and `predictors`, entity and
+time variable names, sorted `time_values`, observation/group/period counts,
+Gaussian scale `phi`, the full `correlation_matrix`, separate `working` and
+`sandwich` coefficient/covariance/inference blocks, iteration count, a scaled
+score certificate, and sample total/dropped counts. The derived `fitted_means`
+array is omitted because current-row prediction is an explicit command.
+
+The result metadata identifies `estimator: "gaussian_identity_unstructured_gee"`,
+`scale: "pearson_rss_over_n_minus_parameters"`, and
+`correlation: "balanced_unstructured_period_standardized_residual_moments"`.
+The latter is the selected product formula: the empirical residual cross-moment
+matrix is standardized using its period-specific diagonal second moments. It
+differs from the pooled residual-square denominator in the current Stata
+`xtgee` manual and does not reproduce the historical author result; see the
+[MMA evidence note](../../examples/mma21p1panel/unstructured_gee.md).
+
+The working covariance is `phi` times the inverse GEE bread. The separately
+labelled panel sandwich uses multiplier1.0, with entity as the independent
+unit, normal coefficient inference and an asymptotic chi-square joint slope
+test. No finite-sample correction is implied. `sample` is a compact
+`{total_observations, dropped_observations}` summary; the fit accepts no
+dropped model/time/entity rows. The metadata marks the complete-finite
+missingness policy, identity-link marginal prediction scope and convergence.
+Named report storage requires an explicit `covariance(working|sandwich)` choice,
+uses estimator tag `gaussian_period_standardized_unstructured_gee`, and retains
+the time-variable provenance. JSON and terminal results do not
+claim parity with the historical Stata coefficient or uncertainty values.
 
 ## Multinomial logit and continuous marginal effects
 

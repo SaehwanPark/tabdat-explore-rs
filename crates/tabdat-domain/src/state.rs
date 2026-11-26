@@ -371,6 +371,8 @@ pub enum EstimationState {
   NormalPoisson(Box<tabdat_stats::NormalPoissonResult>),
   /// Owned population-averaged mean and working/sandwich inference.
   GaussianGee(Box<tabdat_stats::GaussianGeeResult>),
+  /// Owned balanced unstructured Gaussian population-averaged fit.
+  GaussianGeeUnstructured(Box<tabdat_stats::UnstructuredGaussianGeeResult>),
   PoissonGee(Box<tabdat_stats::PoissonGeeResult>),
   /// Legacy normalized placeholder, not an installed fit.
   NegativeBinomial(ModelState),
@@ -441,6 +443,7 @@ impl EstimationState {
       Self::GammaPoisson(..) => EstimationFamily::GammaPoisson,
       Self::NormalPoisson(..) => EstimationFamily::NormalPoisson,
       Self::GaussianGee(..) => EstimationFamily::GaussianGee,
+      Self::GaussianGeeUnstructured(..) => EstimationFamily::GaussianGee,
       Self::PoissonGee(..) => EstimationFamily::PoissonGee,
       Self::NonNormalizedNestedLogit(..) => EstimationFamily::NonNormalizedNestedLogit,
       Self::NormalizedCommonNestedLogit(..) => EstimationFamily::NormalizedCommonNestedLogit,

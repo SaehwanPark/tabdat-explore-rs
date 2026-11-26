@@ -2619,8 +2619,10 @@ matrix/score iteration check17 fit and26 inference quantities/all5,320x13
 source/prediction and532x6 score cells;25 author facts match printed precision.
 Positive/negative/zero-correlation controls, actual singular rho=±1, key/rank/IO,
 injected convergence and unit-variance failure and retained pooled OLS are tested.
-AR1 bootstrap source omits `t(year)` and remains open along with unstructured,
-full mixed reporting and remaining book inventory.
+AR1 bootstrap source omits `t(year)` and remains open. The period-standardized
+unstructured extension below is executable, but its formula/output differ from
+the source's current Stata definition; exact parity, full mixed reporting and
+remaining book inventory stay open.
 
 ### MMA-PANEL exchangeable-working GEE companion
 
@@ -2633,8 +2635,9 @@ printed precision. Positive/negative rho controls, prerequisite/input/guard and
 six export-collision tests preserve original four exports and retained OLS state.
 Unresolved-zero-score and exhausted-iteration tests inject the relevant failure;
 they are not observed original-sample failures. Bootstrap source reports72 of
-500 requested replications; AR1/unstructured, mixed reporting and remaining
-book inventory remain required.
+500 requested replications; AR1 bootstrap, exact Stata unstructured
+formula/output parity, mixed reporting and remaining book inventory remain
+required.
 
 ### MMA-PANEL independent-working Gaussian GEE companion
 
@@ -2651,6 +2654,37 @@ canonical raw-double tolerances. Author independent/exchangeable bootstrap logs
 request500 but report72 per coefficient; unstructured bootstrap is commented
 out and its final matrix listing fails. Other GLS blocks, historical source
 precision/bootstrap parity and whole Chapter21/book coverage remain open.
+
+### MMA-PANEL period-standardized unstructured Gaussian GEE variant
+
+The bounded native [`xtgee corr(unstructured)` workflow](../../examples/mma21p1panel/unstructured_gee.md)
+fits all5,320 original MOM person-years/532 people/10 years, retains a distinct
+Gaussian GEE state, and provides current-row marginal predictions and explicit
+working/sandwich named reports. The selected working matrix standardizes each
+residual cross-moment by its two period-specific residual scales. It requires a
+balanced complete sample, a positive-definite matrix and convergence; there is
+no clipping or projection. The uncorrected panel sandwich uses multiplier1.0.
+
+A separate Base R4.6.2 implementation checks the native selected formula on the
+source data:100 working-correlation entries,8 full covariance entries,24
+coefficient-inference quantities and31,920 source-ordered prediction values.
+The source SHA256 is
+`2fe194d6113e5790a008adcac1ca168be5531924b40349a810a6683aef800d77`. T=2/T=10,
+physical row permutation, incomplete/duplicate periods, singular correlation
+and retained-state failures have focused tests. This is a native/reference
+calculation cross-check, **not independent validation of the estimator against
+Stata or a converged statistical-package fit**.
+
+The native MOM slope0.0910990841, working SE0.0134302714 and uncorrected
+person-sandwich SE0.0393844960 differ from the author-log0.0910023,
+0.0137712 and0.0501344. The current Stata manual's pooled residual-square
+denominator is a different formula; its direct moment matrix is not positive
+definite at the initial pooled-OLS coefficient on this source. `gee`4.13-30 and
+`geepack`1.3.13 under R4.6.2 did not give a converged fit for that calculation on
+MOM. Exact Stata parity, independent external validation of this selected
+product variant, the commented-out unstructured bootstrap, full mixed
+reporting and whole Chapter21/book coverage remain open. The author header's
+Table21.6 versus executable Table21.7 discrepancy is preserved.
 
 ### MMA-PANEL combined residual snapshot and summary
 

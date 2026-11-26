@@ -882,6 +882,30 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         .extend(metadata.as_object().unwrap().clone());
       (data, "GaussianGeeResult")
     }
+    ExecutionResult::GaussianGeeUnstructured(r) => {
+      let mut data = serde_json::to_value(r).expect("finite unstructured Gaussian GEE result");
+      data.as_object_mut().unwrap().remove("fitted_means");
+      data["predictors"] = data
+        .as_object_mut()
+        .unwrap()
+        .remove("predictor_names")
+        .unwrap();
+      data["sample"] = json!({"total_observations":r.sample.total_observations,"dropped_observations":r.sample.dropped_observations});
+      let metadata = json!({
+        "estimator":"gaussian_identity_unstructured_gee","include_intercept":true,
+        "scale":"pearson_rss_over_n_minus_parameters","correlation":"balanced_unstructured_period_standardized_residual_moments",
+        "working_covariance":"scale_times_inverse_gee_bread","sandwich_covariance":"uncorrected_panel_cluster_sandwich",
+        "covariance_correction":1.0,"independent_unit":"entity","reference_distribution":"asymptotic_standard_normal",
+        "joint_test_reference":"asymptotic_chi_square","confidence_level":95,
+        "missingness":"complete_finite_outcome_predictors_entity_and_time",
+        "prediction_scope":"population_marginal_mean_identity_link","converged":true
+      });
+      data
+        .as_object_mut()
+        .unwrap()
+        .extend(metadata.as_object().unwrap().clone());
+      (data, "UnstructuredGaussianGeeResult")
+    }
     ExecutionResult::NormalPoisson(r) => {
       let mut data = serde_json::to_value(r).expect("finite normal RE result");
       data.as_object_mut().unwrap().remove("fitted_means");

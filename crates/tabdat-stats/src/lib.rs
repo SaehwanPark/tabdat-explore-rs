@@ -33,6 +33,10 @@ mod gaussian_gee;
 pub use gaussian_gee::{
   GaussianGeeInference, GaussianGeeOptions, GaussianGeeResult, fit_gaussian_gee,
 };
+mod unstructured_gaussian_gee;
+pub use unstructured_gaussian_gee::{
+  UnstructuredGaussianGeeOptions, UnstructuredGaussianGeeResult, fit_unstructured_gaussian_gee,
+};
 mod poisson_gee;
 pub use poisson_gee::{PoissonGeeInference, PoissonGeeOptions, PoissonGeeResult, fit_poisson_gee};
 mod conditional_poisson_bootstrap;

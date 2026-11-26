@@ -592,6 +592,8 @@ pub struct XtGeeCommand {
   pub outcome: String,
   pub predictors: Vec<String>,
   pub entity_variable: String,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub time_variable: Option<String>,
 }
 
 /// Binary logit syntax; runtime supports unweighted model-based covariance.

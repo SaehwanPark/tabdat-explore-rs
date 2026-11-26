@@ -32,11 +32,14 @@ not independent person-years. This association is not causal, a formal serial
 correlation test, survey inference or a few-cluster coverage guarantee.
 
 [Script](independent_gee.td) uses existing OLS, named SQL tables, the validated
-normal-CDF SQL function and no new parser/kernel/API. The owned retained model is
-**pooled OLS**, not GEE; the OLS result's t/F/working covariance are not the GEE
-report. Named GEE mean/residual columns are in-sample and a later `predict` still
-uses the original pooled model. There is no general `xtgee`, retained GEE state,
-working-correlation selector or prediction uncertainty.
+normal-CDF SQL function. The owned retained model is **pooled OLS**, not GEE; the
+OLS result's t/F/working covariance are not the GEE report. Named GEE
+mean/residual columns are in-sample and a later `predict` still uses the
+original pooled model. The separate native `xtgee` path retains supported
+Gaussian GEE fits, including the
+[period-standardized unstructured variant](unstructured_gee.md); its Stata
+source-formula parity and prediction uncertainty remain outside this
+composition.
 
 ## Reproduction and outputs
 
@@ -86,7 +89,8 @@ and author normal interval endpoints also differ at a last printed digit. No
 tolerance was widened. The related [pooled bootstrap](pooled_bootstrap.md)
 independently checks 500 native-stream refits, but P4's log requests500 and
 prints only72 coefficient replications; neither historical RNG nor cause of
-that discrepancy is established. Exchangeable/AR1/unstructured working models,
-other P4 bootstraps and the full mixed report remain required as itemized in the
-[inventory](gls_inventory.md); source's unstructured bootstrap is commented out
-and its final matrix listing fails `r(111)`.
+that discrepancy is established. Other P4 bootstraps and the full mixed report
+remain required as itemized in the [inventory](gls_inventory.md); the native
+unstructured variant uses a different documented formula, and the source's
+unstructured bootstrap is commented out with its final matrix listing failing
+`r(111)`.
