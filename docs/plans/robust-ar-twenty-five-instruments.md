@@ -51,3 +51,5 @@ other endogenous/covariance dimensions remain unsupported.
 - The q=25 HC1/CR1 independent-reference test passes all four design/covariance
   cases in 8,473.49 seconds with 10,236,542,976 bytes maximum RSS. Run high-degree
   tests serially; the q=25 reference case is substantially more expensive than q=24.
+- The runtime retained-fit/q=26 rejection test passes in 8,339.18 seconds with
+  10,309,320,704 bytes maximum RSS.
