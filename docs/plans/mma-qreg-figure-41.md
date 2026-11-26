@@ -1,6 +1,6 @@
 # MMA §4.6.4 Figure 4.1: quantile slope bands
 
-Status: implementation and verification complete; PR #509 is open as a draft.
+Status: complete; PR #509 merged into `main` on 2026-11-25.
 
 ## Target
 
@@ -47,7 +47,7 @@ normal bands do not claim simultaneous coverage.
 - [x] Implement the command, estimator-to-plot result and SVG renderer.
 - [x] Add independent source and synthetic validation and update active docs.
 - [x] Review the final diff, run affected checks, and record outcomes.
-- [ ] Complete PR review and merge.
+- [x] Complete PR review and merge.
 
 ## Verification recorded
 
