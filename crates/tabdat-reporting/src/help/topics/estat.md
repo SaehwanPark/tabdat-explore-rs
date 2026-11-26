@@ -568,7 +568,7 @@ correction, auxiliary K/DF, optional G and asymptotic reference metadata; the
 classical `AndersonRubinResult` contract remains unchanged. See
 `examples/robust-ar/README.md` for an independently validated complete workflow.
 Endogenous-subvector inference is not implemented. Robust confidence sets are
-limited to one endogenous regressor and at most twenty excluded instruments, as
+limited to one endogenous regressor and at most twenty-one excluded instruments, as
 described below.
 Ordinary coefficient p-values and `test` remain conventional, not weak-IV-robust
 inference.
@@ -646,7 +646,7 @@ covariance failures are explicit errors. CLI-v1 JSON returns the distinct
 cluster count, critical value, shape and intervals; the homoskedastic JSON
 contract is unchanged.
 
-With two through twenty excluded instruments, `estat ar, ci` tests their
+With two through twenty-one excluded instruments, `estat ar, ci` tests their
 coefficients jointly using an **asymptotic chi-square(q)** reference, where q is the number of
 excluded instruments:
 
@@ -686,16 +686,16 @@ estat ar, ci
 The auxiliary regression includes the retained controls, intercept and all
 excluded instruments. HC1 uses N/(N−K_aux); CR1 uses
 G/(G−1)*(N−1)/(N−K_aux), where K_aux counts all auxiliary regressors. The
-confidence boundary has degree at most 2q, up to degree forty for
-twenty instruments and up to twenty-one accepted components.
+confidence boundary has degree at most 2q, up to degree forty-two for
+twenty-one instruments and up to twenty-two accepted components.
 The implementation isolates every real root by recursively partitioning at
 derivative roots, then checks the sign of each region; it does not use a finite
 grid. Sets may be bounded, disjoint, rays, all-real, empty, or `multiple` sets
 with up to twenty-one components. Repeated/ambiguous roots and singular or
 ill-conditioned score covariance are explicit errors. The distinct
 `RobustMultipleInstrumentAndersonRubinConfidenceSet` JSON result identifies the
-instruments, reports two through twenty degrees of freedom and follows the same
-null-infinity convention. More than twenty excluded instruments, multiple endogenous
+instruments, reports two through twenty-one degrees of freedom and follows the same
+null-infinity convention. More than twenty-one excluded instruments, multiple endogenous
 regressors outside the robust projected two-by-two slice, robust projection
 outside that slice, and HAC/survey covariance remain unsupported.
 

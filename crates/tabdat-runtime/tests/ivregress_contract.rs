@@ -312,6 +312,40 @@ impl Fixture {
     Self { root, parquet }
   }
 
+  fn twenty_one_instrument_sample() -> Self {
+    let nonce = SystemTime::now()
+      .duration_since(UNIX_EPOCH)
+      .expect("system clock should be after Unix epoch")
+      .as_nanos();
+    let fixture_id = NEXT_FIXTURE_ID.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!(
+      "tabdat-runtime-iv-{}-{}-{}",
+      std::process::id(),
+      nonce,
+      fixture_id
+    ));
+    fs::create_dir_all(&root).expect("fixture directory should be created");
+    let csv = root.join("twenty-one-instrument.csv");
+    fs::write(
+      &csv,
+      include_str!("../../../examples/robust-ar/robust_ar_twenty_one_ci_multiple_data.csv"),
+    )
+    .expect("twenty-one-instrument fixture should be written");
+    let parquet = root.join("iv.parquet");
+    let connection = duckdb::Connection::open_in_memory().expect("fixture connection should open");
+    let csv_string = csv.to_string_lossy().replace('\'', "''");
+    let parquet_string = parquet.to_string_lossy().into_owned();
+    connection
+      .execute(
+        &format!(
+          "COPY (SELECT * FROM read_csv_auto('{csv_string}', header = true)) TO ? (FORMAT PARQUET)"
+        ),
+        [&parquet_string],
+      )
+      .expect("twenty-one-instrument fixture should write to parquet");
+    Self { root, parquet }
+  }
+
   fn school_like_sample() -> Self {
     Self::new_with_sql(
       "WITH base AS (\
@@ -1273,7 +1307,7 @@ fn nineteen_instrument_robust_ar_reuses_retained_fit() {
 }
 
 #[test]
-fn twenty_instrument_robust_ar_reuses_retained_fit_and_rejects_twenty_one_dimensions() {
+fn twenty_instrument_robust_ar_reuses_retained_fit() {
   let fixture = Fixture::twenty_instrument_sample();
   for option in ["robust", "cluster(group)"] {
     let mut session = load(&fixture);
@@ -1310,12 +1344,52 @@ fn twenty_instrument_robust_ar_reuses_retained_fit_and_rejects_twenty_one_dimens
     assert_eq!(session.execute(command).unwrap(), result);
     assert_eq!(session.state(), changed);
   }
+}
+
+#[test]
+fn twenty_one_instrument_robust_ar_reuses_retained_fit_and_rejects_twenty_two_dimensions() {
+  let fixture = Fixture::twenty_one_instrument_sample();
+  for option in ["robust", "cluster(group)"] {
+    let mut session = load(&fixture);
+    session
+      .execute(
+        parse_command(&format!(
+          "ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 z12 z13 z14 z15 z16 z17 z18 z19 z20 z21) {option}"
+        ))
+        .unwrap(),
+      )
+      .unwrap();
+    let before = session.state();
+    let command = parse_command("estat ar, ci").unwrap();
+    let result = session.execute(command.clone()).unwrap();
+    let ExecutionResult::RobustMultipleInstrumentAndersonRubinConfidenceSet(set) = &result else {
+      panic!("expected robust twenty-one-instrument AR confidence set");
+    };
+    assert_eq!(set.endogenous, "x");
+    assert_eq!(set.excluded_instruments.len(), 21);
+    assert_eq!(set.degrees_of_freedom, 21);
+    assert_eq!(set.observation_count, 504);
+    assert_eq!(set.auxiliary_parameter_count, 23);
+    assert_eq!(set.auxiliary_residual_df, 481);
+    assert_eq!(
+      set.cluster_group_count.is_some(),
+      option.starts_with("cluster")
+    );
+    assert_eq!(session.state(), before);
+    session
+      .execute(parse_command("replace y = 999").unwrap())
+      .unwrap();
+    session.execute(parse_command("drop z1").unwrap()).unwrap();
+    let changed = session.state();
+    assert_eq!(session.execute(command).unwrap(), result);
+    assert_eq!(session.state(), changed);
+  }
 
   let mut session = load(&fixture);
   session
     .execute(
       parse_command(
-        "ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 z12 z13 z14 z15 z16 z17 z18 z19 z20 row) robust",
+        "ivregress 2sls y w, endog(x) iv(z1 z2 z3 z4 z5 z6 z7 z8 z9 z10 z11 z12 z13 z14 z15 z16 z17 z18 z19 z20 z21 row) robust",
       )
       .unwrap(),
     )
@@ -1326,7 +1400,7 @@ fn twenty_instrument_robust_ar_reuses_retained_fit_and_rejects_twenty_one_dimens
       .execute(parse_command("estat ar, ci").unwrap())
       .unwrap_err()
       .to_string()
-      .contains("at most twenty excluded instruments")
+      .contains("at most twenty-one excluded instruments")
   );
   assert_eq!(session.state(), before);
 }

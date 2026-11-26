@@ -24,6 +24,9 @@ endogenous/covariance dimensions remain unsupported.
 - Extend the polynomial boundary test to 42 roots and 22 components; update
   execution/reporting limits, help, contracts, roadmap, SPEC, coverage evidence
   and runnable examples with q>=22 unsupported.
+- Keep only adjacent subset-DP layers live while computing the polynomial
+  determinant. One pre-change q=21 runtime test reached about 1.0 GB RSS;
+  post-change q=21 stats-test samples stayed below about 0.75 GB.
 - Run focused and affected package suites, scoped Clippy, formatting and diff
   checks; regenerate q=21 fixtures byte-for-byte.
 
@@ -31,7 +34,7 @@ endogenous/covariance dimensions remain unsupported.
 
 - [x] Scope and verification plan recorded.
 - [x] Open draft PR before substantive implementation.
-- [ ] Implement q=21 support and independent reference fixtures.
-- [ ] Update runtime/CLI coverage and specifications/examples.
-- [ ] Verify reference regeneration and affected checks.
+- [x] Implement q=21 support and independent reference fixtures.
+- [x] Update runtime/CLI coverage and specifications/examples.
+- [x] Verify reference regeneration and affected checks.
 - [ ] Final PR review and merge.
