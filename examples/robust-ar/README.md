@@ -205,8 +205,8 @@ root, run:
 
     work=$(mktemp -d)
     Rscript crates/tabdat-stats/tests/fixtures/robust_ar_seven_ci_reference.R "$work" > "$work/robust_ar_seven_ci_reference.csv"
-The eight- through twenty-instrument extensions are documented below; q21
-and higher remain unsupported.
+The eight- through twenty-one-instrument extensions are documented below;
+q22 and higher remain unsupported.
 
 [`eight_instrument_ci.td`](eight_instrument_ci.td) and
 [`eight_instrument_ci_clustered.td`](eight_instrument_ci_clustered.td) extend
@@ -252,7 +252,7 @@ with 24 groups gives [0.945792747726182, 1.20035149024702]. Corrections are
 cross-checks degree-eighteen determinant coefficients with numeric `det()` at
 19 Chebyshev nodes before checking endpoints and six direct Wald probes per
 design/covariance. Rust compares endpoints within 3e-8, rescaling, retained
-state, text/JSON output and q21 rejection. The degree-eighteen method supports
+state, text/JSON output and q22 rejection. The degree-eighteen method supports
 eighteen roots and ten accepted components.
 
 Regenerate both data fixtures and the independent reference from the repository
@@ -270,7 +270,7 @@ cmp crates/tabdat-stats/tests/fixtures/robust_ar_nine_ci_reference.csv \
   "$work/robust_ar_nine_ci_reference.csv"
 ```
 
-Twenty-one or more excluded instruments remain unsupported.
+Twenty-two or more excluded instruments remain unsupported.
 
 ## Robust projected coefficient sets
 
@@ -351,6 +351,7 @@ cp examples/robust-ar/robust_ar_seventeen_ci_multiple_data.csv "$work/"
 cp examples/robust-ar/robust_ar_eighteen_ci_multiple_data.csv "$work/"
 cp examples/robust-ar/robust_ar_nineteen_ci_multiple_data.csv "$work/"
 cp examples/robust-ar/robust_ar_twenty_ci_multiple_data.csv "$work/"
+cp examples/robust-ar/robust_ar_twenty_one_ci_multiple_data.csv "$work/"
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/two_instrument_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/two_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/two_instrument_ci_all_real.td")
@@ -392,6 +393,8 @@ cp examples/robust-ar/robust_ar_twenty_ci_multiple_data.csv "$work/"
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/nineteen_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/twenty_instrument_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/twenty_instrument_ci_clustered.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/twenty_one_instrument_ci.td")
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/twenty_one_instrument_ci_clustered.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json -f "$repo/examples/robust-ar/projected_ci.td")
 (cd "$work" && "$repo/target/debug/tabdat-explore-rs" --text -f "$repo/examples/robust-ar/projected_ci_clustered.td")
 ```
@@ -490,7 +493,7 @@ chi-square(12)=21.0260698174831; HC1/CR1 corrections are 1.05109489051095 and
 The Base R 4.6.2 reference checks the degree-24 determinant at 25 Chebyshev
 nodes, `polyroot` endpoints and six direct Wald probes for each design and
 covariance. Rust checks endpoints within 3e-8, metadata, corrections, rescaling,
-retained state, JSON/text and q=21 rejection. The solver boundary test covers 24
+retained state, JSON/text and q=22 rejection. The solver boundary test covers 24
 real roots and thirteen accepted components. Regenerate fixtures and reference:
 
 ```sh
@@ -522,7 +525,7 @@ chi-square(13)=22.3620324948269; HC1/CR1 corrections are 1.05050505050505 and
 The independent Base R 4.6.2 reference checks degree-26 determinant coefficients
 at 27 Chebyshev nodes, `polyroot` endpoints and six direct Wald probes per
 design/covariance. Rust checks endpoints within 3e-8, corrections, metadata,
-retained state, rescaling, JSON/text and q=21 rejection. The solver boundary
+retained state, rescaling, JSON/text and q=22 rejection. The solver boundary
 test covers all 26 simple real roots and fourteen accepted components. Regenerate
 fixtures and reference:
 
@@ -555,7 +558,7 @@ extend the scalar HC1/CR1 workflow through fourteen excluded instruments. The
 The independent Base R 4.6.2 reference checks degree-28 determinant
 coefficients at 29 Chebyshev nodes, `polyroot` endpoints and six direct Wald
 probes per design/covariance. Rust checks endpoints within 3e-8, metadata,
-corrections, rescaling, retained state, JSON/text and q=21 rejection. The solver
+corrections, rescaling, retained state, JSON/text and q=22 rejection. The solver
 boundary test covers all 28 simple real roots and fifteen accepted components.
 Regenerate the fixtures and reference with:
 
@@ -571,7 +574,7 @@ cmp crates/tabdat-stats/tests/fixtures/robust_ar_fourteen_ci_reference.csv \
   "$work/robust_ar_fourteen_ci_reference.csv"
 ```
 
-Twenty-one or more excluded instruments, robust projection outside the bounded
+Twenty-two or more excluded instruments, robust projection outside the bounded
 two-endogenous/two-instrument slice, larger endogenous systems, HAC/survey
 covariance and few-cluster inference remain unsupported.
 
@@ -592,7 +595,7 @@ extend the scalar HC1/CR1 workflow through fifteen excluded instruments. The
 The independent Base R 4.6.2 reference checks degree-30 determinant
 coefficients at 31 Chebyshev nodes, `polyroot` endpoints and six direct Wald
 probes per design/covariance. Rust checks endpoints within 3e-8, metadata,
-corrections, rescaling, retained state, JSON/text and q=21 rejection. The solver
+corrections, rescaling, retained state, JSON/text and q=22 rejection. The solver
 boundary test covers all 30 simple real roots and sixteen accepted components.
 Regenerate the fixtures and reference with:
 
@@ -608,7 +611,7 @@ cmp crates/tabdat-stats/tests/fixtures/robust_ar_fifteen_ci_reference.csv \
   "$work/robust_ar_fifteen_ci_reference.csv"
 ```
 
-Twenty-one or more excluded instruments, robust projection outside the bounded
+Twenty-two or more excluded instruments, robust projection outside the bounded
 two-endogenous/two-instrument slice, larger endogenous systems, HAC/survey
 covariance and few-cluster inference remain unsupported.
 
@@ -629,7 +632,7 @@ extend the scalar HC1/CR1 workflow through sixteen excluded instruments. The
 The independent Base R 4.6.2 reference checks degree-32 determinant
 coefficients at 33 Chebyshev nodes, polyroot endpoints and six direct Wald
 probes per design/covariance. Rust checks endpoints within 3e-8, metadata,
-corrections, rescaling, retained state, JSON/text and q=21 rejection. The solver
+corrections, rescaling, retained state, JSON/text and q=22 rejection. The solver
 boundary test covers all 32 simple real roots and seventeen accepted components.
 Regenerate the fixtures and reference with the following indented commands:
 
@@ -639,7 +642,7 @@ Regenerate the fixtures and reference with the following indented commands:
     cmp examples/robust-ar/robust_ar_sixteen_ci_secondary_data.csv "$work/robust_ar_sixteen_ci_secondary_data.csv"
     cmp crates/tabdat-stats/tests/fixtures/robust_ar_sixteen_ci_reference.csv "$work/robust_ar_sixteen_ci_reference.csv"
 
-Twenty-one or more excluded instruments, robust projection outside the bounded
+Twenty-two or more excluded instruments, robust projection outside the bounded
 two-endogenous/two-instrument slice, larger endogenous systems, HAC/survey
 covariance and few-cluster inference remain unsupported.
 
@@ -661,7 +664,7 @@ The independent Base R 4.6.2 reference checks degree-34 determinant
 coefficients at 35 Chebyshev nodes, polyroot endpoints and six direct Wald
 probes per design/covariance. Rust checks HC1 endpoints within 3e-8, verifies
 the empty CR1 sets and checks metadata, corrections, rescaling, retained state,
-JSON/text and q=21 rejection. The solver boundary test covers all 34 simple real
+JSON/text and q=22 rejection. The solver boundary test covers all 34 simple real
 roots and eighteen accepted components.
 Regenerate the fixtures and reference from the repository root:
 
@@ -689,7 +692,7 @@ The independent Base R 4.6.2 reference checks degree-36 determinant
 coefficients at 37 Chebyshev nodes, polyroot endpoints and six direct Wald
 probes per design/covariance. Rust checks HC1 endpoints within 3e-8, verifies
 the empty CR1 sets and checks metadata, corrections, rescaling, retained state,
-JSON/text and q=21 rejection. The solver boundary test covers all 36 simple real
+JSON/text and q=22 rejection. The solver boundary test covers all 36 simple real
 roots and nineteen accepted components. Regenerate the fixtures and reference
 from the repository root:
 
@@ -699,7 +702,7 @@ from the repository root:
     cmp examples/robust-ar/robust_ar_eighteen_ci_secondary_data.csv "$work/robust_ar_eighteen_ci_secondary_data.csv"
     cmp crates/tabdat-stats/tests/fixtures/robust_ar_eighteen_ci_reference.csv "$work/robust_ar_eighteen_ci_reference.csv"
 
-Twenty-one or more excluded instruments, robust projection outside the bounded
+Twenty-two or more excluded instruments, robust projection outside the bounded
 two-endogenous/two-instrument slice, larger endogenous systems, HAC/survey
 covariance and few-cluster inference remain unsupported.
 
@@ -733,7 +736,7 @@ reference from the repository root:
     cmp examples/robust-ar/robust_ar_nineteen_ci_secondary_data.csv "$work/robust_ar_nineteen_ci_secondary_data.csv"
     cmp crates/tabdat-stats/tests/fixtures/robust_ar_nineteen_ci_reference.csv "$work/robust_ar_nineteen_ci_reference.csv"
 
-Twenty-one or more excluded instruments, robust projection outside the bounded
+Twenty-two or more excluded instruments, robust projection outside the bounded
 two-endogenous/two-instrument slice, larger endogenous systems, HAC/survey
 covariance and few-cluster inference remain unsupported.
 
@@ -767,6 +770,40 @@ reference from the repository root:
     cmp examples/robust-ar/robust_ar_twenty_ci_secondary_data.csv "$work/robust_ar_twenty_ci_secondary_data.csv"
     cmp crates/tabdat-stats/tests/fixtures/robust_ar_twenty_ci_reference.csv "$work/robust_ar_twenty_ci_reference.csv"
 
-Twenty-one or more excluded instruments, robust projection outside the bounded
+Twenty-two or more excluded instruments, robust projection outside the bounded
+two-endogenous/two-instrument slice, larger endogenous systems, HAC/survey
+covariance and few-cluster inference remain unsupported.
+
+## Twenty-one-instrument reference
+
+[`twenty_one_instrument_ci.td`](twenty_one_instrument_ci.td) and
+[`twenty_one_instrument_ci_clustered.td`](twenty_one_instrument_ci_clustered.td)
+extend the scalar HC1/CR1 workflow through twenty-one excluded instruments. The
+504-row designs have one included control, K_aux=23 and residual DF=481. At 95%,
+chi-square(21)=32.6705733409173; HC1/CR1 corrections are 1.04781704781705 and
+1.09120491729187 (24 groups of twenty-one observations).
+
+| Design | HC1 | CR1 |
+| --- | --- | --- |
+| multiple | [1.16079113588054, 1.20960546902958] | Empty set |
+| secondary | [1.16603488492654, 1.22736462081383] | Empty set |
+
+The independent Base R 4.6.2 reference constructs degree-42 determinant
+coefficients from 43 Chebyshev nodes and checks them against direct determinants
+at a second 43-node set. It brackets observed direct-Wald crossings and checks
+six additional probes per design/covariance. Rust matches HC1 endpoints within
+3e-8, verifies the empty CR1 sets, metadata, corrections, rescaling, retained
+state and JSON/text output. The synthetic degree-42 boundary test covers all 42
+simple real roots and twenty-two accepted components within 1e-6; the
+design-reference endpoint tolerance remains 3e-8. Regenerate fixtures and
+reference from the repository root:
+
+    work=$(mktemp -d)
+    Rscript crates/tabdat-stats/tests/fixtures/robust_ar_twenty_one_ci_reference.R "$work" > "$work/robust_ar_twenty_one_ci_reference.csv"
+    cmp examples/robust-ar/robust_ar_twenty_one_ci_multiple_data.csv "$work/robust_ar_twenty_one_ci_multiple_data.csv"
+    cmp examples/robust-ar/robust_ar_twenty_one_ci_secondary_data.csv "$work/robust_ar_twenty_one_ci_secondary_data.csv"
+    cmp crates/tabdat-stats/tests/fixtures/robust_ar_twenty_one_ci_reference.csv "$work/robust_ar_twenty_one_ci_reference.csv"
+
+Twenty-two or more excluded instruments, robust projection outside the bounded
 two-endogenous/two-instrument slice, larger endogenous systems, HAC/survey
 covariance and few-cluster inference remain unsupported.
