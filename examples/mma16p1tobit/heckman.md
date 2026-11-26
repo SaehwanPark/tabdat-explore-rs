@@ -7,7 +7,9 @@ Exact author analysis:
 The same original export has200 selection observations and130 observed outcomes:
 selection `dy ~ lnwage`, outcome `ytrunc ~ lnwage`, intercept in both.
 Use the existing [source assets/converter](README.md); no replacement RNG/data.
-The separate later RAND selection illustration remains required.
+The later RAND §16.6 selection illustration now has a separate bounded default
+joint-ML workflow; it is independently referenced and is not a replacement for
+this source's explicit two-step comparison.
 
 The author explicitly warns that manual second-stage OLS SEs are incorrect.
 This reference uses probit observed ML covariance and the conventional model-based
@@ -174,7 +176,8 @@ failure. Workspace all-target Clippy/format/diff and doctests pass; the earlier
 timed-out Clippy/doctest commands are not relabeled successful. This is local
 macOS evidence, not Actions/other-platform certification.
 
-Do not present the existing parser-only bare heckman form as ML or
-silently reinterpret it as two-step. Conditional-selected means differ from
-Tobit truncation, and the zero-filled observed-contribution mean is not an
-imputation of unobserved outcomes or a causal effect.
+This §16.2.1 comparison uses explicit `twostep`. The bare command now selects
+joint ML, independently implemented and validated on the separate §16.6 RAND
+illustration; this source is not an ML benchmark. Conditional-selected means
+differ from Tobit truncation, and the zero-filled observed-contribution mean is
+not an imputation of unobserved outcomes or a causal effect.

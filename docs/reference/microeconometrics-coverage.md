@@ -31,7 +31,7 @@ not by implementing every estimator mentioned in a chapter.
 | 11–13: Bootstrap, simulation, Bayesian | Bounded seeded IID and whole-cluster OLS pairs, joint IID and whole-cluster quantile pairs and selected whole-cluster Poisson/panel workflows with B-1 covariance and percentile intervals; source-specific refit compositions are independently audited | Residual/parametric/general-estimator bootstrap and automatic FE/RE refits, simulation/Bayesian estimation and diagnostics; context script seed remains separate |
 | 14: Binary outcomes | Model-based/robust/one-way clustered logit and probit with additive one-way categorical main effects and two-variable continuous products, probabilities/xb and current-row probability delta SEs/link-scale intervals, continuous retained-X product-rule delta AMEs and numeric 0/1 retained-source discrete changes in additive and continuous-product designs, factor-level average probability contrasts with delta uncertainty, retained-fit Wald restrictions, unweighted model-based grouped Hosmer–Lemeshow calibration and descriptive retained-sample cutoff classification; validated native §14.2 tables/figure under explicit conventions; [synthetic interaction discrete-change evidence](../../examples/binary-interaction-discrete-change/README.md) | Factor interactions, other binary specification tests, endogenous/fractional models and remaining illustration outputs/graphics |
 | 15: Multinomial outcomes | Bounded person-level MNL fit/probabilities/joint-delta AMEs; balanced price/catch and combined fixed-utility conditional choice with keyed probabilities/point contrasts; source audits of three principal Table15.2 coefficient columns and conditional MNL encoding | Nested and other source-resolved choice analyses, broader choice-set semantics, conditional effects uncertainty/IIA diagnostics; historical float-storage/at-means effects and remaining illustrations |
-| 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit, lower-truncated Gaussian ML and corrected Heckman two-step author-program workflows, with declared covariance, effects and current predictions | Remaining censoring/truncation, selection/two-part/CLAD workflows and illustrations; two-step is not default ML, causal or RAND parity |
+| 16: Censoring, truncation, selection | Validated bounded Gaussian Tobit, lower-truncated Gaussian ML, default joint IID Gaussian Heckman ML for the RAND illustration, and corrected explicit two-step author-program workflows, with declared covariance and current point predictions | Remaining censoring/truncation, general selection/two-part/CLAD workflows and illustrations; bounded Heckman fits are not causal or general Chapter16 coverage |
 | 17–19: Survival, heterogeneity, multiple hazards | Validated composed566-strike/artificial80-spell KM/NA workflows plus original3343-spell exponential/Weibull/Gompertz/Cox-Breslow cause-specific regression/full robust inference and net-survival points; owned Cox reference baseline | General declarations/richer parametric/Cox, mixture/frailty and multiple-event analyses; no general survival declaration API or competing-risk incidence support |
 | 20: Counts | Model-based/independent-row robust unweighted Poisson and joint beta/lnalpha NB2, fixed offsets and bounded `exposure(var)`, means/xb, descriptive deviance/Pearson and retained-X continuous delta effects; retained-fit Wald restrictions and covariance-aware `lincom`; Poisson NB1- and NB2-direction score tests with model/row/cluster score variance; model-based unclustered and one-way cluster-robust score-adjusted NB2 grouped goodness-of-fit tests; validated Table20.5 coefficient/inference portions, audited original-person clustered extensions and descriptive retained observed/fitted probability-frequency bins; current-row PMF/CDF cutoffs0..100000 with a bounded expanded-work contract | Exposure integrations beyond unweighted Poisson/NB2, household/site/multiway/survey/panel inference, unresolved printed Table20.6 NB2 row, other formal NB specification tests and robust/clustered NB boundary-LR reference, hurdle/zero-inflated/mixture and remaining illustrated outputs |
 | 21: Linear panels | Bounded legacy-convention Gaussian PA SQL composition with working/uncorrected unit-sandwich normal95 and independently validated source predictions, native SQL/OLS POLS, annual FD and Between classical/HC1 portions, native balanced/unbalanced Swamy–Arora model-based/unit-cluster RE-GLS and balanced/unbalanced Gaussian RE-ML with interior full joint unit-score inference, plus bounded explicit-key within FE slope/conditional-prediction workflow and normalized-level-intercept pairs bootstrap (raw-copy R QR evidence, full coefficient covariance/type7 intervals, retained original FE state), the conventional pooled-versus-within unit-effects F test for nonclustered fits (clustered fits withhold this classical reference), retained effects and independent original-source evidence | Persistent panel declaration/general lags, remaining illustrated ML inference, individual FE intercept uncertainty, cluster-robust unit-effects tests, two-way effects, panel-specific diagnostics/comparisons, bootstrap and remaining table/figure illustrations |
@@ -116,7 +116,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-TOBIT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A/`mma16p1tobit.asc` | Partial — validated native classic lower-censored Gaussian MLE on the author's exported200-row generated data | Exact70 censored/130 uncensored; native source script/full observed inference/600 predictions/continuous effects validated against48 R gates, with current workspace regression evidence and independent source/evidence review. Estimation is the author's program extension, not a published coefficient table; theoretical Figure16.1, CLAD/truncation/selection remain separate |
 | MMA-TRUNC | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A commented intended truncated MLE | Validated native extension — lower-truncated Gaussian likelihood on original130 positive observations | Author did NOT execute a correct truncated MLE and explicitly warned that censoring Tobit on ytrunc gives truncated OLS. No historical coefficient/table parity claim. Independent truncreg/base-R reference, native inference/effects/current prediction, state/failure controls, source reviews and local workspace gates pass; fixed lower IID scope only |
 | MMA-SELECT | §16.2.1 pp.530–531, author `mma16p1tobit.do` §2A Heckman comparison | Validated bounded corrected two-step native workflow/source audit on original200/130 selection/outcome rows |58 original R gates/1000 native predictions plus98 synthetic quantities/3600 predictions and49 closed-form actual-script gates/120 predictions; separate covariance blocks/no exclusion restriction; owned state/atomic five-mode prediction, failure controls, reverse checks and independent source reviews; distinct from RAND below |
-| MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Planned | Separate selection/outcome samples, estimator variants and uncertainty |
+| MMA-SELECTION | pp. 553–556, 565, RAND; `randdata.dta` / `mma16p3selection.asc` | Partial — independently validated source-pinned two-part probit/selected OLS, default joint IID Gaussian Heckman ML, explicit corrected two-step and current point projections | [Reproduction and limits](../../examples/mma16p3selection/README.md): year-2 ordered 5,574×20 ASCII export, 4,281 selected/1,293 unselected; base-R full joint likelihood/score/observed information, exact source membership, every 38×38 ML covariance entry, two-part and two-step covariance, likelihood/scale/correlation/LR values, and all 55,740 prediction cells checked. Printed author ML points agree to displayed precision; no exclusion restriction, IID rather than household-cluster covariance, and zero-filled log expenditure interpretation remain explicit. General two-part estimation, other selection illustrations, prediction uncertainty and Chapter16 remain required |
 | MMA-DURATION | §17.2 pp.574–575/§17.5.1 pp.581–583, strikes; `mma17p1km.do` / `strkdur.asc` | Partial — validated native composed all566 uncensored-strike KM/Greenwood/log-log pointwise95% and Nelson–Aalen/SE table/step-plot workflow | Original141 distinct times/24,691 days;1,269 R cells/1,128 author printed facts/1,130 actual SVG vertices pass. Table17.2/17.3 source-comment numbering discrepancy explicit; Cox-baseline comparison/NA confidence graph/general censored survival remain required |
 | MMA-DURATION-CENSOR | §17.5.1 pp.581–582, Table17.2-associated artificial illustration; `mma17p2kmextra.do` explicit input | Validated bounded author-program workflow — original80 spells/40 failures/40 right-censored exits, KM/Greenwood/log-log95 and NA/SE/log-Wald95 tables/native step plots | Exact input overrides inconsistent prose labels.108 R cells/144 printed facts/six manual gates/112 SVG vertices and actual-script failure controls pass; artificial data, not empirical-regression or general survival-command support |
 | MMA-DURATION-EXP | §17.11 pp.603–608, Table17.8 exponential coefficient column; `mma17p4duration.do` / `ema1996.dta` | Validated bounded native composition — original3343 spells/1073 full-time events,40 covariates+intercept, full N/(N-1) robust/normal inference, exact likelihood mapping and conditional point projections |1936 R gates/all1681 covariance entries/207266 native cells/147092 exact source cells/262 printed quantities pass. ASCII omits stateur;102 all-zero statuses retained. Net cause-specific survival is not all-cause survival/incidence or causal UI effect; no full Table17.9/HR uncertainty claim |
@@ -910,10 +910,11 @@ restrictions or causal identification. Original regressors have **no exclusion
 restriction**; identification is functional-form dependent and weakly separated
 from the inverse Mills regressor (author reports correlation−.9745).
 
-Planned explicit command: `heckman y xvars, selectdep(d) select(zvars) twostep`.
-Keep existing parser-only bare form distinct; do not silently present two-step
-as default ML. No weights/robust/cluster/factors, ML, switching, general tests,
-named storage or prediction uncertainty in this slice. Both equations share the
+Command for this comparison: `heckman y xvars, selectdep(d) select(zvars)
+twostep`. The bare command now selects joint ML, validated separately on the
+§16.6 RAND illustration; it is not a two-step alias or a benchmark for this
+§16.2.1 source. No weights/robust/cluster/factors, switching, general tests,
+named storage or prediction uncertainty are added here. Both equations share the
 intercept option. Require regular finite probit/rank/covariance and interior
 |rho|<1; reject rather than clip invalid correlations/adopt Stata's ad-hoc fixes.
 
@@ -991,8 +992,47 @@ One stale discovery expectation omitted mills/ycond/yexpected: explicit updated
 schema/help/explain contracts and all25 target tests pass; no numerical tolerance
 or parser widening. Workspace all-target Clippy/format/diff and completed doctest
 scope pass. CI disabled/other platforms unverified. This validates the bounded
-source workflow, not default ML, a published coefficient table, a valid exclusion/
-causal claim, the distinct RAND illustration or whole Chapter16.
+§16.2.1 source workflow, not a published coefficient table, a valid exclusion/
+causal claim, the separate RAND illustration or whole Chapter16.
+
+### MMA-SELECTION bounded RAND contract and evidence
+
+The source-pinned [RAND workflow](../../examples/mma16p3selection/README.md)
+replays the year-2 `mma16p3selection.do` sample and its 5,574×20 prepared ASCII
+export in original order. The author program drops one row for missing education;
+4,281 rows have `DMED=1` and observed `LNMED`, while 1,293 have `DMED=0` and
+missing `LNMED`. The source's six-decimal `LNMED` is retained rather than
+recomputed from `MED`. The converter checks the 111,480-token export, and the
+reference checker pins the `.do`, `.txt` and `.asc` SHA-256 hashes and verifies
+every prepared source cell.
+
+The executable composition reports a positive-spending probit and selected-case
+OLS, then fits default joint IID Gaussian Heckman ML and explicit `twostep` on
+the declared source designs. Both Heckman equations use the same 17 regressors;
+there is no excluded selection predictor. The joint likelihood uses all 5,574
+selection outcomes and the Gaussian outcome density only for the 4,281 selected
+units. ML keeps the full inverse observed-information covariance in
+`[outcome coefficients, selection coefficients, lnsigma, athrho]` order and
+reports the same-sample `rho=0` LR test. Two-step retains its distinct generated-
+regressor covariance and does not report a joint likelihood or cross-equation
+inference. The household nature of RAND does not change the IID covariance into
+a cluster correction.
+
+Independent base R codes the probit/OLS/two-step and joint ML likelihood, supplies
+an analytic score, and finite-differences that score for the observed
+information. The source audit checks exact ordered sample positions, all 1,444
+joint covariance entries, the other fit covariance matrices, likelihood and
+transformed-parameter gates, and all ten point predictions on every source row.
+Rust and R joint fits agree with the printed author ML points; the independent
+optimizer tolerance is 1e-5 for ML points/predictions and 2e-8 for covariance
+entries. No tolerance was widened to absorb the source's ASCII rounding.
+
+Interpretation remains bounded: there is no exclusion restriction, so Gaussian
+functional-form identification may be weak; estimates are latent-mean
+associations, not causal effects. The author program's `yexpected` is a
+zero-filled log-expenditure contribution, not an observed log-spending mean.
+General two-part estimation, clustered inference, prediction uncertainty, other
+selection/CLAD illustrations and the rest of Chapter16 remain required.
 
 ### MMA-PANEL bounded POLS/first-difference contract and evidence
 

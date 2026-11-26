@@ -1677,9 +1677,10 @@ impl Session {
         | PredictKind::SelectionConditionalMean
         | PredictKind::SelectionObservedContribution
     ) && !matches!(self.estimation, Some(EstimationState::HeckmanTwoStepFit(_)))
+      && !matches!(self.estimation, Some(EstimationState::HeckmanMlFit(_)))
     {
       return Err(RuntimeError::HeckmanFailed(
-        "predict mills/ycond/yexpected requires a prior successful Heckman twostep fit".into(),
+        "predict mills/ycond/yexpected requires a prior successful Heckman fit".into(),
       ));
     }
     if matches!(
@@ -1695,7 +1696,10 @@ impl Session {
         "predict mean requires a prior successful lower-censored Gaussian Tobit fit".into(),
       ));
     }
-    if matches!(self.estimation, Some(EstimationState::HeckmanTwoStepFit(_))) {
+    if matches!(
+      self.estimation,
+      Some(EstimationState::HeckmanTwoStepFit(_) | EstimationState::HeckmanMlFit(_))
+    ) {
       return self.execute_heckman_prediction(command);
     }
     if matches!(self.estimation, Some(EstimationState::TobitFit(_))) {

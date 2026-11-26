@@ -540,13 +540,60 @@ Weighted/survey/multiway binary inference, factor interactions and broader
 interaction semantics remain required work where applicable. The bounded Figure14.1 SVG
 workflow below does not complete broader illustration graphics.
 
-## Bounded Heckman two-step selection
+## Bounded joint Gaussian Heckman maximum likelihood
+
+The bare `heckman y xvars, selectdep(d) select(zvars) [noconstant]` command fits
+the joint unweighted IID Gaussian sample-selection likelihood. It models
+`d = 1[z'gamma + u > 0]` and `y* = x'beta + v`, with standard-normal `u`,
+Gaussian `v` of scale `sigma`, and correlation `rho`. The outcome and selection
+designs may differ; `noconstant` applies to both.
+
+Selection eligibility first requires finite exact-binary `d` and finite
+selection regressors. A selected observation also needs finite outcome and
+outcome regressors; an invalid selected observation leaves both samples. Missing
+outcome-only fields on unselected observations are ignored. Ordered original
+positions are retained for the full selection sample and selected outcome
+subset. Fitting does not mutate data or labels, and a failed fit clears stale
+estimation state.
+
+CLI-v1 **HeckmanMlResult** exposes estimator/method/distribution, both equation
+designs and samples, the exact selected-subset identities, estimates, the full
+joint inverse observed-information `covariance_matrix` and its named parameter
+order, joint and same-sample independent likelihoods, the one-df `rho=0` LR,
+transformed `sigma`/`rho` and delta-method `lambda` inference, and optimizer
+convergence diagnostics. Covariance order is `[outcome coefficients, selection
+coefficients, lnsigma, athrho]`; the correction is1 and coefficient inference is
+asymptotic normal95. The JSON `identification_warning` is set when there is no
+excluded selection predictor; exclusion validity remains a user assumption.
+Both batch and script JSON execution support the bare ML result.
+
+The start uses the bounded explicit two-step result. A fit requires both
+selection classes, finite likelihood evaluations, full-rank designs, strict
+optimizer convergence, and positive-definite full observed information. It
+rejects robust/cluster covariance, weights, factor expansions and unsupported
+prediction options; it does not clip `rho` or use a pseudoinverse. Limits are
+10,000 eligible rows, 32 parameters per equation, 66 joint parameters, and
+200,000,000 bounded likelihood-work units.
+
+Current `predict` supports point-only `xb`, `pr`, `mills`, `ycond` and
+`yexpected`: `x'b`, `Phi(z'gamma)`, `phi/Phi`,
+`x'b + rho*sigma*phi/Phi`, and `Phi*x'b + rho*sigma*phi`, respectively. Current
+`y` and `d` are not required. Prediction uncertainty, general nonlinear tests,
+causal identification and a generic two-part estimator remain unsupported.
+
+The independently checked RAND source workflow is
+[documented here](../../examples/mma16p3selection/README.md). Its two equations
+have no excluded predictor, so identification depends on Gaussian functional
+form and may be weak. Estimates are latent-mean associations, not causal effects.
+
+## Explicit Heckman two-step selection
 
 `heckman y xvars, selectdep(d) select(zvars) twostep [noconstant]` requires
-at least one predictor per equation and exact numeric0/1 selection. The bare
-method remains deferred: legacy commands without serialized `twostep` default
-false and retain their unsupported identity without clearing the previous fit.
-Explicit two-step failures clear stale estimation but leave data/labels intact.
+at least one predictor per equation and exact numeric0/1 selection. It fits a
+probit on the full eligible selection sample, then selected-sample OLS with the
+generated inverse Mills regressor. It is distinct from the default joint ML
+method above. Explicit two-step failures clear stale estimation but leave
+data/labels intact.
 Both equations share the CLI intercept option. Selection eligibility requires
 finite d/Z; selected units additionally need finite y/X and are excluded from
 BOTH stages if invalid. Unselected outcome-only missing values are ignored.
@@ -589,7 +636,7 @@ placeholder serialization, both family Heckman and neither an OLS linear state.
 See [source/method/evidence notes](../../examples/mma16p1tobit/heckman.md).
 The original-source and closed-form actual-script audits, reverse-consumer
 checks and independent frozen-source integration review validate this bounded
-workflow, not default ML, whole-Chapter16 coverage or platform certification.
+§16.2.1 workflow, not whole-Chapter16 coverage or platform certification.
 
 ## Bounded lower-truncated Gaussian regression
 

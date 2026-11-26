@@ -1072,14 +1072,14 @@ fn get_command_schema(
         },
         OptionDescriptor {
           name: "twostep".to_string(),
-          required: true,
+          required: false,
         },
         OptionDescriptor {
           name: "noconstant".to_string(),
           required: false,
         },
       ],
-      syntax: "heckman y x1 x2, selectdep(var) select(vars) twostep [noconstant]".to_string(),
+      syntax: "heckman y x1 x2, selectdep(var) select(vars) [twostep] [noconstant]".to_string(),
     }),
     "help" => Ok(CommandSchemaResult {
       arguments: vec![ArgumentDescriptor {

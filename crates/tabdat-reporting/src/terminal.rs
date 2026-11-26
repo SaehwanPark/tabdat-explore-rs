@@ -2694,6 +2694,48 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
         ""
       },
     ),
+    ExecutionResult::HeckmanMl(result) => format!(
+      "Heckman sample selection (joint IID Gaussian maximum likelihood)\nOutcome: {}; selection: {}; eligible N = {}; selected = {}; unselected = {}\nCandidate rows = {}; excluded = {}\nOutcome equation:\n{}Selection equation:\n{}Ancillary parameters:\n{}Sigma = {} (SE {}, log-Wald95 [{}, {}]); rho = {} (SE {}, atanh-Wald95 [{}, {}]); lambda = {} (SE {}, delta-normal95 [{}, {}])\nJoint log likelihood = {}; independence LR chi2(1) = {} (p = {})\nFull joint inverse observed-information covariance; correction1; asymptotic normal95. Iterations = {}; scaled score = {}; scaled step = {}.\n{}Exclusion validity is a user assumption, not tested. Coefficients are latent-mean associations, not causal effects.\nUse predict ..., xb / pr / mills / ycond / yexpected for point projections.\n",
+      result.outcome.escape_debug(),
+      result.selection_outcome.escape_debug(),
+      result.observation_count,
+      result.selected_count,
+      result.unselected_count,
+      result
+        .selection_sample
+        .as_ref()
+        .map_or(result.observation_count, |sample| sample.total_observations),
+      result
+        .selection_sample
+        .as_ref()
+        .map_or(0, |sample| sample.dropped_observations),
+      logit_estimates(&result.outcome_coefficients),
+      logit_estimates(&result.selection_coefficients),
+      logit_estimates(&result.ancillary_coefficients),
+      inference_number(result.sigma),
+      inference_number(result.sigma_standard_error),
+      inference_number(result.sigma_confidence_lower),
+      inference_number(result.sigma_confidence_upper),
+      inference_number(result.rho),
+      inference_number(result.rho_standard_error),
+      inference_number(result.rho_confidence_lower),
+      inference_number(result.rho_confidence_upper),
+      inference_number(result.lambda),
+      inference_number(result.lambda_standard_error),
+      inference_number(result.lambda_confidence_lower),
+      inference_number(result.lambda_confidence_upper),
+      inference_number(result.log_likelihood),
+      inference_number(result.independence_lr_chi_square),
+      inference_number(result.independence_lr_p_value),
+      result.iterations,
+      inference_number(result.max_abs_scaled_score),
+      inference_number(result.max_abs_scaled_step),
+      if result.excluded_selection_predictors.is_empty() {
+        "WARNING: No excluded selection predictor; identification relies on Gaussian functional form and may be weak.\n"
+      } else {
+        ""
+      },
+    ),
     ExecutionResult::TruncatedGaussian(result) => format!(
       "Lower-truncated Gaussian maximum likelihood (IID homoskedastic model)\nOutcome: {}; known lower limit = {}; retained N = {}\nCandidate rows = {}; excluded joint missing/nonfinite = {}; Newton iterations = {}\nEvery retained outcome is strictly above the limit; conditional density, not censoring.\nLog likelihood = {}; refitted same-sample null log likelihood = {}\nLR chi2({}) = {}; p-value = {}\nFull joint beta/lnsigma inverse observed information; correction1; asymptotic normal95, not Student t.\n{}Sigma = {}; delta SE = {}; log-Wald95 interval = [{}, {}]\nNo sigma=0 Wald test. Coefficients describe the underlying latent mean, not the conditional observed mean.\nUse predict ..., xb for latent location; pr for population P(Y*>lower|X), NOT conditional probability1; mean for E[Y*|Y*>lower,X].\nUse estat margins for retained-X continuous conditional-mean effects, not causal effects.\n",
       result.outcome.escape_debug(),

@@ -1,6 +1,6 @@
 # MMA §16.6 RAND Heckman maximum likelihood
 
-Status: implementing on `codex/mma16-selection`.
+Status: ready for PR review on `codex/mma16-selection`.
 
 ## Target
 
@@ -85,9 +85,41 @@ estimator or imply causal identification.
 - [x] Confirmed the default execution gap, existing two-step semantics, and
   official RAND source counts/field consistency.
 - [x] Created the bounded implementation plan and draft PR.
-- [ ] Implement the joint estimator, owned state, runtime, reporting, and
+- [x] Implement the joint estimator, owned state, runtime, reporting, and
   current-data point projections.
-- [ ] Add independent R/source evidence, focused contract tests, and current
+- [x] Add independent R/source evidence, focused contract tests, and current
   documentation updates.
-- [ ] Complete the final review and repository verification.
+- [x] Complete the final review and repository verification.
+
+## Verification record
+
+- The exact public `.do`, `.txt` and `.asc` files match their pinned hashes.
+  The POSIX awk converter produces all 5,574 ordered records/111,480 values;
+  the base-R reference and native text/JSON scripts run from a clean temporary
+  directory without committing author data.
+- `check_reference.py` passes exact source cells and sample membership, both
+  equation estimates, probit/OLS/two-step covariance, all 1,444 entries of the
+  source-sized 38×38 ML covariance, likelihood/scale/correlation/LR gates, and
+  all 55,740 values across ten source-row prediction columns. Maximum observed
+  Rust/R differences are 5.6e-6 for ML coefficients and 7.4e-6 for ML
+  projections; stated point tolerance is1e-5, and joint covariance tolerance
+  is2e-8 (maximum observed difference1.45e-8). Other estimator gates use1e-8.
+- Focused passing tests: stats ML unit3/integration4, runtime Heckman7,
+  reporting Heckman JSON1, all reporting tests76, shell tests67, execution
+  tests59, and domain wire2. Focused Clippy passes for the changed integration
+  targets; workspace `cargo check`, production `cargo clippy --workspace
+  --lib --bins -- -D warnings`, `cargo fmt --all --check`, and `git diff --check`
+  pass. The native example was built and run through text and JSON script mode.
+- The broader `cargo test -p tabdat-stats` run had130/131 unit tests pass; the
+  remaining unrelated `iv_confidence::robust_multi::tests::degree_forty_two_...`
+  test also fails alone at `robust_multi.rs:2357` (`−0.5312488` vs `−0.53125`,
+  tolerance1e-6). That source is unchanged. Workspace all-target Clippy is also
+  blocked by existing `needless_range_loop` warnings in untouched
+  `tabdat-stats/tests/conditional_logit.rs:71` and
+  `tabdat-runtime/tests/truncreg_contract.rs:190`; production and changed-target
+  Clippy both pass.
+- Architecture/crate boundaries did not change. No publication/deployment or
+  whole-Chapter16 claim is made; there is no excluded RAND predictor, robust or
+  household-cluster inference, prediction uncertainty, or general two-part
+  estimator in this slice.
 

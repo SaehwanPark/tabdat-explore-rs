@@ -49,9 +49,10 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   rows, point-only without auxiliary options. Unrepresentable conditional means
   fail atomically; finite xb/pr do not require an unnecessary Mills division.
   Retained-X conditional-mean effects use `estat margins`; see help truncreg.
-- Explicit Heckman two-step: xb (latent X beta), pr (selection probability),
-  mills (selection inverse Mills ratio), ycond (conditional-selected outcome
-  mean) or yexpected (zero-filled observed contribution). Current y/d are unused.
+- Heckman ML or explicit two-step: xb (latent X beta), pr (selection
+  probability), mills (selection inverse Mills ratio), ycond
+  (conditional-selected outcome mean) or yexpected (zero-filled observed
+  contribution). Current y/d are unused.
   xb needs only outcome X, pr/Mills only selection Z, other modes both; relevant
   missing/nonfinite regressors give NULL, irrelevant columns need not exist.
   Numerical/Mills-range failures abort atomically. At most10000 current rows;

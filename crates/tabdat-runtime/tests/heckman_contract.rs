@@ -243,23 +243,73 @@ fn five_current_projections_ignore_outcomes_require_only_relevant_equations_and_
 }
 
 #[test]
-fn parsed_heckman_remains_explicitly_deferred_at_runtime() {
-  let command = parse_command("heckman outcome x1, selectdep(selected) select(z1)").unwrap();
-  let mut session = Session::new();
-  assert_eq!(
-    session.execute(command).unwrap_err(),
-    RuntimeError::UnsupportedCommand { name: "heckman" }
-  );
+fn bare_heckman_fits_joint_ml_and_explicit_twostep_remains_distinct() {
   let fixture = Fixture::new("exclusion");
   let mut session = fixture.load();
-  fit(&mut session, true);
+  let data = rows(&mut session);
+  let ExecutionResult::HeckmanMl(ml) = run(&mut session, "heckman y x, selectdep(d) select(w z)")
+  else {
+    panic!("bare heckman must select maximum likelihood")
+  };
+  assert_eq!(ml.observation_count, 360);
+  assert_eq!(ml.selected_count, 156);
+  assert_eq!(ml.unselected_count, 204);
+  assert!(ml.independence_lr_chi_square > 0.0);
+  assert!(ml.log_likelihood > ml.independent_log_likelihood);
+  assert_eq!(ml.covariance.len(), ml.covariance_parameter_names.len());
+  assert_eq!(
+    session.state().estimation,
+    Some(EstimationState::HeckmanMlFit(ml.clone()))
+  );
+  assert_eq!(
+    session.state().estimation.unwrap().family(),
+    EstimationFamily::Heckman
+  );
+  unchanged(&mut session, &data);
+  let owned = session.state().estimation;
+  for (kind, target) in [
+    ("xb", "ml_latent"),
+    ("pr", "ml_probability"),
+    ("mills", "ml_mills"),
+    ("ycond", "ml_conditional"),
+    ("yexpected", "ml_contribution"),
+  ] {
+    run(&mut session, &format!("predict {target}, {kind}"));
+    assert_eq!(session.state().estimation, owned);
+  }
+  let predicted = rows(&mut session);
+  assert_eq!(predicted.len(), data.len());
+  for (before, after) in data.iter().zip(&predicted) {
+    assert_eq!(format!("{:?}", &before[..7]), format!("{:?}", &after[..7]));
+  }
+  assert_eq!(
+    session.state().active_dataset.as_ref().unwrap().row_count,
+    data.len() as u64
+  );
+  assert!(matches!(
+    run(
+      &mut session,
+      "heckman y x, selectdep(d) select(w z) twostep"
+    ),
+    ExecutionResult::HeckmanTwoStep(_)
+  ));
+}
+
+#[test]
+fn failed_default_ml_clears_stale_state_without_mutating_data_or_labels() {
+  let fixture = Fixture::new("exclusion");
+  let mut session = fixture.load();
+  run(&mut session, "heckman y x, selectdep(d) select(w z)");
+  run(&mut session, "replace d = 2");
   let before = session.state();
   let data = rows(&mut session);
   assert!(matches!(
     fail(&mut session, "heckman y x, selectdep(d) select(w z)"),
-    RuntimeError::UnsupportedCommand { name: "heckman" }
+    RuntimeError::HeckmanFailed(_)
   ));
-  assert_eq!(session.state(), before);
+  assert!(session.state().estimation.is_none());
+  assert_eq!(session.state().active_dataset, before.active_dataset);
+  assert_eq!(session.state().labels, before.labels);
   unchanged(&mut session, &data);
 }
 
