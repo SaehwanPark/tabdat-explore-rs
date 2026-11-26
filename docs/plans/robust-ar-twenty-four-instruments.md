@@ -30,6 +30,23 @@ other endogenous/covariance dimensions remain unsupported.
 - Measure peak RSS and elapsed time for focused stats, runtime and CLI workflows.
   Run high-memory tests serially and include a q=23 reference regression because
   the polynomial boundary helper is shared.
+- The focused q=24 stats reference test selected one test, passed all four
+  design/covariance combinations in 3,674.78 seconds, and peaked at
+  4,993,417,216 bytes RSS.
+- The focused q=23 shared-boundary regression selected one test, passed all four
+  design/covariance combinations in 1,690.91 seconds, and peaked at
+  2,448,490,496 bytes RSS.
+- The focused q=24 HC1 rescaling test selected one test, passed in 1,837.48
+  seconds, and peaked at 4,988,846,080 bytes RSS.
+- The focused q=24 runtime retained-fit/q=25 rejection test selected one test,
+  passed in 3,669.03 seconds, and peaked at 5,067,407,360 bytes RSS.
+- The focused q=24 CLI JSON/text reference workflow selected one test, passed in
+  2,738.43 seconds, and peaked at 4,642,635,776 bytes RSS.
+- Re-running the q=24 Base R 4.6.2 generator reproduced both design CSVs and the
+  reference CSV byte-for-byte.
+- Degree-48 fail-closed and degree-46/48 reduced-Fujiwara unit tests pass. The
+  q=25 stats API, CLI discovery/JSON metadata, and no-later-effects tests pass.
+- Scoped Clippy, formatting and diff checks pass.
 - Run focused tests across affected packages and integration boundaries,
   regenerate fixtures byte-for-byte, and run scoped Clippy, formatting and diff
   checks.
@@ -38,7 +55,7 @@ other endogenous/covariance dimensions remain unsupported.
 
 - [x] Record the bounded scope and acceptance checks.
 - [x] Open draft PR before implementation.
-- [ ] Implement q=24 support and independent reference fixtures.
-- [ ] Update runtime/CLI coverage, current limits and examples.
-- [ ] Verify numerical references, retained state, failure atomicity and resource use.
+- [x] Implement q=24 support and independent reference fixtures.
+- [x] Update runtime/CLI coverage, current limits and examples.
+- [x] Verify numerical references, retained state, failure atomicity and resource use.
 - [ ] Review the final diff, mark ready, satisfy repository checks and merge.
