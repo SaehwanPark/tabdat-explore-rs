@@ -37,8 +37,17 @@ other endogenous/covariance dimensions remain unsupported.
 ## Progress
 
 - [x] Record the bounded scope and acceptance checks.
-- [ ] Open draft PR before implementation.
-- [ ] Implement q=25 support and independent reference fixtures.
-- [ ] Update runtime/CLI coverage, current limits and examples.
+- [x] Open draft PR before implementation.
+- [x] Implement q=25 support and independent reference fixtures.
+- [x] Update runtime/CLI coverage, current limits and examples.
 - [ ] Verify numerical references, retained state, failure atomicity and resource use.
 - [ ] Review the final diff, mark ready, satisfy repository checks and merge.
+
+## Verification progress
+
+- The Base R 4.6.2 generator reproduced the two q=25 data fixtures and reference
+  CSV byte-for-byte.
+- The degree-50 ambiguous-root rejection and q=26 stats API rejection each pass.
+- The q=25 HC1/CR1 independent-reference test passes all four design/covariance
+  cases in 8,473.49 seconds with 10,236,542,976 bytes maximum RSS. Run high-degree
+  tests serially; the q=25 reference case is substantially more expensive than q=24.

@@ -49,8 +49,8 @@ Subset/robust-score endogeneity, robust projection with multiple excluded
 instruments/endogenous regressors and multi-endogenous confidence regions remain
 unsupported. Clustered Hansen J/GMM overidentification is also not installed.
 `estat ar, ci` after a robust/cluster fit supports one endogenous regressor
-with one through twenty-four excluded instruments. Multiple endogenous coefficients
-and twenty-five or more excluded instruments are unsupported for robust confidence
+with one through twenty-five excluded instruments. Multiple endogenous coefficients
+and twenty-six or more excluded instruments are unsupported for robust confidence
 sets.
 
 Clustered two-step GMM:
