@@ -94,6 +94,7 @@ pub enum EstimationFamily {
   BayesMcmc,
   Spatial,
   Quantile,
+  MaximumScore,
   Logit,
   Probit,
   MultinomialLogit,
@@ -335,6 +336,8 @@ pub enum EstimationState {
   Quantile(ModelState),
   /// Installed certified conditional-quantile fit; legacy Quantile remains readable.
   QuantileFit(Box<tabdat_stats::QuantileResult>),
+  /// Owned one-predictor binary maximum-score rule, with no inferential covariance.
+  MaximumScoreFit(Box<crate::MaximumScoreFit>),
   Logit(Box<BinaryLogitState>),
   Probit(Box<BinaryProbitState>),
   MultinomialLogit(Box<MultinomialLogitState>),
@@ -429,6 +432,7 @@ impl EstimationState {
       Self::BayesMcmc(..) => EstimationFamily::BayesMcmc,
       Self::Spatial(..) => EstimationFamily::Spatial,
       Self::Quantile(..) | Self::QuantileFit(..) => EstimationFamily::Quantile,
+      Self::MaximumScoreFit(..) => EstimationFamily::MaximumScore,
       Self::Logit(..) => EstimationFamily::Logit,
       Self::Probit(..) => EstimationFamily::Probit,
       Self::MultinomialLogit(..) => EstimationFamily::MultinomialLogit,

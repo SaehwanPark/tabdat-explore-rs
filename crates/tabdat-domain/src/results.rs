@@ -841,6 +841,15 @@ pub struct BinaryClassificationReport {
   pub metrics: tabdat_stats::BinaryClassificationMetrics,
 }
 
+/// Point-only bounded binary maximum-score fit and retained sample provenance.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MaximumScoreFit {
+  pub outcome: String,
+  pub predictor: String,
+  pub sample: tabdat_stats::EstimationSample,
+  pub result: tabdat_stats::MaximumScoreResult,
+}
+
 /// Results currently exposed by the bounded runtime slice.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "payload", rename_all = "snake_case")]
@@ -948,6 +957,8 @@ pub enum ExecutionResult {
   BinaryFactorContrasts(Box<tabdat_stats::BinaryFactorContrasts>),
   /// Converged model-based binary probit maximum likelihood fit.
   Probit(Box<tabdat_stats::BinaryMleResult>),
+  /// Bounded one-predictor maximum-score estimate and classification, without inference.
+  MaximumScore(Box<MaximumScoreFit>),
   /// Probit conditional-on-retained-X average partial effects and delta inference.
   ProbitMarginalEffects(Box<tabdat_stats::LogitMarginalEffects>),
   MultinomialLogit(Box<tabdat_stats::MultinomialLogitResult>),

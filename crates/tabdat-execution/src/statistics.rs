@@ -1651,6 +1651,11 @@ impl Session {
     &mut self,
     command: &PredictCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if matches!(self.estimation, Some(EstimationState::MaximumScoreFit(_)))
+      || command.kind == PredictKind::MaximumScoreClass
+    {
+      return self.execute_maximum_score_prediction(command);
+    }
     if matches!(self.estimation, Some(EstimationState::NonlinearFit(_))) {
       return self.execute_nls_prediction(command);
     }

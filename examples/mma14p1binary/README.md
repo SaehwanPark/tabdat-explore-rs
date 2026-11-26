@@ -103,7 +103,7 @@ prediction/SVG bytes also match the separately validated leaf workflows.
 | --- | --- |
 | 1,182-person source summary after `income/1000` | 17 ordered variables; all 85 N/mean/sample n−1 SD/min/max quantities; `fishing_source_sample.csv` checks all 1,182 IDs and 18 fields including ID |
 | Mode2/4 preparation, full overall/pier/charter summaries | `charter=1(mode==4)`, `pratio=100*ln(pcharter/ppier)`, `lnrelp=ln(pcharter/ppier)`; 20 variables × 3 cohorts × 5 = 300 quantities; `fishing_prepared_sample.csv` checks all 630 IDs and 21 fields |
-| Cross-tool prepared-data output | Native headered CSV preserves all prepared fields, including charter/lnrelp and source identity; not the author's headerless two-column ASCII or directly runnable LIMDEP input (MMA-MAXSCORE remains separate) |
+| Cross-tool prepared-data output | Native headered CSV preserves all prepared fields, including charter/lnrelp and source identity; it is not the author's headerless two-column ASCII or directly runnable LIMDEP input; the native maximum-score example uses its own bounded script |
 | Table14.1 | Explicit overall/pier/charter four-variable summary blocks; all 60 quantities |
 | Six fits and Table14.2 | Existing native ordered classical/robust logit/probit/OLS fits and immutable six-column report; all 94 R quantities and covariance/reference/sample metadata, plus all 630 prediction records |
 | Four-variable fitted-value summary | Charter/logit probability/probit probability/OLS fitted value; all 20 quantities; OLS min/max remain −0.202734122 / 1.307384388, not clipped |
@@ -620,3 +620,56 @@ intervals. Survey estimators, few-cluster inference, broader specification
 tests, graphics beyond the bounded SVG scatter/line workflow and the rest of the
 textbook remain outside this illustration. The grouped calibration diagnostic
 is a separate synthetic method fixture, not an additional §14.2 replication.
+
+## MMA §14.7.5 maximum-score workflow
+
+`maxscore.td` prepares the 630-row pier/charter cohort in source order, fits
+`charter` on an intercept and `lnrelp`, applies the retained rule to current
+rows, and exports every source ID and classification. It enumerates all
+one-predictor threshold regions in both slope directions and constant
+classifiers, then reports every tied empirical-score maximum. The selected rule
+is deterministic, but the reported unit-Euclidean-norm coefficients are only a
+scale representative.
+
+From the repository root, with `curl`, POSIX `awk`, base R and the built Rust
+binary:
+
+```sh
+(
+set -eu
+cargo build --locked --bin tabdat-explore-rs
+repo="$PWD"
+work=$(mktemp -d)
+curl -fsSL https://cameron.econ.ucdavis.edu/mmabook/Nldata.asc -o "$work/Nldata.asc"
+printf '%s  %s\n' \
+  1fb6f7d5abaf790d4df2c6a13a499ca42c0db4f950d941ba92565c30b4ab6c22 \
+  "$work/Nldata.asc" | shasum -a 256 -c -
+awk -f examples/mma14p1binary/nldata_to_csv.awk "$work/Nldata.asc" \
+  > "$work/Nldata.csv.tmp" && mv "$work/Nldata.csv.tmp" "$work/Nldata.csv"
+(cd "$work" && "$repo/target/debug/tabdat-explore-rs" --json \
+  -f "$repo/examples/mma14p1binary/maxscore.td" > maxscore.jsonl)
+Rscript examples/mma14p1binary/reference_maxscore.R "$work/Nldata.csv" \
+  "$work/reference_regions.csv" "$work/reference_predictions.csv"
+python3 examples/mma14p1binary/check_maxscore_reference.py \
+  "$work/reference_regions.csv" "$work/reference_predictions.csv" \
+  "$work/maxscore.jsonl" "$work/fishing_maxscore_predictions.csv" "$work/Nldata.csv"
+printf 'Outputs: %s\n' "$work"
+)
+```
+
+Replace `--json` with `--text` for the terminal report. The independent Base R
+reference enumerates every finite-sample region and compares all 630 fitted
+classifications and current-row classifications, both maximizing regions,
+unit-norm coefficients, the 536/630 score and the author output's
+TP/FP/FN/TN counts of 421/63/31/115 for the deterministic first selected rule.
+Confusion counts can differ across tied maxima. The runtime sample retains all
+630 prepared rows; the fit result retains source-cohort row order. The checker
+uses absolute `1e-10` tolerance for score/rule/coefficient values and `1e-12`
+for prepared `lnrelp` values.
+
+This is point estimation and sign classification only. The author program's
+50-replication bootstrap standard errors are approximate, and the ordinary
+nonparametric bootstrap is inconsistent for maximum-score inference. The native
+result has no covariance, standard errors, tests, confidence intervals or
+probability predictions. Tied maxima are visible; neither a unique optimum nor
+a causal interpretation is claimed.

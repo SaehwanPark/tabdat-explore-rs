@@ -2543,6 +2543,39 @@ tests, margins, named quantile reports and prediction intervals are unsupported.
 See `help qreg` and the [household workflow](../../examples/mma04p2qreg/README.md)
 for numerical bounds, assumptions and independent evidence.
 
+## Bounded binary maximum score
+
+`maxscore binary_y continuous_x` adds CLI-v1 `MaximumScoreResult` for one
+numeric exact-0/1 outcome, one numeric predictor and an intercept. Jointly
+missing/nonfinite rows are omitted; a finite nonbinary outcome in an otherwise
+usable row fails. The runtime exhaustively scores both threshold directions
+between distinct observed X values and both constant classifiers. There are no
+weights, additional predictors or probability model.
+
+`data` contains `outcome`, `predictor`, `sample` counts, and a nested `result`
+with N, event/correct counts, empirical score, unit-norm intercept/slope,
+confusion counts, every tied maximizing region, the selected rule and retained
+row classifications. The top-level method metadata is
+`estimator: "binary_maximum_score_exhaustive_one_predictor"`,
+`coefficient_normalization: "euclidean_unit_norm"`,
+`inference: "not_provided"`, and `probability_predictions: false`. The
+normalized coefficient vector is a deterministic scale representative, not an
+identified scale parameter. Confusion counts refer to the selected rule; tied
+maximizers can have different confusion cells.
+
+After a successful fit, `predict target, class` appends numeric 0/1
+classifications for current rows in physical order; missing/nonfinite current X
+values produce NULL. It returns the ordinary `PredictionResult` dataset
+metadata, not row values. The prediction can be inspected or persisted with
+`head`, `tail`, `save` or `export`. Bare `predict` remains xb for other installed
+families, and a maximum-score fit accepts only explicit `class` prediction.
+
+This result contains no covariance, SE, test, p-value, confidence interval or
+probability. The author's approximate 50-replication standard errors are not
+reported. The independent [MMA §14.7.5 workflow](../../examples/mma14p1binary/README.md)
+checks both source maximizing regions and all 630 classifications against Base
+R. Batch and script JSON admission includes `maxscore`.
+
 
 ### Joint IID and whole-cluster pairs-bootstrap quantiles
 
