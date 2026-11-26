@@ -1998,7 +1998,7 @@ fn regression_result_data(result: &RegressionResult) -> Value {
       "joint_ar_postestimation_available": true,
       "scalar_ar_confidence_set_available": first_stage.len() == 1
         && (result.covariance == "nonrobust"
-          || first_stage[0].excluded_instruments.len() <= 21),
+          || first_stage[0].excluded_instruments.len() <= 22),
       "coefficient_inference": "conventional_t_not_weak_iv_robust",
       "rows": first_stage.iter().map(|diagnostic| json!({
         "endogenous": diagnostic.endogenous,

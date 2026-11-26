@@ -26,14 +26,33 @@ endogenous/covariance dimensions remain unsupported.
   and runnable examples with q>=23 unsupported.
 - Measure q=22 calculation RSS while running the focused reference test to keep
   the determinant DP's memory cost visible.
-- Run focused and affected package suites, scoped Clippy, formatting and diff
-  checks; regenerate q=22 fixtures byte-for-byte.
+- Run focused tests across affected packages and integration boundaries, scoped
+  Clippy, formatting and diff checks; regenerate q=22 fixtures byte-for-byte.
 
 ## Progress
 
 - [x] Scope and verification plan recorded.
-- [ ] Open draft PR before substantive implementation.
-- [ ] Implement q=22 support and independent reference fixtures.
-- [ ] Update runtime/CLI coverage and specifications/examples.
-- [ ] Verify reference regeneration and affected checks.
+- [x] Open draft PR before substantive implementation.
+- [x] Implement q=22 support and independent reference fixtures.
+- [x] Update runtime/CLI coverage and specifications/examples.
+- [x] Verify reference regeneration and affected checks.
 - [ ] Final PR review and merge.
+
+## Verification outcomes
+
+- The two 528-row fixtures and Base R reference regenerate byte-for-byte. The
+  q=22 reference reports chi-square(22)=33.9244384714438, HC1/CR1 corrections
+  1.04761904761905 and 1.09109730848861, and the committed primary/secondary
+  HC1 intervals; both CR1 sets are empty. Rust endpoints match within 3e-8.
+- Focused stats tests pass for q=22 reference outputs, instrument rescaling and
+  q=23 rejection; the q=21 independent-reference regression also passes after
+  the in-place DP memory change. The degree-44 synthetic polynomial covers all
+  44 roots and 23 components within 5e-6; applied design endpoints retain the
+  3e-8 reference tolerance.
+- Runtime retained-fit behavior, JSON/text CLI workflow, q=23 failure
+  atomicity, help discovery and neighboring scalar CLI output pass. Scoped
+  Clippy for affected crates and the root CLI, formatting and diff checks pass.
+- Peak RSS was 1,245,282,304 bytes for the four-case q=22 stats reference test,
+  1,309,360,128 bytes for runtime retained-fit coverage, and 1,174,749,184 bytes
+  for the JSON/text CLI workflow. Those tests take about 18, 18 and 13 minutes,
+  respectively, in the unoptimized test profile.
