@@ -66,8 +66,13 @@ method remains future work.
   tolerance is 1e-10 for score/rule/coefficients and 1e-12 for `lnrelp`.
 - `cargo check --workspace`, `cargo fmt --all --check`, `git diff --check`,
   `cargo clippy --workspace --lib --bins -- -D warnings` and focused test-target
-  Clippy checks passed. Confirm the final PR review and repository-required
-  checks before merge.
+-  Clippy checks passed. Final local source/diff review found no actionable
+  defects. GitHub reports the PR as mergeable with no required status checks or
+  reviews.
+- A prior full `cargo test -p tabdat-stats` run had one unrelated failure in
+  `iv_confidence::robust_multi::tests::degree_forty_two_boundary_supports_forty_two_roots_and_twenty_two_components`;
+  it reproduces on the unchanged base commit `3e39d8a2`. The focused
+  maximum-score stats tests pass.
 
 ## Sources
 
