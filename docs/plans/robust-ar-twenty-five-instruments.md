@@ -63,3 +63,5 @@ other endogenous/covariance dimensions remain unsupported.
   HC1 workflows in 5,900.64 seconds with 9,467,969,536 bytes maximum RSS.
 - q=25 CLI discovery/JSON contracts and q=26 rejection-before-later-file-effects
   checks pass; the scoped CLI contract tests each report one passing test.
+- Scoped Clippy passes with `-D warnings` for the affected library crates and
+  CLI integration-test targets. Formatting and diff checks pass.
