@@ -61,7 +61,7 @@ receive a deterministic representative without implying unique identification.
   and diff checks. Keep the 50-bootstrap LIMDEP standard errors out of formal
   inference unless their treatment is decided first.
 
-## Decision before implementation
+## Reporting-contract decision
 
 The author program requests 50 naive bootstrap replications, but both its output
 warning and published theory make those standard errors unsuitable as formal
@@ -73,7 +73,10 @@ inference. The product choice is whether to:
 3. add a separately justified inference method, which would no longer reproduce
    the author's `Nbt=50` uncertainty output.
 
-Resolve this choice before implementing the reporting contract.
+The pure finite-sample point-estimation routine and an independent exact
+threshold reference are common to all three choices and can proceed. Resolve
+this choice before adding CLI result fields or reports for uncertainty; those
+outputs must not imply formal inference unless the selected method supports it.
 
 ## Sources
 
