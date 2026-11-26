@@ -7,7 +7,7 @@ use crate::{CovarianceType, InstrumentalVariablesProblem, StatsError};
 use super::{ArConfidenceInterval, ArConfidenceSetShape, interval, invalid, residualize};
 
 /// HC1/one-way CR1 AR confidence set for one endogenous regressor and two through
-/// twenty-two excluded instruments. The joint-null degrees of freedom
+/// twenty-three excluded instruments. The joint-null degrees of freedom
 /// equal the number of excluded instruments.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RobustMultipleInstrumentAndersonRubinConfidenceSet {
@@ -822,7 +822,18 @@ fn scaled_polynomial(polynomial: &[f64]) -> Result<(Polynomial, f64), StatsError
   if degree == 0 {
     return Ok((polynomial, 1.0));
   }
-  let leading = polynomial[degree].abs();
+  // For a high-degree polynomial containing only even powers, bound roots in
+  // t=x² before taking the square root; the direct bound in x can over-expand
+  // a symmetric boundary enough to lose low-order root resolution.
+  let parity_reduced = (degree >= 40
+    && polynomial
+      .iter()
+      .enumerate()
+      .all(|(power, coefficient)| power % 2 == 0 || *coefficient == 0.0))
+  .then(|| polynomial.iter().step_by(2).copied().collect::<Vec<_>>());
+  let bound_polynomial = parity_reduced.as_deref().unwrap_or(&polynomial);
+  let bound_degree = bound_polynomial.len() - 1;
+  let leading = bound_polynomial[bound_degree].abs();
   // The logarithmic root bound handles small normal coefficients; zero or
   // subnormal leading terms cannot reliably establish the polynomial degree.
   if leading < f64::MIN_POSITIVE {
@@ -830,10 +841,10 @@ fn scaled_polynomial(polynomial: &[f64]) -> Result<(Polynomial, f64), StatsError
   }
   let leading_log = leading.ln();
   let mut log_bound = f64::NEG_INFINITY;
-  for (power, coefficient) in polynomial.iter().enumerate().take(degree) {
+  for (power, coefficient) in bound_polynomial.iter().enumerate().take(bound_degree) {
     if *coefficient != 0.0 {
       let candidate =
-        2.0_f64.ln() + (coefficient.abs().ln() - leading_log) / (degree - power) as f64;
+        2.0_f64.ln() + (coefficient.abs().ln() - leading_log) / (bound_degree - power) as f64;
       log_bound = log_bound.max(candidate);
     }
   }
@@ -842,15 +853,21 @@ fn scaled_polynomial(polynomial: &[f64]) -> Result<(Polynomial, f64), StatsError
     // Preserve it so callers can report singularity/repeated-root explicitly.
     return Ok((polynomial, 1.0));
   }
-  // Degree-fourteen and degree-sixteen boundaries need less expansion to keep
-  // low-order terms above the absolute evaluation floor; lower degrees retain
-  // the prior scale because projected polynomials share this solver.
-  let margin = if matches!(degree, 14 | 16) {
+  // Degree-fourteen, degree-sixteen and degree-forty-six boundaries need less
+  // expansion to keep low-order terms numerically resolvable; lower degrees
+  // retain the prior scale because projected polynomials share this solver.
+  let margin = if degree == 46 {
+    1.05_f64
+  } else if matches!(degree, 14 | 16) {
     1.25_f64
   } else {
     2.0_f64
   };
-  let log_scale = log_bound + margin.ln();
+  let log_scale = if parity_reduced.is_some() {
+    log_bound * 0.5 + margin.ln()
+  } else {
+    log_bound + margin.ln()
+  };
   if !log_scale.is_finite() || log_scale >= 700.0 {
     return Err(invalid(
       "robust AR confidence-set roots exceed the finite numerical range",
@@ -948,9 +965,9 @@ fn confidence_set_from_boundary(
   let normalized = polynomial_scale(polynomial, 1.0 / maximum);
   let (scaled, variable_scale) = scaled_polynomial(&normalized)?;
   let roots_in_scale = roots_on_unit_interval(&scaled)?;
-  if roots_in_scale.len() > 44 {
+  if roots_in_scale.len() > 46 {
     return Err(invalid(
-      "robust AR boundary has more than forty-four real roots",
+      "robust AR boundary has more than forty-six real roots",
     ));
   }
   let derivative = polynomial_derivative(&scaled);
@@ -1012,9 +1029,9 @@ fn confidence_set_from_boundary(
   if sign_to_left < 0 {
     intervals.push(interval(lower, None));
   }
-  if intervals.len() > 23 {
+  if intervals.len() > 24 {
     return Err(invalid(
-      "robust AR confidence set has more than twenty-three components",
+      "robust AR confidence set has more than twenty-four components",
     ));
   }
   for pair in intervals.windows(2) {
@@ -1063,20 +1080,55 @@ fn score_meat_is_well_conditioned(scores: &[ScorePair], delta: f64) -> Result<()
       }
     }
   }
-  let diagonal_product = (0..dimension).fold(1.0, |product, index| product * meat[index][index]);
-  let determinant = polynomial_matrix_determinant(
-    &meat
-      .iter()
-      .map(|row| row.iter().map(|value| vec![*value]).collect())
-      .collect::<Vec<Vec<Polynomial>>>(),
-  )[0];
+  let diagonal = (0..dimension)
+    .map(|index| meat[index][index])
+    .collect::<Vec<_>>();
   if dimension == 0
     || meat.iter().flatten().any(|value| !value.is_finite())
-    || !determinant.is_finite()
-    || !diagonal_product.is_finite()
-    || diagonal_product <= 0.0
-    || determinant <= 1e-12 * diagonal_product
+    || diagonal.iter().any(|value| *value <= 0.0)
   {
+    return Err(invalid(
+      "robust AR score covariance is singular or numerically ill-conditioned",
+    ));
+  }
+
+  // The normalized Cholesky determinant equals det(meat)/prod(diag(meat))
+  // without multiplying potentially large diagonal terms or expanding a
+  // constant polynomial determinant.
+  let mut cholesky = vec![vec![0.0; dimension]; dimension];
+  let mut log_determinant_ratio = 0.0;
+  for row in 0..dimension {
+    for column in 0..=row {
+      let normalization = diagonal[row].sqrt() * diagonal[column].sqrt();
+      let mut value = meat[row][column] / normalization;
+      for (row_value, column_value) in cholesky[row][..column]
+        .iter()
+        .zip(&cholesky[column][..column])
+      {
+        value -= row_value * column_value;
+      }
+      if row == column {
+        if !value.is_finite() || value <= 0.0 {
+          return Err(invalid(
+            "robust AR score covariance is singular or numerically ill-conditioned",
+          ));
+        }
+        let pivot = value.sqrt();
+        cholesky[row][column] = pivot;
+        log_determinant_ratio += 2.0 * pivot.ln();
+      } else {
+        let pivot = cholesky[column][column];
+        let entry = value / pivot;
+        if !entry.is_finite() {
+          return Err(invalid(
+            "robust AR score covariance is singular or numerically ill-conditioned",
+          ));
+        }
+        cholesky[row][column] = entry;
+      }
+    }
+  }
+  if !log_determinant_ratio.is_finite() || log_determinant_ratio <= 1e-12_f64.ln() {
     return Err(invalid(
       "robust AR score covariance is singular or numerically ill-conditioned",
     ));
@@ -1243,7 +1295,7 @@ fn confidence_set_probes(intervals: &[ArConfidenceInterval], center: f64) -> (Ve
 }
 
 /// Invert the HC1/one-way CR1 joint AR Wald test for one endogenous regressor
-/// and two through twenty-two excluded instruments. The confidence boundary has
+/// and two through twenty-three excluded instruments. The confidence boundary has
 /// degree at most twice the instrument count; every real root is isolated by
 /// recursive derivative partitioning, without evaluating a finite beta grid.
 /// HC1 assumes independent rows. Cluster inference assumes independent groups
@@ -1259,9 +1311,9 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     ));
   }
   let instrument_count = problem.instrument_names.len();
-  if problem.endogenous_names.len() != 1 || !(2..=22).contains(&instrument_count) {
+  if problem.endogenous_names.len() != 1 || !(2..=23).contains(&instrument_count) {
     return Err(invalid(
-      "robust multi-instrument AR confidence sets require one endogenous regressor and two to twenty-two excluded instruments",
+      "robust multi-instrument AR confidence sets require one endogenous regressor and two to twenty-three excluded instruments",
     ));
   }
   if !level.is_finite() || level <= 0.0 || level >= 100.0 {
@@ -1545,10 +1597,12 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     return Err(invalid("robust AR score covariance is non-finite"));
   }
   let determinant_roots = real_polynomial_roots(&determinant, false)?;
-  if !determinant_roots.is_empty() {
-    return Err(invalid(
-      "robust AR score covariance becomes singular for a real null value",
-    ));
+  // High-degree coefficient roundoff can create determinant-root candidates
+  // even when the evaluated score matrix is well-conditioned. Check the
+  // actual matrix at each candidate so genuine singular nulls still fail.
+  for root in determinant_roots {
+    score_meat_is_well_conditioned(&centered_scores, root)
+      .map_err(|_| invalid("robust AR score covariance becomes singular for a real null value"))?;
   }
   validate_score_condition_over_real_line(&centered_scores, &score_covariance, &determinant)?;
 
@@ -2816,6 +2870,19 @@ mod tests {
   }
 
   #[test]
+  fn degree_forty_six_boundary_fails_closed_for_numerically_ambiguous_roots() {
+    let positive_roots = (0..23)
+      .map(|index| (std::f64::consts::PI * (2 * index + 1) as f64 / 92.0).cos())
+      .collect::<Vec<_>>();
+    let polynomial = positive_roots.iter().fold(vec![-1.0], |polynomial, root| {
+      polynomial_multiply(&polynomial, &[-root * root, 0.0, 1.0])
+    });
+    assert_eq!(positive_roots.len() * 2, 46);
+    let error = confidence_set_from_boundary(&polynomial, 0.0).unwrap_err();
+    assert!(error.to_string().contains("numerically ambiguous"));
+  }
+
+  #[test]
   fn degree_forty_four_boundary_supports_forty_four_roots_and_twenty_three_components() {
     let roots = (-22..=-1)
       .chain(1..=22)
@@ -2830,10 +2897,20 @@ mod tests {
     }
     expected.push(interval(Some(*roots.last().unwrap()), None));
     assert_eq!(expected.len(), 23);
-    // The degree-44 product amplifies coefficient rounding; applied HC1/CR1
-    // endpoints are checked separately against direct independent-reference
-    // Wald inversion, which uses a better-conditioned applied design.
+    // Applied q=23 endpoints are checked separately against direct Wald
+    // inversion because coefficient rounding grows with polynomial degree.
     assert_intervals_close_with_tolerance(&intervals, &expected, 5e-6);
+  }
+
+  #[test]
+  fn high_degree_even_polynomial_uses_the_reduced_fujiwara_degree() {
+    let mut polynomial = vec![0.0; 47];
+    polynomial[0] = 1e23;
+    polynomial[46] = 1.0;
+    let (_, scale) = scaled_polynomial(&polynomial).unwrap();
+    // In t=x², t^23 + 1e23 has roots at |x|=sqrt(10); the reduced
+    // degree must be used to keep the x scale outside that root radius.
+    assert!(scale > 10.0_f64.sqrt());
   }
 
   #[test]
