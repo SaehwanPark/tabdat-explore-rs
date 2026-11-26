@@ -19,6 +19,8 @@ fn run(d: &TestDir, mode: &str) -> std::process::Output {
 }
 const INPUT: &str =
   include_str!("../crates/tabdat-stats/tests/fixtures/quantile_workflow/inputs.csv");
+const BOOTSTRAP_INPUT: &str =
+  include_str!("../crates/tabdat-stats/tests/fixtures/quantile-bootstrap/inputs.csv");
 #[test]
 fn native_script_inference_and_current_row_exports_match_independent_quantreg() {
   let d = TestDir::new();
@@ -216,4 +218,121 @@ fn quantile_figure_preserves_reference_vertices_legends_and_refuses_existing_art
   fs::remove_file(&csv_path).unwrap();
   assert!(run_script(&d, "--text", "figure.td").status.success());
   assert_eq!(fs::read_to_string(&path).unwrap(), svg);
+}
+
+#[test]
+fn joint_quantile_slope_plot_json_and_text_match_r_reference_and_publish_svg() {
+  let d = TestDir::new();
+  fs::write(d.path().join("data.csv"), BOOTSTRAP_INPUT).unwrap();
+  let make_script = |artifact: &str| {
+    format!(
+      "use data.csv\nregress y x z\nqregplot y x z, coefficient(x) quantiles(.2 .5 .8) seed(18446744073709551615) reps(40) saving(\"{artifact}\") noopen title(\"Slope & bands\")\n"
+    )
+  };
+  fs::write(d.path().join("fit.td"), make_script("bands.svg")).unwrap();
+  let run = |mode: &str| {
+    tabdat_bin()
+      .current_dir(d.path())
+      .args([mode, "-f", "fit.td"])
+      .output()
+      .unwrap()
+  };
+  let json = run("--json");
+  assert!(
+    json.status.success(),
+    "{}",
+    String::from_utf8_lossy(&json.stderr)
+  );
+  let events: Vec<Value> = String::from_utf8(json.stdout)
+    .unwrap()
+    .lines()
+    .map(|line| serde_json::from_str(line).unwrap())
+    .collect();
+  let ols = &events
+    .iter()
+    .find(|event| event["result_type"] == "RegressionResult")
+    .unwrap()["data"];
+  let result = &events
+    .iter()
+    .find(|event| event["result_type"] == "QuantileSlopePlotResult")
+    .unwrap()["data"];
+  let analysis = &result["analysis"];
+  assert_eq!(
+    analysis["estimator"],
+    "iid_pairs_bootstrap_quantile_slope_bands"
+  );
+  assert_eq!(analysis["seed"], "18446744073709551615");
+  assert_eq!(analysis["replications"], 40);
+  assert_eq!(analysis["observation_count"], 120);
+  assert_eq!(
+    analysis["sample"],
+    serde_json::json!({"total_observations":120,"dropped_observations":0})
+  );
+  assert_eq!(
+    analysis["covariance_convention"],
+    "common_iid_pairs_b_minus_1"
+  );
+  assert_eq!(analysis["band_method"], "pointwise_normal_fixed_1.96");
+  assert_eq!(analysis["simultaneous_coverage"], false);
+  let ols_slope = ols["coefficients"]
+    .as_array()
+    .unwrap()
+    .iter()
+    .find(|coefficient| coefficient["name"] == "x")
+    .unwrap()["value"]
+    .as_f64()
+    .unwrap();
+  assert_eq!(analysis["ols_coefficient"].as_f64().unwrap(), ols_slope);
+
+  let mut reference = std::collections::HashMap::new();
+  for line in include_str!("../crates/tabdat-stats/tests/fixtures/quantile-bootstrap/reference.csv")
+    .lines()
+    .skip(1)
+  {
+    let row: Vec<_> = line.split(',').collect();
+    if row[0] == "joint" {
+      reference.insert(row[1].to_owned(), row[2].parse::<f64>().unwrap());
+    }
+  }
+  let points = analysis["points"].as_array().unwrap();
+  assert_eq!(points.len(), 3);
+  for (point_index, coefficient_index) in [1, 4, 7].into_iter().enumerate() {
+    let point = &points[point_index];
+    let estimate = reference[&format!("/coefficients/{coefficient_index}/estimate")];
+    let standard_error = reference[&format!("/coefficients/{coefficient_index}/standard_error")];
+    assert!((point["estimate"].as_f64().unwrap() - estimate).abs() < 1e-8);
+    assert!((point["standard_error"].as_f64().unwrap() - standard_error).abs() < 1e-8);
+    assert!((point["lower"].as_f64().unwrap() - (estimate - 1.96 * standard_error)).abs() < 1e-8);
+    assert!((point["upper"].as_f64().unwrap() - (estimate + 1.96 * standard_error)).abs() < 1e-8);
+  }
+
+  let svg_path = d.path().join("bands.svg");
+  let svg = fs::read_to_string(&svg_path).unwrap();
+  assert!(svg.contains("Slope &amp; bands"));
+  assert!(svg.contains("No simultaneous-coverage guarantee"));
+  assert_eq!(svg.matches("class=\"quantile-slope-series\"").count(), 4);
+  fs::write(d.path().join("fit.td"), make_script("bands-text.svg")).unwrap();
+  let text = run("--text");
+  assert!(
+    text.status.success(),
+    "{}",
+    String::from_utf8_lossy(&text.stderr)
+  );
+  let text_output = String::from_utf8_lossy(&text.stdout);
+  assert!(text_output.contains("no simultaneous-coverage guarantee"));
+  assert!(
+    text_output.contains("N = 120; candidate rows = 120; excluded joint missing/nonfinite = 0")
+  );
+  assert_eq!(
+    fs::read(&svg_path).unwrap(),
+    fs::read(d.path().join("bands-text.svg")).unwrap()
+  );
+
+  let help = tabdat_bin()
+    .current_dir(d.path())
+    .args(["--json", "--help-topic", "qregplot"])
+    .output()
+    .unwrap();
+  assert!(help.status.success());
+  assert!(String::from_utf8_lossy(&help.stdout).contains("pointwise"));
 }

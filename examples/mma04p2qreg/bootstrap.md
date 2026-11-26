@@ -12,14 +12,15 @@ the marginal report remains valid and the contrast states why inference is
 unavailable.
 
 This implements the bounded asymptotic method counterpart to
-`mma04p2qreg.do` block3's .25/.75 slope comparison on the audited 5,006-row
-sample, B200/native seed10101. It does not replicate Stata8's draw stream or
-finite-sample F convention. Figure4.1 bands and native rendering remain future
-work.
+`mma04p2qreg.do` block 3's .25/.75 slope comparison on the audited 5,006-row
+sample, B=200/native seed=10101. It does not replicate Stata 8's draw stream or
+finite-sample F convention. The companion
+[Figure 4.1 `qregplot` workflow](figure_4_1.md) uses the same joint-bootstrap
+core to add the author's pointwise slope bands and native SVG.
 
 This native method counterpart advances the joint quantile bootstrap underlying
-MMA §4.6.4 Figure4.1 / mma04p2qreg.do block3. It uses the original audited
-5,006 complete ASCII household records and nineteen quantiles .05,.10,...,.95.
+MMA §4.6.4 Figure 4.1 / mma04p2qreg.do block 3. It uses the original audited
+5,006 complete ASCII household records and nineteen quantiles .05, .10, …, .95.
 Every replication shares its N IID row draws across all quantiles. The full
 joint covariance uses B-1; marginal percentile95 intervals use R type7.
 
@@ -36,7 +37,7 @@ retains a median qreg fit, computes the read-only bootstrap report, then exports
 its unchanged current-row median/residual predictions and source/design columns
 to quantile_bootstrap_cohort.csv. Existing exports are never replaced. Valid log
 medical expenditure zero remains; only joint missing/nonfinite cases are removed.
-The raw source SHA256 and all5,999 identities are checked by the audit below.
+The raw source SHA256 and all 5,999 identities are checked by the audit below.
 
 The report permits heteroskedastic conditional outcomes under IID-row sampling
 and regular identified quantiles; it does not impose the original qreg command's
@@ -50,8 +51,10 @@ This audited household source workflow uses IID row resampling and does not
 claim survey/design-based inference. The separate [synthetic whole-cluster
 pairs workflow](../cluster-quantile-bootstrap/README.md) defines and validates
 that resampling method. No weighted/wild bootstrap, general restriction
-interface, retained bootstrap fit or native Figure4.1 is claimed here. This
-slice supplies the bounded comparison, not whole-example coverage or rendering.
+interface or retained bootstrap fit is claimed here. This script reports the
+joint uncertainty; the separate [`qregplot` workflow](figure_4_1.md) renders the
+pointwise Figure 4.1 bands and OLS reference. Neither workflow claims
+simultaneous coverage or whole-example coverage.
 
 Original and resampled coefficients use the existing certified LP; irrelevant
 replicate IID sparsity estimates are omitted. Identification, rank, response
@@ -74,7 +77,7 @@ python3 /path/to/repo/examples/mma04p2qreg/check_joint_bootstrap_reference.py . 
 ```
 
 The optimized native run passed the audit of1,672 original/bias/mean/SE/percentile/full-joint covariance
-quantities and25,030 identity/design/retained-median prediction cells, with1e-8
+quantities and 25,030 identity/design/retained-median prediction cells, with 1e-8
 absolute tolerance. Text/JSON parity is tested on synthetic workflows; the original audit uses JSON.
 Run each in a fresh directory. The original audit was run with the optimized
 release binary; the debug LP is substantially slower on3,800 fits. Source data are not redistributed.
@@ -102,8 +105,8 @@ python3 /path/to/repo/examples/mma04p2qreg/check_coefficient_contrast_reference.
 The audited run passed 46 original/R common-draw bootstrap coefficient and
 contrast quantities plus 25,030 cohort/retained-median prediction cells. It
 pinned all5,999 raw records and retained exactly5,006 complete cases, including
-valid log-medical-expenditure zeros, at absolute tolerance1e-8 (tiny normal
-p-values use relative1e-7 plus1e-300). The report labels the asymptotic normal
+valid log-medical-expenditure zeros, at absolute tolerance 1e-8 (tiny normal
+p-values use relative 1e-7 plus 1e-300). The report labels the asymptotic normal
 test and normal-Wald interval explicitly. This method-counterpart check does not
 claim Stata8's bootstrap stream or its finite-sample F convention.
 

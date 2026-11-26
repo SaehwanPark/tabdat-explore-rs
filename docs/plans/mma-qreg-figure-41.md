@@ -1,6 +1,6 @@
 # MMA §4.6.4 Figure 4.1: quantile slope bands
 
-Status: in progress
+Status: implementation and verification complete; PR #509 is open as a draft.
 
 ## Target
 
@@ -44,7 +44,30 @@ normal bands do not claim simultaneous coverage.
 
 - [x] Confirmed target and conventions from the original March 2005 author
   program (`mma04p2qreg.do`, block 3).
-- [ ] Implement the command, estimator-to-plot result and SVG renderer.
-- [ ] Add independent source and synthetic validation and update active docs.
-- [ ] Review the final diff, run affected checks, and record outcomes.
+- [x] Implement the command, estimator-to-plot result and SVG renderer.
+- [x] Add independent source and synthetic validation and update active docs.
+- [x] Review the final diff, run affected checks, and record outcomes.
 - [ ] Complete PR review and merge.
+
+## Verification recorded
+
+- Reproduced the author method with R 4.6.2, `quantreg` 6.1
+  `rq(method="br")`, base-R `lm`, and the independent common-index generator.
+  On the 5,006-row retained sample, all 19 slopes, B−1 standard errors,
+  fixed-1.96 endpoints and OLS slope agree within 1e−8.
+- The final optimized native run generated the Figure 4.1 JSON and SVG in
+  82.50 seconds with 61,390,848 bytes maximum resident set size on this machine.
+  The SVG checker verified series order, axis bounds, 58 raw vertices and all
+  screen coordinates within 1e−8.
+- The full source identity/cohort audit passed: 1,672 R common-draw quantities,
+  25,030 prediction/design cells, all 5,999 source records and exactly 5,006
+  complete-finite observations, retaining valid log-outcome zeros.
+- Tests passed: full `tabdat-language` suite; 8 quantile-bootstrap statistics
+  tests; 72 `tabdat-reporting` tests; 3 qreg runtime tests; 31 CLI discovery
+  tests; 3 domain-wire tests; 5 workspace-boundary tests; the synthetic CLI
+  Figure 4.1 test; and 2 SVG renderer tests. A release build, affected-target
+  `cargo check`, Clippy with warnings denied, `cargo fmt --check` and
+  `git diff --check` also passed.
+- Remaining limits: Stata 8 random-number/printed-SE parity, survey-design
+  inference, simultaneous coverage and WMF/pixel rendering parity are not
+  claimed. The plotted fixed-1.96 intervals are pointwise normal approximations.

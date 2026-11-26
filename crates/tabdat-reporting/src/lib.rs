@@ -5,5 +5,6 @@ pub mod catalog;
 mod estimate_table;
 pub mod help;
 pub mod json_results;
+pub mod quantile_slope_svg;
 pub mod scatter_svg;
 pub mod terminal;

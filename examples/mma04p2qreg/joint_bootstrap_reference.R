@@ -21,6 +21,12 @@ for(j in 1:38){
  for(k in 1:38)emit(paste0('/covariance_matrix/',j-1,'/',k-1),V[j,k])
 }
 write.csv(do.call(rbind,rows),file.path(a[3],'reference.csv'),row.names=FALSE,quote=FALSE)
+slope_index<-seq(2,38,2)
+slope_estimate<-original[slope_index]
+slope_se<-sqrt(diag(V)[slope_index])
+ols_slope<-unname(coef(lm(lnmed~lntotal,d))[2])
+figure41<-data.frame(quantile=qs,estimate=slope_estimate,standard_error=slope_se,lower=slope_estimate-1.96*slope_se,upper=slope_estimate+1.96*slope_se,ols_coefficient=ols_slope)
+write.csv(figure41,file.path(a[3],'figure_4_1.csv'),row.names=FALSE,quote=FALSE)
 out<-d[,c('source_row','lntotal','lnmed')]
 out$median<-original[19]+original[20]*d$lntotal;out$median_residual<-d$lnmed-out$median
 write.csv(out,file.path(a[3],'cohort.csv'),row.names=FALSE,quote=FALSE)

@@ -481,6 +481,8 @@ pub enum RuntimeError {
   LogitFailed { message: String },
   /// Invalid/unsupported conditional-quantile request or failed numerical/IID fit.
   QregFailed { message: String },
+  /// Invalid/unsupported joint quantile slope plot or failed artifact publication.
+  QregPlotFailed { message: String },
   /// Continuous logit marginal effects require an owned preceding logit fit.
   EstatMarginsRequiresPriorLogit,
   /// A retained-design delta calculation failed.
@@ -1221,6 +1223,7 @@ impl fmt::Display for RuntimeError {
       Self::FixedEffectsFailed { message } => write!(formatter, "xtreg fe failed: {message}"),
       Self::FixedEffectsPredictionFailed { message } => write!(formatter, "predict after xtreg fe failed: {message}"),
       Self::QregFailed { message } => write!(formatter, "qreg: {message}"),
+      Self::QregPlotFailed { message } => write!(formatter, "qregplot: {message}"),
       Self::LogitFailed { message } => write!(formatter, "logit: {message}"),
       Self::EstatMarginsRequiresPriorLogit => {
         formatter.write_str("estat margins requires a prior logit fit")

@@ -1,4 +1,6 @@
-use tabdat_stats::{EstimationProblem, bootstrap_quantiles};
+use tabdat_stats::{
+  EstimationProblem, bootstrap_quantiles, fit_least_squares, quantile_slope_bands,
+};
 
 fn problem(case: &str) -> EstimationProblem {
   let rows: Vec<Vec<f64>> = include_str!("fixtures/quantile-bootstrap/inputs.csv")
@@ -68,6 +70,74 @@ fn joint_covariance_bias_and_percentiles_match_independent_common_draw_quantreg(
     }
   }
   assert_eq!(comparisons, 477);
+}
+
+#[test]
+fn quantile_slope_bands_use_joint_covariance_diagonal_and_same_sample_ols() {
+  let p = problem("joint");
+  let quantiles = [0.2, 0.5, 0.8];
+  let seed = 7;
+  let replications = 40;
+  let bootstrap = bootstrap_quantiles(&p, &quantiles, replications, seed).unwrap();
+  let ols = fit_least_squares(&p).unwrap();
+  let actual = quantile_slope_bands(&p, &quantiles, "x", replications, seed).unwrap();
+
+  assert_eq!(actual.quantiles, quantiles);
+  assert_eq!(actual.observation_count, p.observation_count());
+  assert_eq!(actual.replications, replications);
+  assert_eq!(actual.seed, seed);
+  assert_eq!(actual.rng, bootstrap.rng);
+  assert_eq!(actual.covariance_convention, "common_iid_pairs_b_minus_1");
+  assert_eq!(actual.band_method, "pointwise_normal_fixed_1.96");
+  assert_eq!(actual.reference_distribution, "asymptotic_standard_normal");
+  assert_eq!(actual.critical_value, 1.96);
+  assert!(!actual.simultaneous_coverage);
+  assert_eq!(
+    actual.ols_coefficient,
+    ols
+      .coefficients
+      .iter()
+      .find(|b| b.name == "x")
+      .unwrap()
+      .value
+  );
+  assert_eq!(actual.sample, bootstrap.sample);
+
+  let k = p.parameter_count();
+  assert_eq!(actual.points.len(), quantiles.len());
+  for (i, point) in actual.points.iter().enumerate() {
+    let index = i * k + 1;
+    let estimate = bootstrap.coefficients[index].estimate;
+    let standard_error = bootstrap.covariance_matrix[index][index].sqrt();
+    assert_eq!(point.quantile, quantiles[i]);
+    assert_eq!(point.estimate, estimate);
+    assert_eq!(point.standard_error, standard_error);
+    assert_eq!(point.lower, estimate - 1.96 * standard_error);
+    assert_eq!(point.upper, estimate + 1.96 * standard_error);
+  }
+  assert!(quantile_slope_bands(&p, &[0.5], "x", replications, seed).is_err());
+  assert!(quantile_slope_bands(&p, &quantiles, "missing", replications, seed).is_err());
+}
+
+#[test]
+fn quantile_slope_bands_select_predictor_by_position_when_name_matches_intercept() {
+  let mut p = problem("joint");
+  p.predictor_names[0] = "intercept".into();
+  let quantiles = [0.2, 0.8];
+  let bootstrap = bootstrap_quantiles(&p, &quantiles, 40, 7).unwrap();
+  let ols = fit_least_squares(&p).unwrap();
+  let actual = quantile_slope_bands(&p, &quantiles, "intercept", 40, 7).unwrap();
+
+  assert_eq!(actual.ols_coefficient, ols.coefficients[1].value);
+  assert_ne!(actual.ols_coefficient, ols.coefficients[0].value);
+  assert_eq!(
+    actual.points[0].estimate,
+    bootstrap.coefficients[1].estimate
+  );
+  assert_ne!(
+    actual.points[0].estimate,
+    bootstrap.coefficients[0].estimate
+  );
 }
 
 #[test]

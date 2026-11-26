@@ -24,7 +24,7 @@ not by implementing every estimator mentioned in a chapter.
 
 | Book chapters / area | Installed baseline | Required remaining outcomes |
 | --- | --- | --- |
-| 4: Linear, IV and quantile models | Bounded OLS with one-way factors and two-variable continuous products, WLS/diagonal GLS, 2SLS, HC1/one-way cluster inference; IID-location qreg and joint IID/whole-cluster pairs quantile bootstrap with one two-quantile coefficient contrast | Remaining IV diagnostics, analytic clustered qreg covariance, general quantile restrictions and simultaneous bands; cross-estimator factor designs, broader interactions and weight semantics |
+| 4: Linear, IV and quantile models | Bounded OLS with one-way factors and two-variable continuous products, WLS/diagonal GLS, 2SLS, HC1/one-way cluster inference; IID-location qreg, joint IID/whole-cluster pairs quantile bootstrap with one two-quantile coefficient contrast, and source-validated MMA Figure 4.1 pointwise slope bands | Remaining IV diagnostics, analytic clustered qreg covariance, general quantile restrictions and true simultaneous-coverage bands; cross-estimator factor designs, broader interactions and weight semantics |
 | 5–6, 10: ML/NLS, GMM/systems, optimization | Least squares, bounded binary logit/probit MLE/QR and explicit-formula unweighted NLS | Remaining nonlinear/system estimation, identification, optimization and valid covariance/convergence diagnostics |
 | 7–8: Testing and specification | Linear restrictions, mean tests, VIF; binary LR/normal coefficient, robust/clustered omnibus Wald, retained-fit Wald restrictions, continuous product-rule delta AMEs and bounded 0/1 probability changes in additive and continuous-product designs | Further model-specific LR/LM/specification tests, nonlinear restrictions, comparison and uncertainty |
 | 9: Nonparametric/semiparametric | Bounded original177-row PSID Figure9.2 Epanechnikov composition and native centred-rank LOWESS Figure9.3 source-data adaptation; independent source/R/geometry validation | General density, histogram/other kernels/kNN/remaining local or semiparametric regression; historical Figure9.3 tied-curve parity unresolved; no general KDE command or uncertainty |
@@ -104,7 +104,7 @@ provenance and redistribution terms before adding fixtures.
 | MMA-NLS-MODELVAR | §5.9.2–3 auxiliary NLS model-variance calculation; mma05p2nls.do and generated mma05data.asc | Validated bounded source composition | [Workflow](../../examples/mma05p2nls/model_variance.md): plug-in Var(y|x)=fitted mean² sandwich, no HC correction, full B/M/covariance and SEs; independent R and all 10000 source/fit projections checked. Historical eight-decimal SEs differ; agreement at four decimals only. Not general robust/weighted/cluster covariance or whole-table evidence |
 | MMA-NLS-WEIGHTED | §5.9.2–3 pp159–163, Table5.7 WNLS/FGNLS columns; same generated mma05data.asc / mma05p2nls.do/.txt | Validated — bounded fixed-first-fit source composition | [Workflow](../../examples/mma05p2nls/weighted.md): fixed weights 1/mu0 and 1/mu0², native transformed responses, working/HC1 covariance and approximate-t inference, separate scaled/original-level diagnostics. Original source passes 340111 numerical gates at unchanged tolerances, with exact source rows, text/JSON CSV equality, forgery and publication controls; closed-form and rescaling checks. No general weights API, iterative FGNLS, exponential ML, known-variance covariance or marginal effects; supplemental historical WNLS log-density precision parity not established |
 | MMA-IV | pp. 110–112, schooling/weak instruments; `DATA66.dat` + dictionary | In progress — Table 4.5 2SLS core and `grade76` weak-IV-robust scalar projection validated | Coefficients, classical/HC1 SEs, N, conventional first-stage F and Shea partial R² match the author output. The DATA66 `grade76` AR projection leaves `exp76` and `expsq76` unrestricted and matches independent R profiling on the retained sample; see the detailed evidence below. Whole-illustration completion, robust projection beyond the bounded two-endogenous/two-instrument method, and less-conservative endogenous-subvector inference remain open. Separate scalar and joint robust AR method evidence is also recorded below |
-| MMA-QREG | §4.6.4 pp. 88–90, Vietnam living standards; author `mma04p2qreg.do`, original `qreg0902.asc` | Partial: native .1/.5/.9 conditional quantiles and IID-location inference/prediction; joint IID and whole-cluster pairs-bootstrap covariance/marginal percentile intervals and one two-quantile coefficient contrast with asymptotic normal inference | Original 5,999 rows / 5,006 finite cases; R quantreg validation, source identity and prediction audit in [workflow](../../examples/mma04p2qreg/README.md). Native Figure4.2 SVG validates all observed/line coordinates and geometry; DTA precision and historical Stata SE differ. [Joint bootstrap method](../../examples/mma04p2qreg/bootstrap.md) documents the .25/.75 author slope comparison; synthetic clustered-method evidence is separate; Figure4.1 bands and rendering remain |
+| MMA-QREG | §4.6.4 pp. 88–90, Vietnam living standards; author `mma04p2qreg.do`, original `qreg0902.asc` | Partial: native .1/.5/.9 conditional quantiles and IID-location inference/prediction; joint IID and whole-cluster pairs-bootstrap covariance/marginal percentile intervals and one two-quantile coefficient contrast; native Figure4.1 pointwise slope-band SVG | Original 5,999 rows / 5,006 finite cases; R quantreg validation, source identity and prediction audit in [workflow](../../examples/mma04p2qreg/README.md). Figure4.1 independently checks all19 slope estimates, B−1 SEs, fixed-1.96 endpoints, same-sample OLS slope, sample counts and SVG geometry. Figure4.2 SVG validates all observed/line coordinates and geometry; DTA precision and historical Stata SE/RNG differ. [Joint bootstrap method](../../examples/mma04p2qreg/bootstrap.md) documents the .25/.75 author slope comparison; synthetic clustered-method evidence is separate; neither plotted bands nor marginal percentile intervals claim simultaneous coverage |
 | MMA-NONPARAM | pp. 295–297, 300, PSID; `psidf3050.dat` / `mma09p1np.do` | Partial — density and native LOWESS source adaptation validated separately | Figures9.1 histogram/9.4 kernel comparison, unresolved historical Figure9.3 tied-curve mapping and additional regression/kNN outputs remain required; synthetic Figures9.5–9.7 in mma09p2npmore.do are separate from empirical PSID |
 | MMA-NONPARAM-KDE | §9.2.1 pp.295–297, Figure9.2; original psidf3050.dat / mma09p1np.do | Validated bounded native composition — conventional Epanechnikov bandwidth sensitivity | [Workflow/evidence](../../examples/mma09p1np/README.md):4856 raw records→177 positive-earner age36/nonmissing-education rows; h/2,h,2h from exact declared sample-SD/type7 plugin rule/common512-point full-support grid/CSV/SVG.4870 direct-R cells/all1536 ordinates and actual vertices/512 grid marks/48560 exact original source fields/103 author summary/plugin facts; JSON/text CSV/SVG byte-identical. Double h.5453854422894842 versus historical generated-float h.5453854164300618/printed.54538542 is independently audited, not tolerance widening. Four new actual-script/conversion controls plus24 adjacent SQL/scatter/workflow regressions pass; independent source/statistical review found no issues. No general KDE/line command, uncertainty/other kernels/LOWESS/histogram, whole-Chapter9 or platform claim |
 | MMA-NONPARAM-LOWESS | §9.4.3 p297, Figure9.3 source-data adaptation; psidf3050.dat / mma09p1np.do | Partial — native source-data adaptation validated; historical tied-curve parity unresolved | [Bounded contract](../../examples/mma09p1np/lowess.md):177 source rows/spans.8/.4/.1, stable numeric-X/input-order rank windows, nonrobust tricube local linear fits and coincident-X local means, original-position atomic columns/NULLs/reporting/CSV/SVG implemented. Original177-row standalone source-script probe matches2832 exported R cells/all531 independent per-window QR fits (max6.67e-15), k70/35/8 and0/0/63 coincident windows,531 actual SVG vertices/177 raw marks and14 within-X diagnostic rows/70 cells; JSON/text CSV/SVG bytes identical.30 distinct focused tests; independent check_lowess.py validates all48560 exact original/R fields, three author spans, per-window normal equations versus native centred moments/R QR and actual SVG geometry in both modes. Numeric-only shared-wrong native/R fits/cohort/window/fallback and actual path/mark/domain forgeries are rejected; source guards/no-clobber/constant Y/X controls pass. Shared preparation leaves all original KDE CSV/SVG bytes/source audits unchanged. Final local scope1618 distinct passes/two pre-existing ignored across279 current artifacts, hash-verified fresh-copy standard harness after diagnosed _dyld_start discovery stall (not a nextest pass); all-target Clippy/format checks and two independent reviews, each P2 corrected (window-local response scale, complete SVG path connectivity). Reviewers inspected evidence, not fresh executions. Exact public admission-message expectation replays pass. Existing parser default2/3 retained; source spans explicit. Python/R nearest-neighbour/robust defaults differ (MIG-0023); historical Stata tied-curve ordering is not established and must not be counted as verified literal figure parity. No uncertainty/out-of-sample model or whole-Chapter9 claim |
@@ -2817,16 +2817,16 @@ remain required.
 ### MMA-QREG joint IID pairs-bootstrap method evidence
 
 The [joint household script](../../examples/mma04p2qreg/bootstrap.md) advances
-mma04p2qreg.do block3 / Figure4.1's underlying joint fit: original5,006 complete
-ASCII records, nineteen quantiles .05,.10,...,.95, intercept/log total expenditure,
-B200 and explicit native seed10101. Each IID row resample is shared across all
+mma04p2qreg.do block 3 / Figure 4.1's underlying joint fit: original 5,006 complete
+ASCII records, nineteen quantiles .05, .10, …, .95, intercept/log total expenditure,
+B=200 and explicit native seed=10101. Each IID row resample is shared across all
 quantiles. Full joint covariance uses B-1, with marginal R-type7 percentile95
 intervals and no simultaneous-coverage claim. The read-only report preserves
 the retained median fit and source/design/current-row prediction workflow.
 
-An independent Python xoshiro/SplitMix64 index oracle and R4.6.1/quantreg6.1 br
-fits validate1,672 quantities and25,030 cohort/retained-median prediction cells;
-all5,999 raw records and source order are pinned. The original audit uses the
+An independent Python xoshiro/SplitMix64 index oracle and R 4.6.1/quantreg 6.1 `br`
+fits validate 1,672 quantities and 25,030 cohort/retained-median prediction cells;
+all 5,999 raw records and source order are pinned. The original audit uses the
 optimized native binary. Synthetic cases add477 joint-bootstrap quantities and
 27 near-active coefficient/covariance/normal-inference checks at unchanged
 1e-8 absolute / relative1e-7 tiny-tail tolerances. A reproduced near-active LP
@@ -2835,9 +2835,34 @@ weakening certificates, redrawing or discarding a sample. Failure/work limits,
 exact fits without replicate sparsity, sample/state and native-script guards
 are covered. This is IID method evidence, not survey-design inference or the
 historical Stata RNG/SE column. The bounded .25/.75 slope contrast now has an
-independent common-draw normal-inference reference; Figure4.1 bands/rendering,
-general restrictions, analytic clustered covariance and survey inference remain
-uninstalled.
+independent common-draw normal-inference reference. The native pointwise Figure4.1
+workflow is documented and audited below. General restrictions, analytic
+clustered covariance and survey inference remain uninstalled.
+
+### MMA-QREG Figure 4.1 pointwise slope bands and rendering
+
+The original [March 2005 author program](https://cameron.econ.ucdavis.edu/mmabook/mma04p2qreg.do)
+fits nineteen conditional quantiles .05 through .95, obtains a common IID
+pairs-bootstrap covariance with B=200/seed=10101, and plots each slope with
+`estimate ± 1.96 × SE` plus the same-sample OLS slope. Its bands are pointwise
+normal approximations; neither the program's joint fit nor its plotted bands
+guarantee simultaneous coverage.
+
+The native [`qregplot` workflow](../../examples/mma04p2qreg/figure_4_1.md)
+uses the original 5,999-row/5,006-complete-case ASCII source, the certified
+quantile LP, common IID row draws, the B−1 covariance diagonal and same-sample
+OLS. R 4.6.2/quantreg 6.1 `rq(method="br")` fits and base-R OLS use an independent
+Python xoshiro/SplitMix64 common-index oracle for the 200 resamples. The reference
+checks all 19 point estimates, bootstrap SEs and fixed-1.96 endpoints plus OLS;
+maximum absolute difference is below 1e-8. The SVG audit checks series order,
+axis ranges, all 58 raw vertices and every corresponding screen coordinate at
+1e-8 tolerance. The original source SHA256 is
+`eb1b422fa29a096e608ff5f8912ee1b9fcecc749d227fbfd37b19d3b18db8b0b`.
+The optimized source run completed in 82.50s with 61,390,848-byte peak RSS locally.
+The companion independent joint-bootstrap audit pins all 5,999 records and exact
+source identities, verifies all 5,006 retained cohort rows (including valid
+log-outcome zeros) and 25,030 prediction/design cells. Stata 8 RNG/SE parity,
+survey-design inference and WMF/pixel parity are not claimed.
 
 ### MMA-QREG synthetic whole-cluster pairs-bootstrap method evidence
 
@@ -2856,5 +2881,5 @@ three-cluster/work limits, runtime sample handling, JSON/text contracts and
 preservation of the retained fit. This is whole-cluster pairs resampling under
 independent-cluster/many-cluster assumptions; it is not few-cluster or
 survey-design inference and is distinct from the Hagemann wild-gradient method
-exposed by R quantreg's cluster bootstrap option. Analytic clustered `qreg`,
-survey inference and Figure4.1 bands remain unimplemented.
+exposed by R quantreg's cluster bootstrap option. Analytic clustered `qreg` and
+survey inference remain unimplemented.

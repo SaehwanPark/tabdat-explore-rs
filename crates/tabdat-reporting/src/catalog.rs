@@ -59,6 +59,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "predict",
   "probit",
   "qreg",
+  "qregplot",
   "quit",
   "recode",
   "regress",
@@ -352,6 +353,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
       name: "qreg".to_string(),
     },
     CommandEffectEntry {
+      effects: vec![CommandEffect::Read, CommandEffect::Plot],
+      name: "qregplot".to_string(),
+    },
+    CommandEffectEntry {
       effects: vec![CommandEffect::Control],
       name: "quit".to_string(),
     },
@@ -470,6 +475,14 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
+      name: "xtdes".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "xtdescribe".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
       name: "xtgee".to_string(),
     },
     CommandEffectEntry {
@@ -487,14 +500,6 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
       name: "xtsum".to_string(),
-    },
-    CommandEffectEntry {
-      effects: vec![CommandEffect::Read],
-      name: "xtdes".to_string(),
-    },
-    CommandEffectEntry {
-      effects: vec![CommandEffect::Read],
-      name: "xtdescribe".to_string(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
@@ -1584,6 +1589,31 @@ fn get_command_schema(
       ],
       syntax: "qreg y x [, quantile(val)]".to_string(),
     }),
+    "qregplot" => Ok(CommandSchemaResult {
+      arguments: vec![
+        ArgumentDescriptor {
+          name: "depvar".to_string(),
+          required: true,
+        },
+        ArgumentDescriptor {
+          name: "indepvars".to_string(),
+          required: true,
+        },
+      ],
+      help_topic,
+      name: "qregplot".to_string(),
+      options: vec![
+        OptionDescriptor { name: "coefficient".into(), required: true },
+        OptionDescriptor { name: "quantiles".into(), required: true },
+        OptionDescriptor { name: "seed".into(), required: true },
+        OptionDescriptor { name: "reps".into(), required: false },
+        OptionDescriptor { name: "noconstant".into(), required: false },
+        OptionDescriptor { name: "saving".into(), required: true },
+        OptionDescriptor { name: "noopen".into(), required: true },
+        OptionDescriptor { name: "title".into(), required: false },
+      ],
+      syntax: "qregplot y xvars, coefficient(x) quantiles(values) seed(integer) [reps(200) noconstant] saving(\"file.svg\") noopen [title(\"text\")]".to_string(),
+    }),
     "quit" => Ok(CommandSchemaResult {
       arguments: vec![],
       help_topic,
@@ -2317,7 +2347,7 @@ mod tests {
   #[test]
   fn test_catalog_counts_and_sorting() {
     let catalog = command_catalog_result();
-    assert_eq!(catalog.commands.len(), 93);
+    assert_eq!(catalog.commands.len(), 94);
     assert_eq!(
       catalog
         .commands
@@ -2428,7 +2458,7 @@ mod tests {
   #[test]
   fn test_command_effects_coverage() {
     let effects = command_effect_catalog_result();
-    assert_eq!(effects.commands.len(), 93);
+    assert_eq!(effects.commands.len(), 94);
     assert_eq!(
       effects
         .commands
