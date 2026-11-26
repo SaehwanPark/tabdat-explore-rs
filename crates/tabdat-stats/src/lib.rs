@@ -39,6 +39,7 @@ mod conditional_poisson_bootstrap;
 mod gaussian_mle;
 mod gompertz;
 mod heckman;
+mod heckman_ml;
 pub mod iv;
 mod iv_confidence;
 mod iv_endogenous;
@@ -148,6 +149,10 @@ pub use fixed_effects::{FixedEffect, FixedEffectsResult, UnitEffectsFTest, fit_f
 pub use heckman::{
   HeckmanPredictionKind, HeckmanTwoStepResult, MAX_HECKMAN_OBSERVATIONS, MAX_HECKMAN_PARAMETERS,
   MAX_HECKMAN_WORK, fit_heckman_two_step, heckman_predict_row,
+};
+pub use heckman_ml::{
+  HeckmanMlOptions, HeckmanMlResult, MAX_HECKMAN_ML_PARAMETERS, MAX_HECKMAN_ML_WORK,
+  fit_heckman_ml, heckman_ml_predict_row,
 };
 pub use iv::{
   AndersonRubinResult, FirstStageDiagnostic, InstrumentalVariablesProblem, IvOptions, IvResult,

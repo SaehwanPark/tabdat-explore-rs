@@ -5,14 +5,49 @@ fn heckman_error(message: String) -> RuntimeError {
   RuntimeError::HeckmanFailed(message)
 }
 
+enum HeckmanPredictionFit<'a> {
+  TwoStep(&'a tabdat_stats::HeckmanTwoStepResult),
+  Ml(&'a tabdat_stats::HeckmanMlResult),
+}
+
+impl HeckmanPredictionFit<'_> {
+  fn outcome_predictors(&self) -> &[String] {
+    match self {
+      Self::TwoStep(result) => &result.predictor_names,
+      Self::Ml(result) => &result.predictor_names,
+    }
+  }
+
+  fn selection_predictors(&self) -> &[String] {
+    match self {
+      Self::TwoStep(result) => &result.selection.predictor_names,
+      Self::Ml(result) => &result.selection_predictor_names,
+    }
+  }
+
+  fn predict(
+    &self,
+    outcome: &[f64],
+    selection: &[f64],
+    kind: tabdat_stats::HeckmanPredictionKind,
+  ) -> Result<f64, tabdat_stats::StatsError> {
+    match self {
+      Self::TwoStep(result) => tabdat_stats::heckman_predict_row(result, outcome, selection, kind),
+      Self::Ml(result) => tabdat_stats::heckman_ml_predict_row(result, outcome, selection, kind),
+    }
+  }
+}
+
 impl Session {
   pub(crate) fn execute_heckman(
     &mut self,
     command: &HeckmanCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
     self.estimation = None;
-    if !command.twostep || command.robust || command.cluster_variable.is_some() {
-      return Err(heckman_error("only explicit twostep with IID model-based corrected covariance is implemented; default ML, robust and cluster inference are unavailable".into()));
+    if command.robust || command.cluster_variable.is_some() {
+      return Err(heckman_error(
+        "robust and cluster covariance are unavailable for Heckman ML and twostep".into(),
+      ));
     }
     let p = command.predictors.len() + usize::from(command.include_intercept) + 1;
     let q = command.selection_predictors.len() + usize::from(command.include_intercept);
@@ -183,14 +218,25 @@ impl Session {
     .map_err(|e| heckman_error(e.to_string()))?
     .with_intercept(command.include_intercept)
     .with_sample(outcome_sample);
-    let result = tabdat_stats::fit_heckman_two_step(
-      &selection,
-      &outcome,
-      &tabdat_stats::ProbitOptions::default(),
-    )
-    .map_err(|e| heckman_error(e.to_string()))?;
-    self.estimation = Some(EstimationState::HeckmanTwoStepFit(Box::new(result.clone())));
-    Ok(ExecutionResult::HeckmanTwoStep(Box::new(result)))
+    if command.twostep {
+      let result = tabdat_stats::fit_heckman_two_step(
+        &selection,
+        &outcome,
+        &tabdat_stats::ProbitOptions::default(),
+      )
+      .map_err(|e| heckman_error(e.to_string()))?;
+      self.estimation = Some(EstimationState::HeckmanTwoStepFit(Box::new(result.clone())));
+      Ok(ExecutionResult::HeckmanTwoStep(Box::new(result)))
+    } else {
+      let result = tabdat_stats::fit_heckman_ml(
+        &selection,
+        &outcome,
+        &tabdat_stats::HeckmanMlOptions::default(),
+      )
+      .map_err(|e| heckman_error(e.to_string()))?;
+      self.estimation = Some(EstimationState::HeckmanMlFit(Box::new(result.clone())));
+      Ok(ExecutionResult::HeckmanMl(Box::new(result)))
+    }
   }
 
   pub(crate) fn execute_heckman_prediction(
@@ -217,13 +263,17 @@ impl Session {
       || command.level.parse::<f64>().ok() != Some(95.0)
     {
       return Err(heckman_error(
-        "two-step predictions are point-only, without auxiliary options".into(),
+        "Heckman predictions are point-only, without auxiliary options".into(),
       ));
     }
-    let Some(EstimationState::HeckmanTwoStepFit(state)) = &self.estimation else {
-      return Err(heckman_error(
-        "a successful Heckman twostep fit is required".into(),
-      ));
+    let state = match &self.estimation {
+      Some(EstimationState::HeckmanTwoStepFit(state)) => HeckmanPredictionFit::TwoStep(state),
+      Some(EstimationState::HeckmanMlFit(state)) => HeckmanPredictionFit::Ml(state),
+      _ => {
+        return Err(heckman_error(
+          "a successful Heckman ML or twostep fit is required".into(),
+        ));
+      }
     };
     let dataset = self
       .active_dataset
@@ -251,10 +301,10 @@ impl Session {
     let needs_z = kind != Kind::Xb;
     let mut names = Vec::new();
     for name in state
-      .predictor_names
+      .outcome_predictors()
       .iter()
       .filter(|_| needs_x)
-      .chain(state.selection.predictor_names.iter().filter(|_| needs_z))
+      .chain(state.selection_predictors().iter().filter(|_| needs_z))
     {
       if !names.contains(name) {
         names.push(name.clone());
@@ -279,7 +329,7 @@ impl Session {
         )));
       }
     }
-    let positions = |source: &Vec<String>, needed: bool| {
+    let positions = |source: &[String], needed: bool| {
       if needed {
         source
           .iter()
@@ -294,8 +344,8 @@ impl Session {
         Vec::new()
       }
     };
-    let x_positions = positions(&state.predictor_names, needs_x);
-    let z_positions = positions(&state.selection.predictor_names, needs_z);
+    let x_positions = positions(state.outcome_predictors(), needs_x);
+    let z_positions = positions(state.selection_predictors(), needs_z);
     let select = if names.is_empty() {
       "1".into()
     } else {
@@ -333,7 +383,8 @@ impl Session {
           let x: Vec<_> = x_positions.iter().map(|&i| cells[i]).collect();
           let z: Vec<_> = z_positions.iter().map(|&i| cells[i]).collect();
           values.push(Some(
-            tabdat_stats::heckman_predict_row(state, &x, &z, kind)
+            state
+              .predict(&x, &z, kind)
               .map_err(|e| heckman_error(e.to_string()))?,
           ));
           Ok(())

@@ -1,5 +1,5 @@
 use tabdat_domain::{EstimationFamily, EstimationState, HeckmanCommand, ModelState};
-use tabdat_stats::{EstimationProblem, EstimationSample, ProbitOptions};
+use tabdat_stats::{EstimationProblem, EstimationSample, HeckmanMlOptions, ProbitOptions};
 
 #[test]
 fn legacy_heckman_command_without_method_does_not_become_twostep() {
@@ -15,7 +15,7 @@ fn legacy_heckman_command_without_method_does_not_become_twostep() {
 }
 
 #[test]
-fn legacy_placeholder_and_owned_twostep_state_remain_distinct_and_lossless() {
+fn legacy_placeholder_and_owned_ml_twostep_states_remain_distinct_and_lossless() {
   let p = EstimationProblem::new(
     "y",
     vec!["x".into()],
@@ -56,7 +56,14 @@ fn legacy_placeholder_and_owned_twostep_state_remain_distinct_and_lossless() {
   let owned = EstimationState::HeckmanTwoStepFit(Box::new(
     tabdat_stats::fit_heckman_two_step(&selection, &outcome, &ProbitOptions::default()).unwrap(),
   ));
-  for (state, tag) in [(legacy, "heckman"), (owned, "heckman_two_step_fit")] {
+  let ml = EstimationState::HeckmanMlFit(Box::new(
+    tabdat_stats::fit_heckman_ml(&selection, &outcome, &HeckmanMlOptions::default()).unwrap(),
+  ));
+  for (state, tag) in [
+    (legacy, "heckman"),
+    (owned, "heckman_two_step_fit"),
+    (ml, "heckman_ml_fit"),
+  ] {
     assert_eq!(state.family(), EstimationFamily::Heckman);
     assert!(state.linear().is_none());
     let value = serde_json::to_value(&state).unwrap();

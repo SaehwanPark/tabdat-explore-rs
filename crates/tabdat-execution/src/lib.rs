@@ -184,7 +184,7 @@ impl Session {
       Command::Stcox { command } => self.execute_stcox(&command),
       Command::Tobit { command } => self.execute_tobit(&command),
       Command::Truncreg { command } => self.execute_truncreg(&command),
-      Command::Heckman { command } if command.twostep => self.execute_heckman(&command),
+      Command::Heckman { command } => self.execute_heckman(&command),
       Command::Poisson { command } => self.execute_poisson(&command),
       Command::XtPoisson { command } => self.execute_xtpoisson(&command),
       Command::XtGee { command } => self.execute_xtgee(&command),

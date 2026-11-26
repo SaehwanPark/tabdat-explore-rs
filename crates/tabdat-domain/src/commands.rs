@@ -272,7 +272,7 @@ pub enum Command {
   Tobit { command: TobitCommand },
   /// Fit IID Gaussian regression conditional on outcome above a known limit.
   Truncreg { command: TruncregCommand },
-  /// Explicit two-step sample selection; the default ML form remains deferred.
+  /// Fit sample selection by default joint ML or explicit `twostep`.
   Heckman { command: HeckmanCommand },
   /// Fit a nonlinear regression model (execution is deferred).
   Nl { command: NlCommand },
@@ -784,11 +784,11 @@ pub struct TruncregCommand {
   pub include_intercept: bool,
 }
 
-/// Sample selection request. Only explicit `twostep` has a native runtime;
-/// the historical bare form is not silently reinterpreted as two-step.
+/// Sample-selection request. The bare form uses joint maximum likelihood;
+/// `twostep` explicitly requests the separate generated-regressor estimator.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HeckmanCommand {
-  /// Explicit two-step method; absent legacy serialized fields remain deferred.
+  /// Select the explicit two-step method; false or an absent legacy field selects default ML.
   #[serde(default)]
   pub twostep: bool,
   /// The dependent variable.
@@ -799,11 +799,11 @@ pub struct HeckmanCommand {
   pub selection_dependent: String,
   /// Selection equation predictor variables.
   pub selection_predictors: Vec<String>,
-  /// Request robust covariance in the eventual runtime.
+  /// Request robust covariance; unsupported by the bounded runtime.
   pub robust: bool,
-  /// Optional cluster variable for the eventual runtime.
+  /// Optional cluster variable; unsupported by the bounded runtime.
   pub cluster_variable: Option<String>,
-  /// Whether the eventual runtime should include an intercept.
+  /// Whether both equations include an intercept.
   pub include_intercept: bool,
 }
 

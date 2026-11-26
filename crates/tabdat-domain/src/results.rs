@@ -970,6 +970,8 @@ pub enum ExecutionResult {
   TruncatedGaussianMarginalEffects(Box<tabdat_stats::TruncatedGaussianMarginalEffects>),
   TobitMarginalEffects(Box<tabdat_stats::TobitMarginalEffects>),
   HeckmanTwoStep(Box<tabdat_stats::HeckmanTwoStepResult>),
+  /// Joint IID Gaussian sample-selection maximum likelihood and inference.
+  HeckmanMl(Box<tabdat_stats::HeckmanMlResult>),
   /// Log-link Poisson ML or independent-row robust QMLE fit and diagnostics.
   Poisson(Box<PoissonResult>),
   /// Retained-Poisson one-sided NB1 or NB2 variance-direction score test.

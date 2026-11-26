@@ -47,7 +47,7 @@ fn add_count_cluster_metadata(
 pub fn supports_batch_command(command: &Command) -> bool {
   match command {
     Command::XtSum { .. } | Command::XtDes { .. } => true,
-    Command::Heckman { command } => command.twostep,
+    Command::Heckman { .. } => true,
     Command::TabulateQuery {
       command,
       aggregation: None,
@@ -1071,6 +1071,37 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         "converged":true,
       }),
       "HeckmanTwoStepResult",
+    ),
+    ExecutionResult::HeckmanMl(result) => (
+      json!({
+        "estimator":"heckman", "method":"maximum_likelihood", "distribution":"iid_gaussian_sample_selection",
+        "outcome":result.outcome, "predictors":result.predictor_names,
+        "selection_outcome":result.selection_outcome, "selection_predictors":result.selection_predictor_names,
+        "include_intercept":result.include_intercept,
+        "observation_count":result.observation_count,
+        "selected_count":result.selected_count, "unselected_count":result.unselected_count,
+        "samples":{"selection":result.selection_sample,"outcome":result.outcome_sample,"selected_selection_indices":result.selected_selection_indices},
+        "estimates":{"outcome":result.outcome_coefficients,"selection":result.selection_coefficients,"ancillary":result.ancillary_coefficients},
+        "covariance_matrix":result.covariance,
+        "covariance_parameter_names":result.covariance_parameter_names,
+        "covariance":"model_based_joint_observed_information",
+        "covariance_correction":1.0, "reference_distribution":"asymptotic_standard_normal", "confidence_level":95.0,
+        "likelihood":{"joint":result.log_likelihood,"independent":result.independent_log_likelihood,
+          "independence_lr_chi_square":result.independence_lr_chi_square,"independence_lr_df":1,"independence_lr_p_value":result.independence_lr_p_value},
+        "sigma":{"value":result.sigma,"standard_error":result.sigma_standard_error,
+          "confidence_interval":[result.sigma_confidence_lower,result.sigma_confidence_upper]},
+        "rho":{"value":result.rho,"standard_error":result.rho_standard_error,
+          "confidence_interval":[result.rho_confidence_lower,result.rho_confidence_upper]},
+        "lambda":{"value":result.lambda,"standard_error":result.lambda_standard_error,
+          "confidence_interval":[result.lambda_confidence_lower,result.lambda_confidence_upper]},
+        "parameterization":"outcome coefficients, selection coefficients, lnsigma, athrho",
+        "optimizer":{"iterations":result.iterations,"max_abs_scaled_score":result.max_abs_scaled_score,
+          "max_abs_scaled_step":result.max_abs_scaled_step,"converged":true},
+        "excluded_selection_predictors":result.excluded_selection_predictors,
+        "identification_warning":if result.excluded_selection_predictors.is_empty() {Some("No excluded selection predictor; identification relies on the Gaussian functional form and may be weak.")} else {None},
+        "exclusion_validity":"user_assumption_not_tested"
+      }),
+      "HeckmanMlResult",
     ),
     ExecutionResult::TruncatedGaussian(result) => (
       json!({
