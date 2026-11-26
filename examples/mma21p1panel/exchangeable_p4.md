@@ -40,8 +40,11 @@ numerically unresolved near-zero unit scores from producing spurious significanc
 it is a conservative workflow-specific admission rule. Guards can surface as
 generic `sql failed`. The continuation requires the predecessor's named
 `gaussian_pa_fit` in the **same session**; it is not a general saved-fit importer.
-Neither script adds owned GEE state or a general GEE API; `predict` after the
-workflow uses the retained pooled OLS, not exchangeable GEE.
+These source-specific scripts retain pooled OLS rather than their GEE fit;
+`predict` after either composition still uses that OLS state. The separate
+native `xtgee` command owns bounded Gaussian GEE state, including the
+period-standardized unstructured variant documented in
+[its workflow](unstructured_gee.md).
 
 ## Reproduction and outputs
 
@@ -94,8 +97,8 @@ MOM fails either condition. Neither R nor Python is a production dependency.
 
 The source's exchangeable B500 bootstrap is a separate target: the log requests
 500 but displays72 coefficient replications, and its historical RNG/duplicate
-ID semantics remain unresolved. AR1/unstructured working models, other P4
-bootstraps and the full mixed table remain required. No likelihood, prediction
-uncertainty, weighted/unbalanced panels or literal historical iteration replay
-is claimed; source header Table21.6 versus body Table21.7 conflict is recorded
-in the [inventory](gls_inventory.md).
+ID semantics remain unresolved. AR1 bootstrap, exact Stata unstructured
+formula/output parity, other P4 bootstraps and the full mixed table remain
+required. No likelihood, prediction uncertainty, weighted/unbalanced panels or
+literal historical iteration replay is claimed; source header Table21.6 versus
+body Table21.7 conflict is recorded in the [inventory](gls_inventory.md).

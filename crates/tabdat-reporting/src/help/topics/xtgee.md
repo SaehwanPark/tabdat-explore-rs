@@ -5,8 +5,9 @@
 Fits a bounded, unweighted Gaussian identity-link population-averaged GEE with one
 exchangeable within-group working correlation. All four options are required;
 apart from the bounded Poisson/log case below, other families/links are not
-supported. Other correlations, weights, offsets, factors and survey design are
-not supported. No time variable is needed. Complete finite outcome,
+supported. Other correlation forms beyond exchangeable and the bounded Gaussian
+variant below, weights, offsets, factors and survey design are not supported.
+No time variable is needed for exchangeable. Complete finite outcome,
 predictor and group rows are used; singletons remain. Up to40,000 candidate
 rows,32 numeric slopes,10,000 groups and20,000,000 row-parameter-squared units
 are allowed. There must be more groups than parameters and at least one pair.
@@ -27,6 +28,38 @@ owned marginal mean model and current predictor values; mean and index coincide
 under the identity link. Residuals also require current y. Group IDs are not
 needed for prediction; no posterior group effects or prediction uncertainty are
 provided. A failed Gaussian GEE fit leaves the previous estimation state unchanged.
+
+## Gaussian identity-link: unstructured correlation
+
+`xtgee y xvars, family(gaussian) link(identity) corr(unstructured) id(group) time(timevar)`
+
+This separately retains a bounded unstructured fit. It requires complete finite
+outcome, predictor, entity and numeric time rows; unique entity/time pairs; and
+the same balanced grid of 2..10 ascending time values for every entity. It
+allows up to40,000 rows,32 numeric slopes and10,000 entities under the same
+row-parameter resource bound. Missing model/time/entity values, duplicate keys,
+incomplete groups, a rank-deficient design or a non-positive-definite moment
+correlation fail without changing the active dataset or previous estimate.
+
+This TabDat variant standardizes the residual cross-product matrix by its
+period-specific diagonal moments and fixes the correlation diagonal at1. It
+differs from the pooled residual-square denominator in the current Stata
+`xtgee` manual and does not reproduce the original author log on MOM.dat; do not
+use it as evidence of Stata estimator parity. The Gaussian scale is residual
+sum of squares/(N−K), where K includes the intercept. No clipping, shrinkage or
+projection repairs a failed working matrix. The report retains the full
+correlation matrix, working covariance and **uncorrected** panel-cluster
+sandwich covariance. It applies no G/(G−1), HC1 or separate sandwich multiplier
+and uses normal95 coefficient inference.
+
+`predict index, xb` and `predict residual, residuals` use the retained marginal
+mean model and current predictor values; residuals also require current y.
+Named reports require the same explicit `covariance(working|sandwich)` choice
+as exchangeable Gaussian GEE. The original MOM source reports N=5,320,
+G=532, lnwg slope0.0910023, working SE0.0137712 and panel-robust SE0.0501344.
+Its table number conflicts between the source header (21.6) and executable
+output (21.7); the source's unstructured bootstrap is commented out and its
+final listing fails, so no bootstrap result is provided.
 
 Immutable reports require an explicit covariance choice:
 `estimates store pa, covariance(working)` or

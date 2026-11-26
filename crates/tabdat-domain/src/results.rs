@@ -993,6 +993,8 @@ pub enum ExecutionResult {
   NormalPoisson(Box<tabdat_stats::NormalPoissonResult>),
   /// Gaussian exchangeable GEE with both working and unit-sandwich inference.
   GaussianGee(Box<tabdat_stats::GaussianGeeResult>),
+  /// Balanced Gaussian unstructured GEE with working and unit-sandwich inference.
+  GaussianGeeUnstructured(Box<tabdat_stats::UnstructuredGaussianGeeResult>),
   PoissonGee(Box<tabdat_stats::PoissonGeeResult>),
   /// Continuous retained-X derivatives with selected-covariance delta inference.
   PoissonMarginalEffects(Box<PoissonMarginalEffects>),

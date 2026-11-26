@@ -2534,6 +2534,26 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       logit_number(r.sandwich.wald_p_value),
       logit_estimates(&r.sandwich.coefficients)
     ),
+    ExecutionResult::GaussianGeeUnstructured(r) => format!(
+      "Gaussian identity-link unstructured GEE (population averaged)\nOutcome: {}; N = {}; entities = {}; balanced T = {}\nTime variable: {}; periods: {:?}; Pearson scale RSS/(N-K) = {}\nPeriod-standardized residual-moment R; positive definiteness required, no projection; differs from Stata's pooled-denominator formula.\nWorking and uncorrected panel-cluster sandwich covariance; normal95 coefficient inference; no finite-sample correction.\nConverged in {} updates; inverse-bread-scaled score {:.3e}.\nWorking covariance, slope Wald chi2({}) = {}; p = {}\n{}\nPanel-cluster sandwich covariance, slope Wald chi2({}) = {}; p = {}\n{}\nPredictions are population marginal means/index/residuals, not entity effects.\n",
+      r.outcome.escape_debug(),
+      r.observation_count,
+      r.group_count,
+      r.period_count,
+      r.time_variable.escape_debug(),
+      r.time_values,
+      inference_number(r.phi),
+      r.iterations,
+      r.max_abs_scaled_score,
+      r.working.wald_df,
+      inference_number(r.working.wald_statistic),
+      logit_number(r.working.wald_p_value),
+      logit_estimates(&r.working.coefficients),
+      r.sandwich.wald_df,
+      inference_number(r.sandwich.wald_statistic),
+      logit_number(r.sandwich.wald_p_value),
+      logit_estimates(&r.sandwich.coefficients)
+    ),
     ExecutionResult::NormalPoisson(r) => {
       let mut estimates = r.coefficients.clone();
       estimates.push(r.ln_variance.clone());

@@ -3104,7 +3104,7 @@ fn parse_category_code(value: &UseOptionValue, context: &str) -> Result<i64, Par
 }
 
 fn parse_xtgee_command(body: &str) -> Result<Command, ParseError> {
-  let syntax = "xtgee expects: xtgee y xvars, family(gaussian) link(identity) or family(poisson) link(log), with corr(exchangeable) id(group)";
+  let syntax = "xtgee expects: xtgee y xvars, family(gaussian) link(identity) corr(exchangeable|unstructured) id(group) [time(timevar)] or family(poisson) link(log) corr(exchangeable) id(group)";
   let Some(i) = first_unquoted_comma(body) else {
     return Err(ParseError::new(syntax));
   };
@@ -3119,7 +3119,10 @@ fn parse_xtgee_command(body: &str) -> Result<Command, ParseError> {
   }
   let options = parse_use_options(&body[i + 1..])?;
   for option in &options {
-    if !matches!(option.name.as_str(), "family" | "link" | "corr" | "id") {
+    if !matches!(
+      option.name.as_str(),
+      "family" | "link" | "corr" | "id" | "time"
+    ) {
       return Err(ParseError::new(format!(
         "xtgee unsupported option: {}",
         option.name
@@ -3141,9 +3144,10 @@ fn parse_xtgee_command(body: &str) -> Result<Command, ParseError> {
     }
     values.push(value[0].to_ascii_lowercase());
   }
-  let poisson = match (values[0].as_str(), values[1].as_str(), values[2].as_str()) {
-    ("gaussian", "identity", "exchangeable") => false,
-    ("poisson", "log", "exchangeable") => true,
+  let (poisson, unstructured) = match (values[0].as_str(), values[1].as_str(), values[2].as_str()) {
+    ("gaussian", "identity", "exchangeable") => (false, false),
+    ("gaussian", "identity", "unstructured") => (false, true),
+    ("poisson", "log", "exchangeable") => (true, false),
     _ => return Err(ParseError::new(syntax)),
   };
   let keys =
@@ -3151,6 +3155,12 @@ fn parse_xtgee_command(body: &str) -> Result<Command, ParseError> {
   if keys.len() != 1 {
     return Err(ParseError::new(syntax));
   }
+  let time = parse_identifier_option("xtgee", &options, "time")?;
+  let time_variable = match (unstructured, time) {
+    (true, Some(values)) if values.len() == 1 => Some(values[0].clone()),
+    (false, None) => None,
+    _ => return Err(ParseError::new(syntax)),
+  };
   let command = XtGeeCommand {
     outcome: parts.arguments[0].text.clone(),
     predictors: parts.arguments[1..]
@@ -3158,6 +3168,7 @@ fn parse_xtgee_command(body: &str) -> Result<Command, ParseError> {
       .map(|a| a.text.clone())
       .collect(),
     entity_variable: keys[0].clone(),
+    time_variable,
   };
   Ok(if poisson {
     Command::XtGeePoisson { command }

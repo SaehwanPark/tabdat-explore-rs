@@ -36,6 +36,18 @@ fn batch_and_script_share_bounded_command_admission() {
     ("estat residuals", false),
     ("help", false),
     ("logit y x", true),
+    (
+      "xtgee y x, family(gaussian) link(identity) corr(unstructured) id(id) time(year)",
+      true,
+    ),
+    (
+      "xtgee y x, family(gaussian) link(identity) corr(exchangeable) id(id)",
+      true,
+    ),
+    (
+      "xtgee y x, family(poisson) link(log) corr(exchangeable) id(id)",
+      true,
+    ),
   ] {
     let command = parse_command(source).unwrap_or_else(|error| panic!("{source}: {error}"));
     assert_eq!(

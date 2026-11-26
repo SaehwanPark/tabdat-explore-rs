@@ -1758,7 +1758,10 @@ impl Session {
     if matches!(self.estimation, Some(EstimationState::PoissonGee(_))) {
       return self.execute_poisson_gee_prediction(command);
     }
-    if matches!(self.estimation, Some(EstimationState::GaussianGee(_))) {
+    if matches!(
+      self.estimation,
+      Some(EstimationState::GaussianGee(_) | EstimationState::GaussianGeeUnstructured(_))
+    ) {
       return self.execute_gaussian_gee_prediction(command);
     }
     if matches!(

@@ -68,7 +68,12 @@ fn snapshot(
   state: &EstimationState,
   selection: Option<GaussianGeeReportCovariance>,
 ) -> Result<EstimateSnapshot, RuntimeError> {
-  if selection.is_some() && !matches!(state, EstimationState::GaussianGee(_)) {
+  if selection.is_some()
+    && !matches!(
+      state,
+      EstimationState::GaussianGee(_) | EstimationState::GaussianGeeUnstructured(_)
+    )
+  {
     return Err(failure(
       "covariance(working|sandwich) is only available for Gaussian GEE reports",
     ));
@@ -742,6 +747,83 @@ fn snapshot(
         df_residual: None,
       }
     }
+    EstimationState::GaussianGeeUnstructured(result) => {
+      let selected = selection.ok_or_else(|| failure("Gaussian GEE has two covariance inferences; use estimates store NAME, covariance(working) or covariance(sandwich)"))?;
+      let (inference, covariance, clustered) = match selected {
+        GaussianGeeReportCovariance::Working => {
+          (&result.working, "working_gaussian_unstructured", false)
+        }
+        GaussianGeeReportCovariance::Sandwich => {
+          (&result.sandwich, "unit_sandwich_uncorrected", true)
+        }
+      };
+      if inference.coefficients.first().map(|c| c.name.as_str()) != Some("_cons") {
+        return Err(failure(
+          "Gaussian GEE intercept provenance is unavailable; refit before storing",
+        ));
+      }
+      let coefficients: Vec<_> = inference
+        .coefficients
+        .iter()
+        .enumerate()
+        .map(|(i, c)| tabdat_stats::CoefficientEstimate {
+          name: if i == 0 {
+            "intercept".into()
+          } else {
+            c.name.clone()
+          },
+          value: c.value,
+          standard_error: Some(c.standard_error),
+          statistic: Some(c.statistic),
+          p_value: Some(c.p_value),
+        })
+        .collect();
+      EstimateSnapshot {
+        panel: Some(PanelEstimateProvenance {
+          entity_variable: result.entity_variable.clone(),
+          time_variable: Some(result.time_variable.clone()),
+          group_count: result.group_count,
+          intercept_convention: "population_mean_intercept".into(),
+        }),
+        name: name.into(),
+        estimator: "gaussian_period_standardized_unstructured_gee".into(),
+        outcome: result.outcome.clone(),
+        linear_design_terms: Vec::new(),
+        nls_model: None,
+        nls_centered_r_squared: None,
+        nls_covariance_correction: None,
+        poisson_offset_variable: None,
+        poisson_offset_coefficient: None,
+        poisson_exposure_variable: None,
+        poisson_exposure_coefficient: None,
+        poisson_null_log_likelihood: None,
+        poisson_null_model: None,
+        poisson_covariance_correction: None,
+        poisson_mcfadden_r_squared: None,
+        poisson_zero_count: None,
+        poisson_count_sum: None,
+        nb2: None,
+        predictors: result.predictor_names.clone(),
+        include_intercept: true,
+        covariance: covariance.into(),
+        cluster_variable: clustered.then(|| result.entity_variable.clone()),
+        cluster_count: clustered.then_some(result.group_count),
+        covariance_parameter_names: coefficients.iter().map(|c| c.name.clone()).collect(),
+        covariance_matrix: inference.covariance.clone(),
+        coefficients,
+        observation_count: result.observation_count,
+        event_count: None,
+        sample: result.sample.clone(),
+        reference_distribution: "asymptotic_standard_normal".into(),
+        inference_degrees_of_freedom: None,
+        log_likelihood: None,
+        log_likelihood_convention: None,
+        r_squared: None,
+        mcfadden_r_squared: None,
+        root_mse: None,
+        df_residual: None,
+      }
+    }
     EstimationState::NonlinearFit(result) => {
       EstimateSnapshot {
         panel: None,
@@ -968,7 +1050,10 @@ mod tests {
     ]
   }
   fn request(state: &EstimationState) -> EstimatesCommand {
-    if matches!(state, EstimationState::GaussianGee(_)) {
+    if matches!(
+      state,
+      EstimationState::GaussianGee(_) | EstimationState::GaussianGeeUnstructured(_)
+    ) {
       EstimatesCommand::StoreGaussianGee {
         name: "owned".into(),
         covariance: GaussianGeeReportCovariance::Working,
