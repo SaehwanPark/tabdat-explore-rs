@@ -41,7 +41,7 @@ other endogenous/covariance dimensions remain unsupported.
 - [x] Implement q=25 support and independent reference fixtures.
 - [x] Update runtime/CLI coverage, current limits and examples.
 - [x] Verify numerical references, retained state, failure atomicity and resource use.
-- [ ] Review the final diff, mark ready, satisfy repository checks and merge.
+- [x] Review the final diff, mark ready, satisfy repository checks and merge.
 
 ## Verification progress
 
