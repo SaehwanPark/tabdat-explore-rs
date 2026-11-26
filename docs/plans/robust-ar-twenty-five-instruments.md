@@ -55,3 +55,7 @@ other endogenous/covariance dimensions remain unsupported.
   10,309,320,704 bytes maximum RSS.
 - The q=25 HC1 instrument-rescaling invariance test passes in 4,112.01 seconds
   with 10,231,824,384 bytes maximum RSS.
+- The q=24 HC1/CR1 reference regression passes all four design/covariance cases
+  in 3,624.37 seconds with 4,995,940,352 bytes maximum RSS.
+- The q=24 HC1 instrument-rescaling regression passes in 1,823.82 seconds with
+  4,992,090,112 bytes maximum RSS.
