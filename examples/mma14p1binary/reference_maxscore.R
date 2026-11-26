@@ -1,6 +1,6 @@
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2L) {
-  stop("usage: reference_maxscore.R <Nldata.csv> <output.csv>", call. = FALSE)
+if (length(args) != 3L) {
+  stop("usage: reference_maxscore.R <Nldata.csv> <regions.csv> <predictions.csv>", call. = FALSE)
 }
 
 raw <- read.csv(args[[1L]], check.names = FALSE)
@@ -94,3 +94,12 @@ output <- do.call(rbind, lapply(seq_along(optimal), function(i) {
   )
 }))
 write.csv(output, args[[2L]], row.names = FALSE, na = "")
+prediction_output <- data.frame(
+  source_row = sample$source_row,
+  mode = sample$mode,
+  charter = y,
+  lnrelp = x,
+  selected_class = as.integer(predicted),
+  stringsAsFactors = FALSE
+)
+write.csv(prediction_output, args[[3L]], row.names = FALSE)

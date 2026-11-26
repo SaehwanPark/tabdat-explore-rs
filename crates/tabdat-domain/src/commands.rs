@@ -266,6 +266,8 @@ pub enum Command {
   Zinb { command: ZinbCommand },
   /// Fit a quantile regression model (execution is deferred).
   Qreg { command: QregCommand },
+  /// Fit a bounded one-predictor binary maximum-score classifier.
+  MaximumScore { command: MaximumScoreCommand },
   /// Fit joint quantile slopes and publish pointwise bootstrap bands as SVG.
   QregPlot { command: QregPlotCommand },
   /// Fit a tobit (censored) regression model (execution is deferred).
@@ -753,6 +755,15 @@ pub struct QregCommand {
   pub include_intercept: bool,
 }
 
+/// Bounded binary maximum-score syntax: one outcome and one continuous predictor.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MaximumScoreCommand {
+  /// Exact 0/1 outcome variable.
+  pub outcome: String,
+  /// Single continuous predictor; an intercept is always included.
+  pub predictor: String,
+}
+
 /// Lower-censored IID Gaussian Tobit. Upper/robust/cluster syntax remains
 /// accepted but is explicitly rejected by the bounded model-based runtime.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1150,6 +1161,8 @@ pub enum PredictKind {
   SpatialLag,
   /// Posterior predictive draws for Bayesian models.
   PosteriorPredictive,
+  /// Sign classification under the retained bounded maximum-score rule.
+  MaximumScoreClass,
 }
 
 /// The parser-only `predict` form retained for a later post-estimation

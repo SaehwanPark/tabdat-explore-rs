@@ -2,81 +2,72 @@
 
 ## Outcome
 
-Add a bounded native maximum-score workflow for the fishing-mode charter-versus-
-pier example: binary `charter` on an intercept and one continuous `lnrelp`
-predictor, using the 630-row author sample. The estimator will enumerate all
-one-dimensional threshold regions in both slope directions, report a unit-norm
-coefficient representative and the exact empirical score, and retain the
+Completed a bounded native maximum-score workflow for the fishing-mode
+charter-versus-pier example: binary `charter` on an intercept and one continuous
+`lnrelp` predictor, using the 630-row author sample. The estimator enumerates all
+one-dimensional threshold regions in both slope directions, reports a unit-norm
+coefficient representative and exact empirical score, and retains the
 classification for terminal, JSON and current-row prediction output.
 
-This scope does not add a general multivariable maximum-score optimizer,
-probability predictions, marginal effects, weights or a covariance estimator.
-Maximum-score coefficients are identified only up to scale; predictions are
-sign classifications. Tied optimal threshold regions must remain visible and
-receive a deterministic representative without implying unique identification.
+This is point estimation and classification only. It does not add a general
+multivariable maximum-score optimizer, probability predictions, marginal
+effects, weights or a covariance estimator. Maximum-score coefficients are
+identified only up to scale; predictions are sign classifications. Tied
+optimal threshold regions remain visible and receive a deterministic selected
+rule without implying unique identification.
 
-## Current behavior and evidence
+## Implemented behavior
 
-- The coverage ledger marks MMA-MAXSCORE planned; no native maximum-score
-  command exists. The existing binary workflow prepares `charter` and `lnrelp`
-  from the 1,182-row fishing-mode source and retains the pier/charter subset.
-- The official LIMDEP program specifies `MSCORE; Lhs=charter; Rhs=ONE,lnrelp;
-  Nbt=50`. Its output reports the maximum-score coefficient and classification
-  table. It labels its 50-replication standard errors and t-ratios approximate.
-- An independent exact threshold enumeration of the official two-column data
-  finds two maximizing threshold regions and 536 correct classifications out
-  of 630, matching the author output's confusion counts. The printed coefficient
-  vector is one representative of this tied finite-sample optimum.
-- Maximum-score inference has cube-root, non-normal asymptotics. The ordinary
-  nonparametric bootstrap does not consistently estimate its limiting
-  distribution.
-
-## Changes
-
-1. Implement a pure statistics function for the bounded one-predictor problem.
-   Enumerate open intervals between sorted distinct predictor values for each
-   slope sign, include constant-classification candidates, maximize correct
-   classifications, retain all tied maximizing regions and normalize a chosen
-   representative to Euclidean norm one.
-2. Add the typed command/result, parser, retained-fit state, execution dispatch,
-   CLI availability/help, and terminal/JSON reporting. Fail before state changes
-   for invalid outcomes, insufficient predictor variation and empty samples.
-3. Add an example command script and an independent Base R threshold-enumeration
-   reference/checker over source-derived data. Cover both slope signs, tied
-   optima, constant predictions, exact boundary values and failure atomicity.
-4. Update the binary coverage ledger, SPEC and the MMA §14.2 example README with
-   the exact sample, normalization, score, limitations and reproducible command.
-
-## Verification
-
-- Recreate the 630-row charter/pier input from the checked source conversion and
-  preserve source-row order.
-- Compare Rust against an independent R enumeration of every classification
-  region, including score, ties, representative threshold and confusion counts.
-- Confirm the source fixture's 536/630 optimum and all four confusion cells.
-- Exercise no-fit, invalid/nonbinary outcome, constant predictor, all-tied
-  thresholds, failed execution state and retained results after current-data
-  edits; verify text and JSON agree.
-- Run focused stats, runtime and CLI contracts, then scoped Clippy, formatting
-  and diff checks. Keep the 50-bootstrap LIMDEP standard errors out of formal
-  inference unless their treatment is decided first.
+- `maxscore binary_y continuous_x` accepts exactly one numeric binary outcome,
+  one numeric predictor and an intercept. The fit uses joint complete-finite
+  rows in source order; finite outcome values other than exact 0/1 fail. There
+  are no weights, `if` filters, factors, extra predictors or no-intercept form.
+- Exact finite-sample enumeration includes both constant classifiers and every
+  split between distinct predictor values in each direction, retaining every
+  tied maximizer. The selected coefficients have Euclidean norm one; their
+  scale is not identified.
+- A successful fit retains the sample and selected rule. `predict target,
+  class` applies the rule to current rows in physical order, writes numeric 0/1
+  and returns NULL for missing/nonfinite predictors. Failed fits clear a prior
+  estimator without changing data or labels; failed predictions preserve
+  session state.
+- CLI text and JSON identify the estimator and coefficient normalization,
+  report sample/event/score counts and confusion counts for the selected rule,
+  and state that inference and probability predictions are not provided. Tied
+  rules can have different confusion cells. JSON admission includes batch and
+  script workflows.
+- The source-pinned example and independent Base R reference compare the source
+  cohort, both tied maximizing regions, unit-norm point estimates, all retained
+  and current-row classifications and the author output's 536/630 score and
+  TP/FP/FN/TN counts of 421/63/31/115.
 
 ## Reporting-contract decision
 
-The author program requests 50 naive bootstrap replications, but both its output
-warning and published theory make those standard errors unsuitable as formal
-inference. The product choice is whether to:
+The author program's 50-replication bootstrap standard errors are approximate,
+and the ordinary nonparametric bootstrap is inconsistent for maximum-score
+inference. The native result therefore contains no covariance, standard errors,
+tests, p-values or confidence intervals. A separately justified inference
+method remains future work.
 
-1. report only the point estimator and classification (recommended),
-2. reproduce the source's 50-replication standard-error diagnostics with an
-   explicit approximation label and no formal significance claims, or
-3. add a separately justified inference method, which would no longer reproduce
-   the author's `Nbt=50` uncertainty output.
+## Verification
 
-The pure finite-sample point-estimation routine and an independent exact
-threshold reference are common to all three choices and can proceed. Resolve
-this choice before adding CLI result fields or reports for uncertainty; those
-outputs must not imply formal inference unless the selected method supports it.
+- `cargo test -p tabdat-stats --test maximum_score`: 7 passed in the original
+  implementation commit; statistics behavior is unchanged in the CLI/runtime
+  increment.
+- `cargo test -p tabdat-language --test maximum_score`: 2 passed.
+- `cargo test -p tabdat-runtime --test maximum_score_contract`: 3 passed.
+- `cargo test -p tabdat-reporting --test maximum_score_contract`: 1 passed.
+- `cargo build --locked --bin tabdat-explore-rs` passed; native `--json` and
+  `--text` scripts ran from fresh output directories.
+- Official `Nldata.asc` SHA-256 matched the pinned value. The checked converter
+  produced 1,182 ordered source rows. The standalone native script and Base R
+  4.6.2 reference matched all 630 cohort/prediction rows, both maximizing
+  regions, coefficients, 536/630 score and TP/FP/FN/TN=421/63/31/115. Checker
+  tolerance is 1e-10 for score/rule/coefficients and 1e-12 for `lnrelp`.
+- `cargo check --workspace`, `cargo fmt --all --check`, `git diff --check`,
+  `cargo clippy --workspace --lib --bins -- -D warnings` and focused test-target
+  Clippy checks passed. Confirm the final PR review and repository-required
+  checks before merge.
 
 ## Sources
 

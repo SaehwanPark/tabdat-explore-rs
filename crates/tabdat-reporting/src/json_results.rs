@@ -102,6 +102,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Export { .. }
     | Command::Scatter { .. }
     | Command::QregPlot { .. }
+    | Command::MaximumScore { .. }
     | Command::Estimates { .. }
     | Command::Describe
     | Command::Count
@@ -208,6 +209,19 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       data["solver"] = json!("clarabel_0.11.1_rust_qdldl_dual_lp_qr_polish");
       data["sample"] = result.sample.as_ref().map_or(Value::Null,|s|json!({"total_observations":s.total_observations,"dropped_observations":s.dropped_observations}));
       (data, "QuantileRegressionResult")
+    }
+    ExecutionResult::MaximumScore(fit) => {
+      let mut data = serde_json::to_value(fit).expect("finite maximum-score result");
+      data["estimator"] = json!("binary_maximum_score_exhaustive_one_predictor");
+      data["coefficient_normalization"] = json!("euclidean_unit_norm");
+      data["inference"] = json!("not_provided");
+      data["probability_predictions"] = json!(false);
+      data["sample"] = json!({
+        "retained_observations": fit.sample.retained_count(),
+        "total_observations": fit.sample.total_observations,
+        "dropped_observations": fit.sample.dropped_observations,
+      });
+      (data, "MaximumScoreResult")
     }
     ExecutionResult::QuantileBootstrap(result) => {
       let mut data = serde_json::to_value(result).expect("finite quantile bootstrap");

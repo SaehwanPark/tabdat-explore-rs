@@ -19,6 +19,7 @@ mod estimates;
 mod fixed_effects;
 mod gaussian_gee;
 mod grouped_poisson;
+mod maximum_score;
 mod multinomial;
 mod nested_logit;
 mod poisson_gee;
@@ -191,6 +192,7 @@ impl Session {
       Command::XtGeePoisson { command } => self.execute_xtgee_poisson(&command),
       Command::Nbreg { command } => self.execute_nbreg(&command),
       Command::Qreg { command } => self.execute_qreg(&command),
+      Command::MaximumScore { command } => self.execute_maximum_score(&command),
       Command::Nl { command } => self.execute_nls(&command),
       Command::Lowess { command } => self.execute_lowess(&command),
       Command::Predict { command } => self.execute_predict(&command),

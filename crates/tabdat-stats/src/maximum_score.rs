@@ -54,6 +54,7 @@ pub struct MaximumScoreResult {
   /// Euclidean unit-norm representative, ordered as intercept then slope.
   pub intercept: f64,
   pub slope: f64,
+  /// Confusion counts for the selected rule; tied rules can have different cells.
   pub classification: MaximumScoreClassification,
   /// All finite-sample maximizing classifier regions in deterministic order.
   pub optimal_regions: Vec<MaximumScoreRegion>,

@@ -48,6 +48,7 @@ pub const COMMAND_NAMES: &[&str] = &[
   "lincom",
   "logit",
   "lowess",
+  "maxscore",
   "missing",
   "mlogit",
   "nbreg",
@@ -307,6 +308,10 @@ pub fn command_effect_catalog_result() -> CommandEffectCatalogResult {
     CommandEffectEntry {
       effects: vec![CommandEffect::Read, CommandEffect::Write],
       name: "lowess".to_string(),
+    },
+    CommandEffectEntry {
+      effects: vec![CommandEffect::Read],
+      name: "maxscore".to_string(),
     },
     CommandEffectEntry {
       effects: vec![CommandEffect::Read],
@@ -1588,6 +1593,22 @@ fn get_command_schema(
         },
       ],
       syntax: "qreg y x [, quantile(val)]".to_string(),
+    }),
+    "maxscore" => Ok(CommandSchemaResult {
+      arguments: vec![
+        ArgumentDescriptor {
+          name: "binary_y".to_string(),
+          required: true,
+        },
+        ArgumentDescriptor {
+          name: "continuous_x".to_string(),
+          required: true,
+        },
+      ],
+      help_topic,
+      name: "maxscore".to_string(),
+      options: vec![],
+      syntax: "maxscore binary_y continuous_x".to_string(),
     }),
     "qregplot" => Ok(CommandSchemaResult {
       arguments: vec![

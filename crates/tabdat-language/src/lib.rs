@@ -152,6 +152,7 @@ fn parse_command_with_depth(input: &str, depth: usize) -> Result<Command, ParseE
       "zip",
       "zinb",
       "qreg",
+      "maxscore",
       "qregplot",
       "tobit",
       "heckman",
@@ -291,6 +292,7 @@ fn parse_command_with_depth(input: &str, depth: usize) -> Result<Command, ParseE
       "zip",
       "zinb",
       "qreg",
+      "maxscore",
       "qregplot",
       "tobit",
       "heckman",
@@ -456,6 +458,7 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
     "zip" => parse_zero_inflated_count_command("zip", body),
     "zinb" => parse_zero_inflated_count_command("zinb", body),
     "qreg" => parse_qreg_command(body),
+    "maxscore" => parse_maximum_score_command(body),
     "tobit" => parse_tobit_command(body),
     "truncreg" => parse_truncreg_command(body),
     "heckman" => parse_heckman_command(body),
@@ -3894,6 +3897,26 @@ fn parse_qreg_command(body: &str) -> Result<Command, ParseError> {
   })
 }
 
+fn parse_maximum_score_command(body: &str) -> Result<Command, ParseError> {
+  let syntax = "maxscore expects syntax: maxscore <binary_y> <continuous_x>";
+  let parts = parse_simple_body(body, false)?;
+  if parts.missing_condition_expression
+    || parts.assignment_target_missing
+    || parts.has_assignment
+    || parts.has_condition
+    || parts.has_options
+    || parts.arguments.len() != 2
+  {
+    return Err(ParseError::new(syntax));
+  }
+  Ok(Command::MaximumScore {
+    command: MaximumScoreCommand {
+      outcome: parts.arguments[0].text.clone(),
+      predictor: parts.arguments[1].text.clone(),
+    },
+  })
+}
+
 fn parse_tobit_command(body: &str) -> Result<Command, ParseError> {
   let syntax = "tobit expects syntax: tobit <y> <xvars>, ll(<num>) [ul(<num>)]";
   let (argument_body, option_body) = match first_unquoted_comma(body) {
@@ -5591,6 +5614,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
           | "pearson"
           | "deviance"
           | "pr"
+          | "class"
           | "n"
           | "mean"
           | "mills"
@@ -5632,6 +5656,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         | "pearson"
         | "deviance"
         | "pr"
+        | "class"
         | "n"
         | "mean"
         | "mills"
@@ -5665,6 +5690,7 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
         | "pearson"
         | "deviance"
         | "pr"
+        | "class"
         | "n"
         | "mean"
         | "mills"
@@ -5786,6 +5812,8 @@ fn parse_predict_command(body: &str) -> Result<Command, ParseError> {
     PredictKind::DevianceResiduals
   } else if options.iter().any(|opt| opt.name == "pr") {
     PredictKind::Pr
+  } else if options.iter().any(|opt| opt.name == "class") {
+    PredictKind::MaximumScoreClass
   } else if options.iter().any(|opt| opt.name == "hazard") {
     PredictKind::Hazard
   } else if options.iter().any(|opt| opt.name == "cumhaz") {

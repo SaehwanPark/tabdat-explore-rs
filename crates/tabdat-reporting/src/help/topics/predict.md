@@ -1,7 +1,7 @@
 # predict
 
 Installed syntax:
-`predict newvar [, xb | xbu | u | residuals | pearson | deviance | pr | pr se | pr interval | mean | mills | ycond | yexpected | n | n interval | hazard | cumhaz | survival | pmf(k) | pmf(k) se | pmf(k) interval | cdf(k) | cdf(k) se | cdf(k) interval | pmf(cutoff_variable) | pmf(cutoff_variable) se | pmf(cutoff_variable) interval | cdf(cutoff_variable) | cdf(cutoff_variable) se | cdf(cutoff_variable) interval]`
+`predict newvar [, xb | class | xbu | u | residuals | pearson | deviance | pr | pr se | pr interval | mean | mills | ycond | yexpected | n | n interval | hazard | cumhaz | survival | pmf(k) | pmf(k) se | pmf(k) interval | cdf(k) | cdf(k) se | cdf(k) interval | pmf(cutoff_variable) | pmf(cutoff_variable) se | pmf(cutoff_variable) interval | cdf(cutoff_variable) | cdf(cutoff_variable) se | cdf(cutoff_variable) interval]`
 
 Append a DOUBLE prediction column using retained coefficients on **current rows**:
 - Explicit-formula NLS: default/xb/mean is the nonlinear formula mean on current
@@ -9,6 +9,9 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   required inputs give NULL, arithmetic failure is atomic. Parameter-only means
   need no X. No auxiliaries or uncertainty; see help nl.
 - Quantile regression: xb (fitted conditional quantile) or residuals.
+- Maximum score: `class` writes 0/1 values from the retained threshold rule;
+  missing/nonfinite current predictors write NULL. This is sign classification,
+  not a probability prediction or inferential interval.
 - Supported regress/2SLS: xb (default) or residuals (outcome minus xb).
 - Within FE: xb (normalized common intercept + current X beta), xbu (retained
   unit intercept + current X beta), u (normalized unit deviation), or residuals
@@ -91,8 +94,9 @@ Append a DOUBLE prediction column using retained coefficients on **current rows*
   deviance when y is positive. Covariance selection does not change residuals;
   they are not standardized/studentized residuals or leverage diagnostics.
 
-**Bare predict remains xb for every installed family.** Request probabilities
-with `, pr` or count means with `, n` explicitly. Count means are not probabilities
+**Bare predict remains xb for regression families.** Maximum score requires
+explicit `, class`. Request binary probabilities with `, pr` or count means with
+`, n` explicitly. Count means are not probabilities
 or integer draws; do not clip at one. `pr` is not Poisson prediction and `n` is
 not supported after linear/binary fits. NB2 also supports n/xb and explicit pmf(k)/cdf(k), not binary pr. Prediction kinds cannot be combined.
 
@@ -103,6 +107,8 @@ Example (after loading numeric x/y):
 - `predict residual, residuals`
 - `head 8`
 - `export predictions.csv`
+- `maxscore charter lnrelp`
+- `predict predicted_charter, class`
 
 Count example:
 - `poisson visits age income, robust`

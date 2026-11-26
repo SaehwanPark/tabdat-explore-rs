@@ -1514,6 +1514,66 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       writeln!(text,"Sparsity = {}; local residuals = {}; bandwidth probability = {}. No heteroskedastic-robust, cluster-robust, survey, or cross-quantile qreg inference.",inference_number(result.sparsity),result.sparsity_observation_count,inference_number(result.bandwidth_probability)).unwrap();
       text
     }
+    ExecutionResult::MaximumScore(fit) => {
+      let result = &fit.result;
+      let mut text = format!(
+        "Binary maximum-score classifier: {} on {}\nRetained N = {}; candidates = {}; dropped = {}; events = {}; correct = {}/{}; empirical score = {}\nUnit-Euclidean-norm coefficient representative: intercept = {}; {} = {}\nSelected-rule confusion counts: TP = {}; FP = {}; FN = {}; TN = {}\n",
+        fit.outcome.escape_debug(),
+        fit.predictor.escape_debug(),
+        fit.sample.retained_count(),
+        fit.sample.total_observations,
+        fit.sample.dropped_observations,
+        result.event_count,
+        result.correct_count,
+        result.observation_count,
+        inference_number(result.empirical_score),
+        inference_number(result.intercept),
+        fit.predictor.escape_debug(),
+        inference_number(result.slope),
+        result.classification.true_positive,
+        result.classification.false_positive,
+        result.classification.false_negative,
+        result.classification.true_negative,
+      );
+      writeln!(
+        text,
+        "All {} finite-sample maximizing regions (region 1 selected deterministically):",
+        result.optimal_regions.len(),
+      )
+      .unwrap();
+      for (index, region) in result.optimal_regions.iter().enumerate() {
+        match &region.rule {
+          tabdat_stats::MaximumScoreRule::Constant { class } => writeln!(
+            text,
+            "  {}. constant class {}; correct = {}",
+            index + 1,
+            u8::from(*class),
+            region.correct_count
+          )
+          .unwrap(),
+          tabdat_stats::MaximumScoreRule::Threshold {
+            direction,
+            lower,
+            upper,
+            threshold,
+          } => writeln!(
+            text,
+            "  {}. {:?} threshold in ({}, {}), representative = {}; correct = {}",
+            index + 1,
+            direction,
+            inference_number(*lower),
+            inference_number(*upper),
+            inference_number(*threshold),
+            region.correct_count
+          )
+          .unwrap(),
+        }
+      }
+      text.push_str(
+        "Point estimation and sign classification only; no standard errors, tests, confidence intervals, probability predictions, or causal interpretation.\n",
+      );
+      text
+    }
     ExecutionResult::QuantileBootstrap(result) => {
       let mut text = if let Some(cluster_count) = result.cluster_count {
         format!(

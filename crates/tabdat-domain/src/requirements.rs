@@ -65,6 +65,7 @@ impl Command {
         required.extend([Data, LinearStatistics]);
       }
       Self::IvRegress { .. }
+      | Self::MaximumScore { .. }
       | Self::PoissonBootstrap { .. }
       | Self::ConditionalPoissonBootstrap { .. }
       | Self::GammaPoissonBootstrap { .. }
