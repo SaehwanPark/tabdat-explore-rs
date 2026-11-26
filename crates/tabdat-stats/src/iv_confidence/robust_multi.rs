@@ -7,7 +7,7 @@ use crate::{CovarianceType, InstrumentalVariablesProblem, StatsError};
 use super::{ArConfidenceInterval, ArConfidenceSetShape, interval, invalid, residualize};
 
 /// HC1/one-way CR1 AR confidence set for one endogenous regressor and two through
-/// twenty-four excluded instruments. The joint-null degrees of freedom
+/// twenty-five excluded instruments. The joint-null degrees of freedom
 /// equal the number of excluded instruments.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RobustMultipleInstrumentAndersonRubinConfidenceSet {
@@ -853,10 +853,11 @@ fn scaled_polynomial(polynomial: &[f64]) -> Result<(Polynomial, f64), StatsError
     // Preserve it so callers can report singularity/repeated-root explicitly.
     return Ok((polynomial, 1.0));
   }
-  // Degree-fourteen, degree-sixteen, degree-forty-six and degree-forty-eight boundaries need less
+  // Degree-fourteen, degree-sixteen, and degree-forty-six, forty-eight, and
+  // fifty boundaries need less
   // expansion to keep low-order terms numerically resolvable; lower degrees
   // retain the prior scale because projected polynomials share this solver.
-  let margin = if matches!(degree, 46 | 48) {
+  let margin = if matches!(degree, 46 | 48 | 50) {
     1.05_f64
   } else if matches!(degree, 14 | 16) {
     1.25_f64
@@ -965,10 +966,8 @@ fn confidence_set_from_boundary(
   let normalized = polynomial_scale(polynomial, 1.0 / maximum);
   let (scaled, variable_scale) = scaled_polynomial(&normalized)?;
   let roots_in_scale = roots_on_unit_interval(&scaled)?;
-  if roots_in_scale.len() > 48 {
-    return Err(invalid(
-      "robust AR boundary has more than forty-eight real roots",
-    ));
+  if roots_in_scale.len() > 50 {
+    return Err(invalid("robust AR boundary has more than fifty real roots"));
   }
   let derivative = polynomial_derivative(&scaled);
   let mut roots = Vec::with_capacity(roots_in_scale.len());
@@ -1029,9 +1028,9 @@ fn confidence_set_from_boundary(
   if sign_to_left < 0 {
     intervals.push(interval(lower, None));
   }
-  if intervals.len() > 25 {
+  if intervals.len() > 26 {
     return Err(invalid(
-      "robust AR confidence set has more than twenty-five components",
+      "robust AR confidence set has more than twenty-six components",
     ));
   }
   for pair in intervals.windows(2) {
@@ -1295,7 +1294,7 @@ fn confidence_set_probes(intervals: &[ArConfidenceInterval], center: f64) -> (Ve
 }
 
 /// Invert the HC1/one-way CR1 joint AR Wald test for one endogenous regressor
-/// and two through twenty-four excluded instruments. The confidence boundary has
+/// and two through twenty-five excluded instruments. The confidence boundary has
 /// degree at most twice the instrument count; every real root is isolated by
 /// recursive derivative partitioning, without evaluating a finite beta grid.
 /// HC1 assumes independent rows. Cluster inference assumes independent groups
@@ -1311,9 +1310,9 @@ pub fn robust_multiple_instrument_anderson_rubin_confidence_set(
     ));
   }
   let instrument_count = problem.instrument_names.len();
-  if problem.endogenous_names.len() != 1 || !(2..=24).contains(&instrument_count) {
+  if problem.endogenous_names.len() != 1 || !(2..=25).contains(&instrument_count) {
     return Err(invalid(
-      "robust multi-instrument AR confidence sets require one endogenous regressor and two to twenty-four excluded instruments",
+      "robust multi-instrument AR confidence sets require one endogenous regressor and two to twenty-five excluded instruments",
     ));
   }
   if !level.is_finite() || level <= 0.0 || level >= 100.0 {
@@ -2896,6 +2895,19 @@ mod tests {
   }
 
   #[test]
+  fn degree_fifty_boundary_fails_closed_for_numerically_ambiguous_roots() {
+    let positive_roots = (0..25)
+      .map(|index| (std::f64::consts::PI * (2 * index + 1) as f64 / 100.0).cos())
+      .collect::<Vec<_>>();
+    let polynomial = positive_roots.iter().fold(vec![-1.0], |polynomial, root| {
+      polynomial_multiply(&polynomial, &[-root * root, 0.0, 1.0])
+    });
+    assert_eq!(positive_roots.len() * 2, 50);
+    let error = confidence_set_from_boundary(&polynomial, 0.0).unwrap_err();
+    assert!(error.to_string().contains("numerically ambiguous"));
+  }
+
+  #[test]
   fn degree_forty_four_boundary_supports_forty_four_roots_and_twenty_three_components() {
     let roots = (-22..=-1)
       .chain(1..=22)
@@ -2917,7 +2929,7 @@ mod tests {
 
   #[test]
   fn high_degree_even_polynomial_uses_the_reduced_fujiwara_degree() {
-    for (degree, constant) in [(46, 1e23), (48, 1e24)] {
+    for (degree, constant) in [(46, 1e23), (48, 1e24), (50, 1e25)] {
       let mut polynomial = vec![0.0; degree + 1];
       polynomial[0] = constant;
       polynomial[degree] = 1.0;
