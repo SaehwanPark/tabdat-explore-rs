@@ -48,6 +48,9 @@ impl Command {
       Self::Histogram { .. } | Self::Scatter { .. } | Self::Bar { .. } => {
         required.extend([Data, Plotting, FileIo]);
       }
+      Self::QregPlot { .. } => {
+        required.extend([Data, LinearStatistics, Plotting, FileIo]);
+      }
       Self::BayesPlot { .. } => {
         required.extend([Bayesian, Plotting, FileIo]);
       }

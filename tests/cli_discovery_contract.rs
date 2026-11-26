@@ -60,7 +60,7 @@ fn cli_json_lists_commands() {
   let commands = envelope["data"]["commands"]
     .as_array()
     .expect("commands array");
-  assert_eq!(commands.len(), 93);
+  assert_eq!(commands.len(), 94);
   let xtgee = commands.iter().find(|c| c["name"] == "xtgee").unwrap();
   assert_eq!(xtgee["help_topic"], "xtgee");
   let xtpoisson = commands.iter().find(|c| c["name"] == "xtpoisson").unwrap();
@@ -90,6 +90,7 @@ fn cli_json_lists_commands() {
   // Check specific entries
   assert!(names.contains(&"summarize"));
   assert!(names.contains(&"lincom"));
+  assert!(names.contains(&"qregplot"));
   assert!(names.contains(&"test"));
   assert!(names.contains(&"ttest"));
 
@@ -139,7 +140,14 @@ fn cli_json_lists_command_effects() {
   let commands = envelope["data"]["commands"]
     .as_array()
     .expect("commands array");
-  assert_eq!(commands.len(), 93);
+  assert_eq!(commands.len(), 94);
+  let names: Vec<&str> = commands
+    .iter()
+    .map(|entry| entry["name"].as_str().unwrap())
+    .collect();
+  for window in names.windows(2) {
+    assert!(window[0] < window[1]);
+  }
   let xtgee = commands.iter().find(|c| c["name"] == "xtgee").unwrap();
   assert_eq!(xtgee["effects"], serde_json::json!(["read"]));
   let xtpoisson = commands.iter().find(|c| c["name"] == "xtpoisson").unwrap();
@@ -156,6 +164,8 @@ fn cli_json_lists_command_effects() {
   assert_eq!(mlogit["effects"], serde_json::json!(["read"]));
   let estimates = commands.iter().find(|c| c["name"] == "estimates").unwrap();
   assert_eq!(estimates["effects"], serde_json::json!(["read", "control"]));
+  let qregplot = commands.iter().find(|c| c["name"] == "qregplot").unwrap();
+  assert_eq!(qregplot["effects"], serde_json::json!(["read", "plot"]));
 
   let summarize_entry = commands.iter().find(|c| c["name"] == "summarize").unwrap();
   assert_eq!(summarize_entry["effects"], serde_json::json!(["read"]));
@@ -217,6 +227,46 @@ fn cli_json_describe_command_success() {
     data["options"],
     serde_json::json!([{"name": "detail", "required": false}])
   );
+}
+
+#[test]
+fn qregplot_cli_schema_and_help_match_the_installed_contract() {
+  let output = tabdat_bin()
+    .args(["--json", "--describe-command", "qregplot"])
+    .output()
+    .unwrap();
+  assert!(output.status.success());
+  let envelope: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+  let schema = &envelope["data"];
+  assert_eq!(envelope["result_type"], "CommandSchemaResult");
+  assert_eq!(schema["name"], "qregplot");
+  assert_eq!(schema["help_topic"], "qregplot");
+  assert_eq!(
+    schema["syntax"],
+    "qregplot y xvars, coefficient(x) quantiles(values) seed(integer) [reps(200) noconstant] saving(\"file.svg\") noopen [title(\"text\")]"
+  );
+  assert_eq!(
+    schema["options"],
+    serde_json::json!([
+      {"name":"coefficient","required":true},
+      {"name":"quantiles","required":true},
+      {"name":"seed","required":true},
+      {"name":"reps","required":false},
+      {"name":"noconstant","required":false},
+      {"name":"saving","required":true},
+      {"name":"noopen","required":true},
+      {"name":"title","required":false}
+    ])
+  );
+  let help = tabdat_bin()
+    .args(["--json", "--help-topic", "qregplot"])
+    .output()
+    .unwrap();
+  assert!(help.status.success());
+  let envelope: serde_json::Value = serde_json::from_slice(&help.stdout).unwrap();
+  let text = envelope["data"]["text"].as_str().unwrap();
+  assert!(text.contains("pointwise 95% normal"));
+  assert!(text.contains("100,000,000"));
 }
 
 #[test]

@@ -14,7 +14,7 @@ The product is not feature complete. A compiled command type is not evidence of 
 | `tabdat-io` | Local path/format and script I/O validation; complete staged SVG publication without replacing destinations |
 | `tabdat-data` | DuckDB, relations, SQL generation, owned row/cell conversion and SQL scalar functions backed by the normal and Student-t routines in `tabdat-stats`. |
 | `tabdat-execution` | Session coordination, data/statistical dispatch, script execution and generated SVG artifact coordination |
-| `tabdat-reporting` | Help/catalog, bounded structured reporting, core terminal result rendering and pure owned-data scatter/line SVG generation |
+| `tabdat-reporting` | Help/catalog, bounded structured reporting, core terminal result rendering and pure owned-data scatter/line and quantile-slope SVG generation |
 | `tabdat-shell` | Batch CLI, persistent session I/O; terminal editing through Rustyline's safe facade, plain piped input |
 | `tabdat-mcp` | Transport-independent typed tools; **no MCP server** |
 | `tabdat-runtime` | Compatibility re-exports and integration entry points |
@@ -69,13 +69,15 @@ Batch CLI / line session / future MCP transport
          terminal / supported JSON
 ```
 
-For SVG scatter artifacts, execution additionally calls reporting's pure,
-backend-independent SVG builder, then publishes the completed string through I/O.
-This narrow execution → reporting edge does not call terminal/JSON rendering,
-introduce backend dependencies into reporting, or mutate data/model state. The
-shared execution path owns publication, so batch, scripts and typed callers do
-not acquire competing artifact semantics. There is no renderer framework or
-raster/font dependency.
+For SVG artifacts, execution additionally calls reporting's pure,
+backend-independent SVG builders, then publishes the completed string through
+I/O. The `qregplot` path passes the owned pointwise quantile-slope band result;
+its joint IID pairs bootstrap and same-sample OLS reference are calculated by
+`tabdat-stats`. This narrow execution → reporting edge does not call
+terminal/JSON rendering, introduce backend dependencies into reporting, or
+mutate data/model state. The shared execution path owns publication, so batch,
+scripts and typed callers do not acquire competing artifact semantics. There is
+no renderer framework or raster/font dependency.
 
 Linear model state retains ordered design terms when source variables cannot
 reconstruct the fitted columns by name alone. Execution expands those terms for

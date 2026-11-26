@@ -101,6 +101,7 @@ pub fn supports_batch_command(command: &Command) -> bool {
     | Command::Save { .. }
     | Command::Export { .. }
     | Command::Scatter { .. }
+    | Command::QregPlot { .. }
     | Command::Estimates { .. }
     | Command::Describe
     | Command::Count
@@ -496,6 +497,15 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
       "ExportResult",
     ),
     ExecutionResult::Plot(result) => (json!(result), "PlotArtifactResult"),
+    ExecutionResult::QuantileSlopePlot(result) => {
+      let mut data = serde_json::to_value(result).expect("finite quantile slope plot result");
+      data["analysis"]["estimator"] = json!("iid_pairs_bootstrap_quantile_slope_bands");
+      data["analysis"]["seed"] = json!(result.analysis.seed.to_string());
+      data["analysis"]["sample"] = result.analysis.sample.as_ref().map_or(Value::Null, |sample| {
+        json!({"total_observations":sample.total_observations,"dropped_observations":sample.dropped_observations})
+      });
+      (data, "QuantileSlopePlotResult")
+    }
     ExecutionResult::EstimateStore(result) => (json!(result), "EstimateStoreResult"),
     ExecutionResult::EstimateTable(result) => (json!(result), "EstimateTableResult"),
     ExecutionResult::EstimateDrop(result) => (json!(result), "EstimateDropResult"),

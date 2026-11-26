@@ -147,10 +147,14 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
             | "clogit"
             | "mlogit"
             | "nlogit"
+            | "qregplot"
             | "stcox"
             | "truncreg"
+            | "xtdes"
+            | "xtdescribe"
             | "xtgee"
             | "xtpoisson"
+            | "xtsum"
         )
       )
     })
@@ -163,10 +167,14 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
       &serde_json::json!({"name":"estimates","effects":["read","control"]}),
       &serde_json::json!({"name":"mlogit","effects":["read"]}),
       &serde_json::json!({"name":"nlogit","effects":["read"]}),
+      &serde_json::json!({"name":"qregplot","effects":["read","plot"]}),
       &serde_json::json!({"name":"stcox","effects":["read"]}),
       &serde_json::json!({"name":"truncreg","effects":["read"]}),
+      &serde_json::json!({"name":"xtdes","effects":["read"]}),
+      &serde_json::json!({"name":"xtdescribe","effects":["read"]}),
       &serde_json::json!({"name":"xtgee","effects":["read"]}),
-      &serde_json::json!({"name":"xtpoisson","effects":["read"]})
+      &serde_json::json!({"name":"xtpoisson","effects":["read"]}),
+      &serde_json::json!({"name":"xtsum","effects":["read"]})
     ]
   );
   // Native extensions preserve the immutable Python entries.
@@ -179,10 +187,14 @@ fn reporting_effects_preserve_all_pinned_python_entries() {
           | "clogit"
           | "mlogit"
           | "nlogit"
+          | "qregplot"
           | "stcox"
           | "truncreg"
+          | "xtdes"
+          | "xtdescribe"
           | "xtgee"
           | "xtpoisson"
+          | "xtsum"
       )
     )
   });

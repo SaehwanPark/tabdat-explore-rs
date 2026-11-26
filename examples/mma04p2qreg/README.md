@@ -6,8 +6,9 @@ block 1: log household medical expenditure on log total expenditure with an
 intercept. The selected initial illustration is the conditional median.
 Separate fitted quantiles do not validate Figure4.1. The [joint IID
 pairs-bootstrap workflow](bootstrap.md) adds its underlying 19-quantile
-uncertainty report and a bounded .25/.75 slope contrast; Figure4.1 bands and
-native rendering remain. The native Figure4.2 workflow is below.
+uncertainty report and a bounded .25/.75 slope contrast. The native
+[Figure4.1 pointwise slope-band workflow](figure_4_1.md) adds the author's
+fixed-1.96 endpoints and SVG. Figure4.2 is documented below.
 The [synthetic whole-cluster pairs workflow](../cluster-quantile-bootstrap/README.md)
 documents and validates a separate clustered resampling method; it does not
 reclassify this household survey analysis as design-based inference.

@@ -58,6 +58,7 @@ pub const AVAILABLE_HELP_TOPICS: &[&str] = &[
   "predict",
   "probit",
   "qreg",
+  "qregplot",
   "quit",
   "recode",
   "regress",
@@ -160,6 +161,7 @@ pub fn load_help_topic_text(topic: &str) -> Option<&'static str> {
     "predict" => Some(include_str!("help/topics/predict.md")),
     "probit" => Some(include_str!("help/topics/probit.md")),
     "qreg" => Some(include_str!("help/topics/qreg.md")),
+    "qregplot" => Some(include_str!("help/topics/qregplot.md")),
     "quit" => Some(include_str!("help/topics/quit.md")),
     "recode" => Some(include_str!("help/topics/recode.md")),
     "regress" => Some(include_str!("help/topics/regress.md")),
@@ -206,7 +208,7 @@ mod tests {
 
   #[test]
   fn test_all_help_topics_loadable() {
-    assert_eq!(available_help_topics().len(), 94);
+    assert_eq!(available_help_topics().len(), 95);
     assert!(available_help_topics().contains(&"xtgee"));
     assert!(available_help_topics().contains(&"xtpoisson"));
     assert!(available_help_topics().contains(&"stcox"));

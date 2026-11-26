@@ -1,6 +1,77 @@
 use crate::*;
 
 impl Session {
+  pub(crate) fn execute_qreg_plot(
+    &self,
+    command: &QregPlotCommand,
+  ) -> Result<ExecutionResult, RuntimeError> {
+    let error = |message| RuntimeError::QregPlotFailed { message };
+    let path = command
+      .saving
+      .as_deref()
+      .map(Path::new)
+      .ok_or_else(|| error("requires explicit saving(\"file.svg\") noopen".into()))?;
+    if command.open_artifact {
+      return Err(error(
+        "automatic opening is not installed; add noopen".into(),
+      ));
+    }
+    tabdat_io::validate_svg_path(path).map_err(|e| error(e.to_string()))?;
+    let regression = &command.bootstrap.regression;
+    if regression.estimator != RegressEstimator::Ols
+      || regression.weight_variable.is_some()
+      || regression.robust
+      || regression.cluster_variable.is_some()
+    {
+      return Err(error(
+        "supports unweighted IID row pairs only; robust, weighted and clustered requests are unsupported"
+          .into(),
+      ));
+    }
+    let quantiles = command
+      .quantiles
+      .iter()
+      .map(|value| value.parse::<f64>())
+      .collect::<Result<Vec<_>, _>>()
+      .map_err(|_| error("quantiles must be finite numeric values".into()))?;
+    let problem = self
+      .prepare_regression_problem(regression, None, false)
+      .map_err(|e| match e {
+        RuntimeError::NoActiveDataset { .. } => RuntimeError::NoActiveDataset {
+          command: "qregplot",
+        },
+        other => error(other.to_string()),
+      })?;
+    let analysis = tabdat_stats::quantile_slope_bands(
+      &problem,
+      &quantiles,
+      &command.coefficient,
+      command.bootstrap.replications,
+      command.bootstrap.seed,
+    )
+    .map_err(|e| error(e.to_string()))?;
+    let rendered = tabdat_reporting::quantile_slope_svg::render_quantile_slope_svg(
+      &analysis,
+      command.title.as_deref(),
+    )
+    .map_err(error)?;
+    tabdat_io::publish_svg(path, &rendered.svg).map_err(|e| match e {
+      RuntimeError::PlotWriteFailed { path, message } => {
+        error(format!("could not publish {}: {message}", path.display()))
+      }
+      other => error(other.to_string()),
+    })?;
+    Ok(ExecutionResult::QuantileSlopePlot(Box::new(
+      QuantileSlopePlotResult {
+        analysis,
+        path: path.to_path_buf(),
+        format: "svg".into(),
+        width: rendered.width,
+        height: rendered.height,
+      },
+    )))
+  }
+
   pub(crate) fn execute_qreg(
     &mut self,
     command: &QregCommand,

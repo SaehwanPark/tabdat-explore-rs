@@ -535,6 +535,21 @@ pub struct PlotArtifactResult {
   pub coordinate_precision: String,
 }
 
+/// Joint quantile slope analysis and its atomically published SVG.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct QuantileSlopePlotResult {
+  /// Pointwise estimates, uncertainty convention and retained-sample provenance.
+  pub analysis: tabdat_stats::QuantileSlopeBandResult,
+  /// Destination of the fully published SVG.
+  pub path: PathBuf,
+  /// Published format; currently `svg`.
+  pub format: String,
+  /// Width of the rendered artifact in SVG user units.
+  pub width: u32,
+  /// Height of the rendered artifact in SVG user units.
+  pub height: u32,
+}
+
 /// An owned scalar value in a bounded dataset preview.
 ///
 /// Values are copied out of DuckDB before the result leaves the runtime so a
@@ -892,6 +907,8 @@ pub enum ExecutionResult {
   Export(ExportResult),
   /// Publishes a generated SVG without changing data, labels or estimation state.
   Plot(PlotArtifactResult),
+  /// Fits and publishes pointwise quantile-slope bands without changing state.
+  QuantileSlopePlot(Box<QuantileSlopePlotResult>),
   /// Projects an explicit ordered set of columns in the active dataset.
   Keep(KeepResult),
   /// Removes an explicit set of columns from the active dataset.

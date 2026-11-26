@@ -125,3 +125,38 @@ fn contrast_requires_one_exact_coefficient_and_two_quantiles() {
     Some("g")
   );
 }
+
+#[test]
+fn qregplot_parses_selected_slope_and_pointwise_band_workflow() {
+  let Command::QregPlot { command } = parse_command(
+    "qregplot lnmed lntotal age, coefficient(lntotal) quantiles(.05 .1 .5 .9 .95) seed(10101) reps(200) saving(\"qreg bands.svg\") noopen title(\"Slope as quantile varies\")",
+  )
+  .unwrap()
+  else {
+    panic!("qregplot")
+  };
+  assert_eq!(command.bootstrap.regression.outcome, "lnmed");
+  assert_eq!(command.bootstrap.regression.predictors, ["lntotal", "age"]);
+  assert_eq!(command.coefficient, "lntotal");
+  assert_eq!(command.quantiles, [".05", ".1", ".5", ".9", ".95"]);
+  assert_eq!(command.bootstrap.seed, 10101);
+  assert_eq!(command.bootstrap.replications, 200);
+  assert_eq!(command.saving.as_deref(), Some("qreg bands.svg"));
+  assert!(!command.open_artifact);
+  assert_eq!(command.title.as_deref(), Some("Slope as quantile varies"));
+
+  for text in [
+    "qregplot y x, coefficient(x) quantiles(.5 .9) saving(a.svg) noopen",
+    "qregplot y x, coefficient(x) quantiles(.5 .9) seed(7) noopen",
+    "qregplot y x, coefficient(x) quantiles(.5 .9) seed(7) saving(a.svg)",
+    "qregplot y x, coefficient(z) quantiles(.5 .9) seed(7)",
+    "qregplot y x, coefficient(x) quantiles(.5 .9) seed(7) seed(8)",
+    "qregplot y x, coefficient(x) quantiles(.5 .9) seed(7) reps(1)",
+    "qregplot y x, coefficient(x) quantiles(.5 .9) seed(7) cluster(id)",
+    "qregplot y x, coefficient(x) quantiles(.5) seed(7)",
+    "qregplot y x, coefficient(x) quantiles(.9 .5) seed(7)",
+    "qregplot y x, coefficient(x) quantiles(.5 .95) seed(7) noopen(true)",
+  ] {
+    assert!(parse_command(text).is_err(), "{text}");
+  }
+}

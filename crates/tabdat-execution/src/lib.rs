@@ -143,6 +143,7 @@ impl Session {
       Command::Save { path, replace } => self.execute_save(path, replace),
       Command::Export { path, replace } => self.execute_export(path, replace),
       Command::Scatter { command } => self.execute_scatter(&command),
+      Command::QregPlot { command } => self.execute_qreg_plot(&command),
       Command::Head { limit } => self.execute_head(limit),
       Command::Tail { limit } => self.execute_tail(limit),
       Command::Run { path } => self.execute_run(path),

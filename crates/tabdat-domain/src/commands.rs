@@ -266,6 +266,8 @@ pub enum Command {
   Zinb { command: ZinbCommand },
   /// Fit a quantile regression model (execution is deferred).
   Qreg { command: QregCommand },
+  /// Fit joint quantile slopes and publish pointwise bootstrap bands as SVG.
+  QregPlot { command: QregPlotCommand },
   /// Fit a tobit (censored) regression model (execution is deferred).
   Tobit { command: TobitCommand },
   /// Fit IID Gaussian regression conditional on outcome above a known limit.
@@ -1066,6 +1068,25 @@ pub struct QuantileBootstrapCommand {
   pub quantiles: Vec<String>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub contrast: Option<String>,
+}
+
+/// Joint IID pairs-bootstrap quantile slope plot; this reports a new analysis
+/// and SVG without replacing the retained fit or changing the active dataset.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QregPlotCommand {
+  /// OLS design, common bootstrap replication count and explicit seed.
+  pub bootstrap: BootstrapCommand,
+  /// Requested quantiles in strictly increasing order.
+  pub quantiles: Vec<String>,
+  /// Listed predictor whose coefficient is plotted.
+  pub coefficient: String,
+  /// Required SVG output path; publication never replaces an existing file.
+  pub saving: Option<String>,
+  /// Optional plot title; the renderer rejects invalid XML text or labels.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub title: Option<String>,
+  /// The installed command requires this to be false; opening is unsupported.
+  pub open_artifact: bool,
 }
 
 /// The requested prediction mode.

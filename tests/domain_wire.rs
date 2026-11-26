@@ -68,6 +68,25 @@ fn representative_commands_roundtrip_the_internal_wire_without_backend_use() {
 }
 
 #[test]
+fn qregplot_command_roundtrips_with_plot_capabilities_and_effects() {
+  let command = tabdat_language::parse_command(
+    "qregplot y x, coefficient(x) quantiles(.2 .5) seed(7) saving(bands.svg) noopen",
+  )
+  .unwrap();
+  let wire = serde_json::to_string(&DomainEnvelope::new(command.clone())).unwrap();
+  let decoded: DomainEnvelope<Command> = serde_json::from_str(&wire).unwrap();
+  assert_eq!(decoded.data, command);
+  assert_eq!(
+    serde_json::to_value(command.effects()).unwrap(),
+    serde_json::json!(["read", "plot"])
+  );
+  assert_eq!(
+    serde_json::to_value(command.requirements()).unwrap(),
+    serde_json::json!(["data", "file_io", "linear_statistics", "plotting"])
+  );
+}
+
+#[test]
 fn runtime_publishes_domain_state_without_initializing_for_reads() {
   let mut session = tabdat_runtime::Session::new();
   assert_eq!(session.state(), ExecutionState::default());

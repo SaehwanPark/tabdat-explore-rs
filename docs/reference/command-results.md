@@ -2540,3 +2540,44 @@ assumes independent sampled clusters with many-cluster asymptotics; it does not
 claim few-cluster or survey inference. Any original or replicate fit failure
 aborts without redraw or partial results. Numerical/work limits and statistical
 assumptions are in help bootstrap.
+
+## Quantile slope plot
+
+`qregplot y xvars, coefficient(x) quantiles(values) seed(integer) [reps(200) noconstant] saving("file.svg") noopen [title("text")]`
+returns CLI-v1 `QuantileSlopePlotResult` in batch and script execution. The
+read-only command calculates one selected slope from the ordered joint
+complete-finite current sample, the common IID row-pairs bootstrap, and an OLS
+reference on the same sample/design. It does not change active data, labels,
+named reports or retained fit. Estimation/rendering finish before filesystem
+effects. Publication writes a complete sibling stage and then uses an atomic
+no-clobber hard link; existing files, directories and symlinks are never
+replaced. The destination filesystem must support local hard links. Stage
+cleanup is best effort after filesystem or crash failures; this is not a
+crash-durability guarantee, and parent directories may be created after render.
+
+`data.analysis` reports `outcome`, ordered `coefficient`, normalized
+`quantiles`, `observation_count`, `replications`, the exact decimal-text `seed`,
+versioned `rng`, `confidence_level: 95`,
+`reference_distribution: "asymptotic_standard_normal"`, `critical_value: 1.96`,
+`band_method: "pointwise_normal_fixed_1.96"`,
+`covariance_convention: "common_iid_pairs_b_minus_1"`,
+`simultaneous_coverage: false`, `ols_coefficient`, ordered `points`, and
+`sample: {total_observations,dropped_observations}`. Each point has
+`quantile`, original-sample `estimate`, bootstrap `standard_error`, and fixed
+`lower`/`upper` endpoints. `data.path`, `format`, `width` and `height` describe
+the SVG artifact.
+
+Quantiles must contain 2–19 strictly increasing values from .05 through .95;
+replications are 2–5000 (default 200). The underlying fit requires N>K,
+N≤10,000, K≤32 and N×K²≤10,000,000; the joint bootstrap also bounds
+N×K²×Q×(B+1) at 100,000,000, where K includes the intercept. Predictors are
+unweighted numeric columns, and `coefficient()` must select one listed
+predictor. Robust, clustered, factor, interaction, weighted and survey variants
+are unsupported. The bootstrap SE is the square root of a diagonal in the joint
+common-draw covariance with B−1 denominator. The figure uses the author's fixed
+`estimate ± 1.96 × SE` pointwise normal-approximation rule; it does not claim
+simultaneous coverage or a survey-design interpretation. See
+`help qregplot` and the [MMA Figure 4.1 workflow](../../examples/mma04p2qreg/figure_4_1.md)
+for sample, limits and independent R/SVG evidence.
+Terminal output includes retained/candidate/dropped counts, quantiles, seed/RNG,
+the OLS reference and every point estimate, standard error and endpoint.

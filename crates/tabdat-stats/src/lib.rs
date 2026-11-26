@@ -64,6 +64,7 @@ pub mod post_estimation;
 pub mod problem;
 mod quantile;
 mod quantile_bootstrap;
+mod quantile_slope_plot;
 mod random_effects;
 mod random_effects_ml;
 pub mod result;
@@ -242,4 +243,7 @@ pub use quantile_bootstrap::{
   QuantileBootstrapContrast, QuantileBootstrapResult, bootstrap_quantiles,
   bootstrap_quantiles_clustered, bootstrap_quantiles_clustered_with_contrast,
   bootstrap_quantiles_with_contrast,
+};
+pub use quantile_slope_plot::{
+  QuantileSlopeBandPoint, QuantileSlopeBandResult, quantile_slope_bands,
 };

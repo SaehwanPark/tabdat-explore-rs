@@ -1329,6 +1329,45 @@ fn plot_artifact(result: &tabdat_domain::PlotArtifactResult) -> String {
   output
 }
 
+fn quantile_slope_plot(result: &tabdat_domain::QuantileSlopePlotResult) -> String {
+  let analysis = &result.analysis;
+  let (candidate_rows, dropped_rows) = analysis
+    .sample
+    .as_ref()
+    .map_or((analysis.observation_count, 0), |sample| {
+      (sample.total_observations, sample.dropped_observations)
+    });
+  let mut output = format!(
+    "SVG quantile slope plot saved to {} ({} x {})\nOutcome: {}; coefficient: {}; N = {}; candidate rows = {}; excluded joint missing/nonfinite = {}; quantiles = {:?}; replications = {}; seed = {}; RNG = {}\nPointwise 95% normal-approximation bands use estimate ± 1.96 bootstrap SE; no simultaneous-coverage guarantee.\nOLS slope on the same sample = {}\n",
+    result.path.to_string_lossy().escape_debug(),
+    result.width,
+    result.height,
+    analysis.outcome.escape_debug(),
+    analysis.coefficient.escape_debug(),
+    analysis.observation_count,
+    candidate_rows,
+    dropped_rows,
+    analysis.quantiles,
+    analysis.replications,
+    analysis.seed,
+    analysis.rng,
+    inference_number(analysis.ols_coefficient),
+  );
+  for point in &analysis.points {
+    writeln!(
+      output,
+      "tau = {}: estimate = {}; SE = {}; 95% band = [{}, {}]",
+      inference_number(point.quantile),
+      inference_number(point.estimate),
+      inference_number(point.standard_error),
+      inference_number(point.lower),
+      inference_number(point.upper)
+    )
+    .unwrap();
+  }
+  output
+}
+
 fn bootstrap_report(result: &tabdat_domain::BootstrapOlsResult, whole_cluster: bool) -> String {
   let kind = if whole_cluster {
     "Whole-cluster"
@@ -2215,6 +2254,7 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       result.path.to_string_lossy().escape_debug()
     ),
     ExecutionResult::Plot(result) => plot_artifact(result),
+    ExecutionResult::QuantileSlopePlot(result) => quantile_slope_plot(result),
     ExecutionResult::Export(result) => format!(
       "Exported {} rows, {} columns to {}\n",
       result.dataset.row_count,

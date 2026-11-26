@@ -152,6 +152,7 @@ fn parse_command_with_depth(input: &str, depth: usize) -> Result<Command, ParseE
       "zip",
       "zinb",
       "qreg",
+      "qregplot",
       "tobit",
       "heckman",
       "nl",
@@ -290,6 +291,7 @@ fn parse_command_with_depth(input: &str, depth: usize) -> Result<Command, ParseE
       "zip",
       "zinb",
       "qreg",
+      "qregplot",
       "tobit",
       "heckman",
       "nl",
@@ -425,6 +427,7 @@ fn parse_named_command(name: &str, body: &str, depth: usize) -> Result<Command, 
     "test" => parse_test_command(body),
     "histogram" => parse_histogram_command(body),
     "scatter" => parse_scatter_command(body),
+    "qregplot" => parse_qregplot_command(body),
     "bar" => parse_bar_command(body),
     "bayesplot" => parse_bayesplot_command(body),
     "estat" => parse_estat_command(body),
@@ -2816,6 +2819,164 @@ fn parse_bootstrap_command(body: &str) -> Result<Command, ParseError> {
     return Err(ParseError::new("contrast requires quantiles(values)"));
   }
   Ok(Command::Bootstrap { command })
+}
+
+fn parse_qregplot_command(body: &str) -> Result<Command, ParseError> {
+  let (arguments, option_body) = match first_top_level_comma(body) {
+    Some(i) => (&body[..i], Some(&body[i + 1..])),
+    None => (body, None),
+  };
+  let parts = parse_simple_body(arguments, false)?;
+  if parts.has_options || parts.has_assignment || parts.has_condition || parts.arguments.len() < 2 {
+    return Err(ParseError::new(
+      "qregplot expects qregplot y xvars, coefficient(x) quantiles(values) seed(integer) saving(file.svg) noopen",
+    ));
+  }
+  let options = option_body
+    .map(parse_use_options)
+    .transpose()?
+    .unwrap_or_default();
+  for option in &options {
+    if !matches!(
+      option.name.as_str(),
+      "coefficient" | "quantiles" | "seed" | "reps" | "noconstant" | "saving" | "noopen" | "title"
+    ) {
+      return Err(ParseError::new(format!(
+        "qregplot unsupported option: {}",
+        option.name
+      )));
+    }
+    if options
+      .iter()
+      .filter(|candidate| candidate.name == option.name)
+      .count()
+      != 1
+    {
+      return Err(ParseError::new(format!(
+        "qregplot option {} may only be supplied once",
+        option.name
+      )));
+    }
+    if matches!(option.name.as_str(), "noconstant" | "noopen")
+      && option.value != UseOptionValue::Flag
+    {
+      return Err(ParseError::new(format!(
+        "qregplot {} does not accept a value",
+        option.name
+      )));
+    }
+  }
+
+  let integer = |name: &str| -> Result<Option<u64>, ParseError> {
+    options
+      .iter()
+      .find(|option| option.name == name)
+      .map(|option| {
+        let UseOptionValue::Number(value) = &option.value else {
+          return Err(ParseError::new(format!(
+            "qregplot {name} requires an unsigned integer"
+          )));
+        };
+        value
+          .parse::<u64>()
+          .map_err(|_| ParseError::new(format!("qregplot {name} requires an unsigned integer")))
+      })
+      .transpose()
+  };
+  let seed =
+    integer("seed")?.ok_or_else(|| ParseError::new("qregplot requires explicit seed(integer)"))?;
+  let replications = integer("reps")?.unwrap_or(200);
+  if !(2..=5000).contains(&replications) {
+    return Err(ParseError::new("qregplot reps must be from 2 to 5000"));
+  }
+
+  let quantiles = match options.iter().find(|option| option.name == "quantiles") {
+    Some(UseOption {
+      value: UseOptionValue::Number(value),
+      ..
+    }) => vec![value.clone()],
+    Some(UseOption {
+      value: UseOptionValue::Numbers(values),
+      ..
+    }) => values.clone(),
+    Some(_) => return Err(ParseError::new("qregplot quantiles expects numeric values")),
+    None => return Err(ParseError::new("qregplot requires quantiles(values)")),
+  };
+  let parsed_quantiles = quantiles
+    .iter()
+    .map(|value| value.parse::<f64>())
+    .collect::<Result<Vec<_>, _>>()
+    .map_err(|_| ParseError::new("qregplot quantiles must be finite numeric values"))?;
+  if !(2..=19).contains(&parsed_quantiles.len())
+    || parsed_quantiles
+      .iter()
+      .any(|value| !value.is_finite() || !(0.05..=0.95).contains(value))
+    || parsed_quantiles.windows(2).any(|pair| pair[0] >= pair[1])
+  {
+    return Err(ParseError::new(
+      "qregplot quantiles requires 2..19 strictly increasing values from 0.05 to 0.95",
+    ));
+  }
+
+  let coefficient_values = parse_identifier_option("qregplot", &options, "coefficient")?;
+  let coefficient = coefficient_values
+    .and_then(|mut values| (values.len() == 1).then(|| values.pop().unwrap()))
+    .ok_or_else(|| ParseError::new("qregplot requires coefficient(variable)"))?;
+  let outcome = parts.arguments[0].text.clone();
+  let predictors = parts.arguments[1..]
+    .iter()
+    .map(|argument| argument.text.clone())
+    .collect::<Vec<_>>();
+  if !predictors.contains(&coefficient) {
+    return Err(ParseError::new(
+      "qregplot coefficient must name one of the listed predictors",
+    ));
+  }
+
+  let saving = match options.iter().find(|option| option.name == "saving") {
+    Some(UseOption {
+      value: UseOptionValue::String(path),
+      ..
+    }) => Some(path.clone()),
+    Some(_) => return Err(ParseError::new("qregplot saving expects an SVG path")),
+    None => {
+      return Err(ParseError::new("qregplot requires saving(\"file.svg\")"));
+    }
+  };
+  if !options.iter().any(|option| option.name == "noopen") {
+    return Err(ParseError::new("qregplot requires noopen"));
+  }
+  let title = match options.iter().find(|option| option.name == "title") {
+    None => None,
+    Some(UseOption {
+      value: UseOptionValue::String(value),
+      ..
+    }) if !value.is_empty() => Some(value.clone()),
+    Some(_) => return Err(ParseError::new("qregplot title expects nonempty text")),
+  };
+
+  Ok(Command::QregPlot {
+    command: tabdat_domain::QregPlotCommand {
+      bootstrap: tabdat_domain::BootstrapCommand {
+        regression: RegressCommand {
+          outcome,
+          predictors,
+          estimator: RegressEstimator::Ols,
+          weight_variable: None,
+          robust: false,
+          cluster_variable: None,
+          include_intercept: !options.iter().any(|option| option.name == "noconstant"),
+        },
+        replications: replications as usize,
+        seed,
+      },
+      quantiles,
+      coefficient,
+      saving,
+      title,
+      open_artifact: !options.iter().any(|option| option.name == "noopen"),
+    },
+  })
 }
 
 fn parse_regress_command(body: &str) -> Result<Command, ParseError> {
