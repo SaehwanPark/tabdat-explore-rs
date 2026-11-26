@@ -85,7 +85,7 @@ fn all_tied_regions_are_retained_and_selection_is_deterministic() {
 
 #[test]
 fn duplicate_predictors_are_never_split_and_constant_classifiers_are_candidates() {
-  let duplicates = fit_binary_maximum_score(&[0.0, 1.0, 0.0, 1.0], &[0.0, 0.0, 2.0, 2.0]).unwrap();
+  let duplicates = fit_binary_maximum_score(&[0.0, 1.0, 0.0, 1.0], &[-0.0, 0.0, 2.0, 2.0]).unwrap();
   assert_eq!(duplicates.correct_count, 2);
   assert_eq!(duplicates.optimal_regions.len(), 4);
   assert_eq!(
@@ -106,6 +106,16 @@ fn duplicate_predictors_are_never_split_and_constant_classifiers_are_candidates(
     constant.selected_rule,
     MaximumScoreRule::Constant { class: false }
   ));
+
+  let all_events = fit_binary_maximum_score(&[1.0, 1.0], &[1.0, 2.0]).unwrap();
+  assert_eq!(all_events.correct_count, 2);
+  assert_eq!(all_events.intercept, 1.0);
+  assert_eq!(all_events.slope, 0.0);
+  assert_eq!(all_events.predicted_classes, [true, true]);
+  assert!(matches!(
+    all_events.selected_rule,
+    MaximumScoreRule::Constant { class: true }
+  ));
 }
 
 #[test]
@@ -117,6 +127,19 @@ fn adjacent_float_thresholds_preserve_the_sample_split_and_prediction_rule() {
   assert_eq!(result.predicted_classes, [false, true]);
   assert!(!maximum_score_predict(&result.selected_rule, 1.0).unwrap());
   assert!(maximum_score_predict(&result.selected_rule, upper).unwrap());
+}
+
+#[test]
+fn extreme_finite_predictors_produce_finite_normalized_coefficients() {
+  let lower = f64::MAX * 0.75;
+  let upper = f64::MAX;
+  let result = fit_binary_maximum_score(&[0.0, 1.0], &[lower, upper]).unwrap();
+
+  assert_eq!(result.correct_count, 2);
+  assert!(result.intercept.is_finite());
+  assert!(result.slope.is_finite());
+  assert!((result.intercept.powi(2) + result.slope.powi(2) - 1.0).abs() < 1e-15);
+  assert_eq!(result.predicted_classes, [false, true]);
 }
 
 #[test]
