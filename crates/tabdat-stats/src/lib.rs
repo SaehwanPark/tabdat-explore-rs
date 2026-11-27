@@ -31,7 +31,8 @@ mod gamma_poisson_bootstrap;
 pub use gamma_poisson_bootstrap::{GammaPoissonBootstrapResult, bootstrap_gamma_poisson_clustered};
 mod gaussian_gee;
 pub use gaussian_gee::{
-  GaussianGeeInference, GaussianGeeOptions, GaussianGeeResult, fit_gaussian_gee,
+  GaussianGeeCorrelation, GaussianGeeInference, GaussianGeeOptions, GaussianGeeResult,
+  fit_gaussian_gee,
 };
 mod unstructured_gaussian_gee;
 pub use unstructured_gaussian_gee::{

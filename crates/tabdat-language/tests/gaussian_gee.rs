@@ -12,9 +12,31 @@ fn gaussian_identity_exchangeable_requires_explicit_group() {
   assert_eq!(command.outcome, "y");
   assert_eq!(command.predictors, ["x", "z"]);
   assert_eq!(command.entity_variable, "commune");
+  assert!(!command.independent);
   assert_eq!(command.time_variable, None);
   assert!(
     parse_command("xtgee y x, id(i) corr(EXCHANGEABLE) link(IDENTITY) family(GAUSSIAN)").is_ok()
+  );
+}
+
+#[test]
+fn gaussian_identity_independent_has_no_time_key() {
+  let Command::XtGee { command } =
+    parse_command("xtgee y x, family(gaussian) link(identity) corr(independent) id(person)")
+      .unwrap()
+  else {
+    panic!()
+  };
+  assert!(command.independent);
+  assert_eq!(command.time_variable, None);
+  assert!(
+    parse_command(
+      "xtgee y x, family(gaussian) link(identity) corr(independent) id(person) time(year)"
+    )
+    .is_err()
+  );
+  assert!(
+    parse_command("xtgee y x, family(poisson) link(log) corr(independent) id(person)").is_err()
   );
 }
 

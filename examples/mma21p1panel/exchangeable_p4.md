@@ -42,9 +42,10 @@ generic `sql failed`. The continuation requires the predecessor's named
 `gaussian_pa_fit` in the **same session**; it is not a general saved-fit importer.
 These source-specific scripts retain pooled OLS rather than their GEE fit;
 `predict` after either composition still uses that OLS state. The separate
-native `xtgee` command owns bounded Gaussian GEE state, including the
-period-standardized unstructured variant documented in
-[its workflow](unstructured_gee.md).
+native `xtgee` command owns bounded Gaussian GEE state, including independent,
+exchangeable and period-standardized unstructured variants documented in the
+[independent](native_independent_gee.md) and
+[unstructured](unstructured_gee.md) workflows.
 
 ## Reproduction and outputs
 

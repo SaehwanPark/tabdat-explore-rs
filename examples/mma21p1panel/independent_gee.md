@@ -35,10 +35,12 @@ correlation test, survey inference or a few-cluster coverage guarantee.
 normal-CDF SQL function. The owned retained model is **pooled OLS**, not GEE; the
 OLS result's t/F/working covariance are not the GEE report. Named GEE
 mean/residual columns are in-sample and a later `predict` still uses the
-original pooled model. The separate native `xtgee` path retains supported
-Gaussian GEE fits, including the
-[period-standardized unstructured variant](unstructured_gee.md); its Stata
-source-formula parity and prediction uncertainty remain outside this
+original pooled model. The native independent command retains this Gaussian
+mean as owned GEE state but reports the raw sandwich without `G/(G-1)`; see the
+[separate native workflow](native_independent_gee.md) for its formula and
+independent checks. The native period-standardized unstructured command has a
+different documented estimator and remains a separate evidence item; its
+Stata source-formula parity and prediction uncertainty remain outside this
 composition.
 
 ## Reproduction and outputs

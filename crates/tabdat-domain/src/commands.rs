@@ -587,11 +587,19 @@ pub struct RegressCommand {
 }
 
 /// Shared GEE variable payload; the command variant fixes family/link semantics.
+fn is_false(value: &bool) -> bool {
+  !*value
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct XtGeeCommand {
   pub outcome: String,
   pub predictors: Vec<String>,
   pub entity_variable: String,
+  /// Requests the independent working structure; false preserves the legacy
+  /// exchangeable (or time-keyed unstructured) command wire.
+  #[serde(default, skip_serializing_if = "is_false")]
+  pub independent: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub time_variable: Option<String>,
 }

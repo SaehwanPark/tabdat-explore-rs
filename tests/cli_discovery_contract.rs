@@ -275,9 +275,9 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
     ("count", "count [if expr]", serde_json::json!([]), vec![]),
     (
       "xtgee",
-      "xtgee y xvars, (family(gaussian) link(identity) | family(poisson) link(log)) corr(exchangeable) id(group)",
+      "xtgee y xvars, family(gaussian) link(identity) corr(independent|exchangeable) id(group) | corr(unstructured) id(group) time(timevar) | family(poisson) link(log) corr(exchangeable) id(group)",
       serde_json::json!([{"name":"outcome","required":true},{"name":"predictors","required":true}]),
-      vec!["family", "link", "corr", "id"],
+      vec!["family", "link", "corr", "id", "time"],
     ),
     (
       "xtpoisson",
@@ -331,7 +331,7 @@ fn core_conditional_discovery_matches_descriptors_and_links_bounded_help() {
     let expected: Vec<_> = options
       .into_iter()
       .map(
-        |option| serde_json::json!({"name": option, "required": name=="xtgee" || (name=="xtpoisson" && option=="id")}),
+        |option| serde_json::json!({"name": option, "required": (name=="xtgee" && option!="time") || (name=="xtpoisson" && option=="id")}),
       )
       .collect();
     assert_eq!(data["options"], serde_json::json!(expected));

@@ -145,6 +145,23 @@ prediction, disk persistence or whole-illustration completion.
 
 ## Gaussian GEE result contracts
 
+The new Gaussian independent-working command uses the existing
+`GaussianGeeResult` result type. For independent fits it adds
+`correlation_structure: "independent"`; exchangeable fits omit that optional
+field, preserving their previous JSON shape. Result metadata identifies
+`estimator: "gaussian_identity_independent_gee"`,
+`correlation: "fixed_identity"`,
+`scale: "pearson_rss_over_n"`, and working covariance
+`rss_over_n_times_inverse_x_prime_x`. Coefficients are the OLS-equivalent
+solution on the joint-finite outcome/predictor/group sample. The working
+covariance is `(RSS/N)(X'X)^(-1)`; the person-score sandwich has no finite
+correction. Its `rho` is fixed at zero and `ordered_pair_count` is zero.
+Singletons and unequal group sizes are supported, subject to an identified
+design, more groups than parameters and an estimable cluster sandwich. Named
+reports use distinct estimator/covariance tags, and current-row prediction uses
+the retained mean coefficients. This native raw sandwich is distinct from the
+Chapter21 SQL composition's G/(G-1)-adjusted report.
+
 The existing exchangeable Gaussian path retains its `GaussianGeeResult` JSON
 shape. `corr(unstructured)` returns a separate CLI-v1
 `UnstructuredGaussianGeeResult`; it does not add fields to or reinterpret the

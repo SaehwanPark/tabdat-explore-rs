@@ -3104,7 +3104,7 @@ fn parse_category_code(value: &UseOptionValue, context: &str) -> Result<i64, Par
 }
 
 fn parse_xtgee_command(body: &str) -> Result<Command, ParseError> {
-  let syntax = "xtgee expects: xtgee y xvars, family(gaussian) link(identity) corr(exchangeable|unstructured) id(group) [time(timevar)] or family(poisson) link(log) corr(exchangeable) id(group)";
+  let syntax = "xtgee expects: xtgee y xvars, family(gaussian) link(identity) corr(independent|exchangeable) id(group) or corr(unstructured) id(group) time(timevar); Poisson supports family(poisson) link(log) corr(exchangeable) id(group)";
   let Some(i) = first_unquoted_comma(body) else {
     return Err(ParseError::new(syntax));
   };
@@ -3144,12 +3144,14 @@ fn parse_xtgee_command(body: &str) -> Result<Command, ParseError> {
     }
     values.push(value[0].to_ascii_lowercase());
   }
-  let (poisson, unstructured) = match (values[0].as_str(), values[1].as_str(), values[2].as_str()) {
-    ("gaussian", "identity", "exchangeable") => (false, false),
-    ("gaussian", "identity", "unstructured") => (false, true),
-    ("poisson", "log", "exchangeable") => (true, false),
-    _ => return Err(ParseError::new(syntax)),
-  };
+  let (poisson, independent, unstructured) =
+    match (values[0].as_str(), values[1].as_str(), values[2].as_str()) {
+      ("gaussian", "identity", "exchangeable") => (false, false, false),
+      ("gaussian", "identity", "independent") => (false, true, false),
+      ("gaussian", "identity", "unstructured") => (false, false, true),
+      ("poisson", "log", "exchangeable") => (true, false, false),
+      _ => return Err(ParseError::new(syntax)),
+    };
   let keys =
     parse_identifier_option("xtgee", &options, "id")?.ok_or_else(|| ParseError::new(syntax))?;
   if keys.len() != 1 {
@@ -3168,6 +3170,7 @@ fn parse_xtgee_command(body: &str) -> Result<Command, ParseError> {
       .map(|a| a.text.clone())
       .collect(),
     entity_variable: keys[0].clone(),
+    independent,
     time_variable,
   };
   Ok(if poisson {

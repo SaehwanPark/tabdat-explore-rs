@@ -13,6 +13,7 @@ fn gaussian_command_wire_is_frozen_and_poisson_is_additive() {
       outcome: "y".into(),
       predictors: vec!["x".into()],
       entity_variable: "id".into(),
+      independent: false,
       time_variable: Some("year".into()),
     },
   };
@@ -28,11 +29,33 @@ fn gaussian_command_wire_is_frozen_and_poisson_is_additive() {
     serde_json::from_value::<Command>(unstructured_wire).unwrap(),
     unstructured
   );
+  let independent = Command::XtGee {
+    command: XtGeeCommand {
+      outcome: "y".into(),
+      predictors: vec!["x".into()],
+      entity_variable: "id".into(),
+      independent: true,
+      time_variable: None,
+    },
+  };
+  let independent_wire = json!({
+    "kind":"xt_gee",
+    "payload":{"command":{"outcome":"y","predictors":["x"],"entity_variable":"id","independent":true}}
+  });
+  assert_eq!(
+    serde_json::to_value(&independent).unwrap(),
+    independent_wire
+  );
+  assert_eq!(
+    serde_json::from_value::<Command>(independent_wire).unwrap(),
+    independent
+  );
   let new = Command::XtGeePoisson {
     command: XtGeeCommand {
       outcome: "y".into(),
       predictors: vec!["x".into()],
       entity_variable: "id".into(),
+      independent: false,
       time_variable: None,
     },
   };

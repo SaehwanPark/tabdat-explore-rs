@@ -672,10 +672,22 @@ fn snapshot(
     }
     EstimationState::GaussianGee(result) => {
       let selected = selection.ok_or_else(|| failure("Gaussian GEE has two covariance inferences; use estimates store NAME, covariance(working) or covariance(sandwich)"))?;
+      let independent = result.correlation == tabdat_stats::GaussianGeeCorrelation::Independent;
+      let estimator = if independent {
+        "gaussian_independent_gee"
+      } else {
+        "gaussian_exchangeable_gee"
+      };
       let (inference, covariance, clustered) = match selected {
-        GaussianGeeReportCovariance::Working => {
-          (&result.working, "working_gaussian_exchangeable", false)
-        }
+        GaussianGeeReportCovariance::Working => (
+          &result.working,
+          if independent {
+            "working_gaussian_independent"
+          } else {
+            "working_gaussian_exchangeable"
+          },
+          false,
+        ),
         GaussianGeeReportCovariance::Sandwich => {
           (&result.sandwich, "unit_sandwich_uncorrected", true)
         }
@@ -709,7 +721,7 @@ fn snapshot(
           intercept_convention: "population_mean_intercept".into(),
         }),
         name: name.into(),
-        estimator: "gaussian_exchangeable_gee".into(),
+        estimator: estimator.into(),
         outcome: result.outcome.clone(),
         linear_design_terms: Vec::new(),
         nls_model: None,

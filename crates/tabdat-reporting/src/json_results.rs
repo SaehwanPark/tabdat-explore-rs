@@ -867,10 +867,11 @@ pub fn serialize_execution_result(result: &ExecutionResult) -> Option<String> {
         .remove("predictor_names")
         .unwrap();
       data["sample"] = json!({"total_observations":r.sample.total_observations,"dropped_observations":r.sample.dropped_observations});
+      let independent = r.correlation == tabdat_stats::GaussianGeeCorrelation::Independent;
       let metadata = json!({
-        "estimator":"gaussian_identity_exchangeable_gee","include_intercept":true,
-        "scale":"pearson_rss_over_n","correlation":"ordered_pair_weighted_pearson",
-        "working_covariance":"inverse_gee_bread","sandwich_covariance":"uncorrected_unit_sandwich",
+        "estimator":if independent { "gaussian_identity_independent_gee" } else { "gaussian_identity_exchangeable_gee" },"include_intercept":true,
+        "scale":"pearson_rss_over_n","correlation":if independent { "fixed_identity" } else { "ordered_pair_weighted_pearson" },
+        "working_covariance":if independent { "rss_over_n_times_inverse_x_prime_x" } else { "inverse_gee_bread" },"sandwich_covariance":"uncorrected_unit_sandwich",
         "covariance_correction":1.0,"independent_unit":"group","reference_distribution":"asymptotic_standard_normal",
         "joint_test_reference":"asymptotic_chi_square","confidence_level":95,
         "missingness":"joint_finite_outcome_predictors_and_group",
