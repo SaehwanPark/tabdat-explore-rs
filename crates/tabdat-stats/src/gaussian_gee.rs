@@ -16,14 +16,30 @@ const NORMAL_95: f64 = 1.959963984540054;
 const COEFFICIENT_TOLERANCE: f64 = 1e-12;
 const SCORE_TOLERANCE: f64 = 1e-10;
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GaussianGeeCorrelation {
+  Independent,
+  #[default]
+  Exchangeable,
+}
+
+impl GaussianGeeCorrelation {
+  pub const fn is_exchangeable(&self) -> bool {
+    matches!(self, Self::Exchangeable)
+  }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GaussianGeeOptions {
   pub max_iterations: usize,
+  pub correlation: GaussianGeeCorrelation,
 }
 impl Default for GaussianGeeOptions {
   fn default() -> Self {
     Self {
       max_iterations: 100,
+      correlation: GaussianGeeCorrelation::Exchangeable,
     }
   }
 }
@@ -41,6 +57,12 @@ pub struct GaussianGeeInference {
 /// Owned marginal mean model and both uncorrected working/sandwich inferences.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GaussianGeeResult {
+  #[serde(
+    rename = "correlation_structure",
+    default,
+    skip_serializing_if = "GaussianGeeCorrelation::is_exchangeable"
+  )]
+  pub correlation: GaussianGeeCorrelation,
   pub outcome: String,
   pub predictor_names: Vec<String>,
   pub entity_variable: String,
@@ -65,6 +87,124 @@ fn invalid(message: &str) -> StatsError {
 }
 fn failed(message: &str) -> StatsError {
   StatsError::EstimationFailed(format!("xtgee: {message}"))
+}
+
+fn fit_independent(
+  problem: &EstimationProblem,
+  entity_variable: &str,
+  x: &[Vec<f64>],
+  groups: &[Vec<usize>],
+  scales: &[f64],
+  group_size_bounds: (usize, usize),
+  sample: &EstimationSample,
+) -> Result<GaussianGeeResult, StatsError> {
+  let (minimum_group_size, maximum_group_size) = group_size_bounds;
+  let y = &problem.response;
+  let k = x.first().map_or(0, Vec::len);
+
+  // With R=I, a single scaled QR solve is the GEE coefficient update and equals
+  // OLS on this exact joint-finite sample. The returned second matrix is (X'X)^-1.
+  let (beta, bread) = whiten_and_solve(x, y, groups, scales, 1.0, 0.0)?;
+  let residual = y
+    .iter()
+    .zip(x)
+    .map(|(response, row)| {
+      response
+        - row
+          .iter()
+          .zip(&beta)
+          .map(|(value, coefficient)| value * coefficient)
+          .sum::<f64>()
+    })
+    .collect::<Vec<_>>();
+  let rss = residual.iter().map(|value| value * value).sum::<f64>();
+  let phi = rss / y.len() as f64;
+  let response_scale = y.iter().map(|value| value.abs()).fold(0.0_f64, f64::max);
+  if !rss.is_finite()
+    || !phi.is_finite()
+    || phi <= 0.0
+    || phi.sqrt() <= 128.0 * f64::EPSILON * response_scale
+  {
+    return Err(failed("nonfinite or numerically zero residual scale"));
+  }
+
+  let working_covariance = bread
+    .iter()
+    .map(|row| row.iter().map(|value| phi * value).collect::<Vec<_>>())
+    .collect::<Vec<_>>();
+  let mut meat = vec![vec![0.0; k]; k];
+  for group in groups {
+    let score = (0..k)
+      .map(|column| {
+        group
+          .iter()
+          .map(|&row| x[row][column] * residual[row])
+          .sum::<f64>()
+      })
+      .collect::<Vec<_>>();
+    if score.iter().any(|value| !value.is_finite()) {
+      return Err(failed("nonfinite independent-GEE group score"));
+    }
+    for i in 0..k {
+      for j in 0..k {
+        meat[i][j] += score[i] * score[j];
+      }
+    }
+  }
+  let sandwich_covariance = crate::matrix::sandwich(&bread, &meat)?;
+  let score = (0..k)
+    .map(|column| {
+      residual
+        .iter()
+        .zip(x)
+        .map(|(error, row)| row[column] * error)
+        .sum::<f64>()
+    })
+    .collect::<Vec<_>>();
+  let scaled_step = (0..k)
+    .map(|i| (0..k).map(|j| bread[i][j] * score[j]).sum::<f64>().abs() / (1.0 + beta[i].abs()))
+    .fold(0.0_f64, f64::max);
+  if !scaled_step.is_finite() || scaled_step > SCORE_TOLERANCE {
+    return Err(failed(
+      "independent estimating-score certificate did not pass",
+    ));
+  }
+  let names = problem.parameter_names();
+  let working = inference(&names, &beta, working_covariance)?;
+  let sandwich = inference(&names, &beta, sandwich_covariance)?;
+  let fitted_means = x
+    .iter()
+    .map(|row| {
+      row
+        .iter()
+        .zip(&beta)
+        .map(|(value, coefficient)| value * coefficient)
+        .sum()
+    })
+    .collect::<Vec<f64>>();
+  if fitted_means.iter().any(|value| !value.is_finite()) {
+    return Err(failed("nonfinite fitted means"));
+  }
+  Ok(GaussianGeeResult {
+    correlation: GaussianGeeCorrelation::Independent,
+    outcome: problem.outcome.clone(),
+    predictor_names: problem.predictor_names.clone(),
+    entity_variable: entity_variable.into(),
+    observation_count: y.len(),
+    group_count: groups.len(),
+    minimum_group_size,
+    maximum_group_size,
+    singleton_group_count: groups.iter().filter(|group| group.len() == 1).count(),
+    ordered_pair_count: 0,
+    phi,
+    rho: 0.0,
+    working,
+    sandwich,
+    iterations: 1,
+    max_abs_scaled_score: scaled_step,
+    fitted_means,
+    sample: sample.clone(),
+  })
 }
 
 // Applying the symmetric inverse square root preserves admissible negative rho;
@@ -304,7 +444,7 @@ pub fn fit_gaussian_gee(
     .iter()
     .map(|group| group.len() * (group.len() - 1))
     .sum::<usize>();
-  if pairs == 0 {
+  if pairs == 0 && options.correlation == GaussianGeeCorrelation::Exchangeable {
     return Err(invalid("requires at least one within-group pair"));
   }
   let x = problem
@@ -321,6 +461,17 @@ pub fn fit_gaussian_gee(
     .collect::<Vec<_>>();
   if scales.iter().any(|v| !v.is_finite() || *v == 0.0) {
     return Err(invalid("zero or nonfinite design column"));
+  }
+  if options.correlation == GaussianGeeCorrelation::Independent {
+    return fit_independent(
+      problem,
+      entity_variable,
+      &x,
+      &groups,
+      &scales,
+      (min_size, max_size),
+      sample,
+    );
   }
   let y = &problem.response;
   let (mut b, _) = whiten_and_solve(&x, y, &groups, &scales, 1.0, 0.0)?;
@@ -390,6 +541,7 @@ pub fn fit_gaussian_gee(
     return Err(failed("nonfinite fitted means"));
   }
   Ok(GaussianGeeResult {
+    correlation: GaussianGeeCorrelation::Exchangeable,
     outcome: problem.outcome.clone(),
     predictor_names: problem.predictor_names.clone(),
     entity_variable: entity_variable.into(),

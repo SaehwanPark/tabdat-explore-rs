@@ -2512,6 +2512,29 @@ pub fn render_execution_result(result: &ExecutionResult) -> String {
       logit_number(r.sandwich.wald_p_value),
       logit_estimates(&r.sandwich.coefficients)
     ),
+    ExecutionResult::GaussianGee(r)
+      if r.correlation == tabdat_stats::GaussianGeeCorrelation::Independent =>
+    {
+      format!(
+        "Gaussian identity-link independent GEE (population averaged)\nOutcome: {}; N = {}; groups = {}; group size {}..{}; singletons = {}\nPearson scale RSS/N = {}; fixed working correlation is zero (R = I); within-group pair moments are not estimated.\nWorking covariance is RSS/N times inverse X'X; group-score sandwich is uncorrected; normal95 coefficient inference; no finite-sample correction.\nSolved by one direct QR fit; inverse-bread-scaled score {:.3e}.\nWorking covariance, slope Wald chi2({}) = {}; p = {}\n{}\nUnit-sandwich covariance, slope Wald chi2({}) = {}; p = {}\n{}\nPredictions are population marginal means/index/residuals, not group effects.",
+        r.outcome.escape_debug(),
+        r.observation_count,
+        r.group_count,
+        r.minimum_group_size,
+        r.maximum_group_size,
+        r.singleton_group_count,
+        inference_number(r.phi),
+        r.max_abs_scaled_score,
+        r.working.wald_df,
+        inference_number(r.working.wald_statistic),
+        logit_number(r.working.wald_p_value),
+        logit_estimates(&r.working.coefficients),
+        r.sandwich.wald_df,
+        inference_number(r.sandwich.wald_statistic),
+        logit_number(r.sandwich.wald_p_value),
+        logit_estimates(&r.sandwich.coefficients)
+      )
+    }
     ExecutionResult::GaussianGee(r) => format!(
       "Gaussian identity-link exchangeable GEE (population averaged)\nOutcome: {}; N = {}; groups = {}; group size {}..{}; singletons = {}\nPearson scale RSS/N = {}; ordered-pair-weighted correlation = {}; ordered pairs = {}\nWorking and uncorrected group sandwich covariance; normal95 coefficient inference; no finite-sample correction.\nConverged in {} updates; inverse-bread-scaled score {:.3e}.\nWorking covariance, slope Wald chi2({}) = {}; p = {}\n{}\nUnit-sandwich covariance, slope Wald chi2({}) = {}; p = {}\n{}\nPredictions are population marginal means/index/residuals, not group effects.",
       r.outcome.escape_debug(),

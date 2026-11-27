@@ -12,8 +12,10 @@ serial-correlation test or correct-mean/few-cluster guarantee is implied.
 
 The script composes native SQL, pooled OLS, predictions, named tables and
 exports; it does not retain its own AR1 GEE state. The separate native `xtgee`
-command retains bounded Gaussian GEE fits, including a
-[period-standardized unstructured variant](unstructured_gee.md). This script's
+command retains bounded independent, exchangeable and period-standardized
+unstructured Gaussian GEE fits, documented in the
+[independent](native_independent_gee.md) and
+[unstructured](unstructured_gee.md) workflows. This script's
 retained model remains **pooled OLS**, so later generic `predict` is pooled OLS,
 not AR1 GEE. GEE means, residuals and scores are explicit in-sample columns/
 exports. The printed OLS t/F inference differs from the GEE report; a preceding

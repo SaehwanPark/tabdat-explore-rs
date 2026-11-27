@@ -82,6 +82,11 @@ impl Session {
     command: &XtGeeCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
     if let Some(time_variable) = &command.time_variable {
+      if command.independent {
+        return Err(error(
+          "independent working correlation does not use a time variable",
+        ));
+      }
       let problem = self.prepare_gee_problem(command)?;
       let sample = problem
         .sample
@@ -172,9 +177,16 @@ impl Session {
       return Ok(ExecutionResult::GaussianGeeUnstructured(Box::new(result)));
     }
     let problem = self.prepare_gee_problem(command)?;
-    let result =
-      tabdat_stats::fit_gaussian_gee(&problem, &command.entity_variable, &Default::default())
-        .map_err(|e| error(e.to_string()))?;
+    let options = tabdat_stats::GaussianGeeOptions {
+      correlation: if command.independent {
+        tabdat_stats::GaussianGeeCorrelation::Independent
+      } else {
+        tabdat_stats::GaussianGeeCorrelation::Exchangeable
+      },
+      ..Default::default()
+    };
+    let result = tabdat_stats::fit_gaussian_gee(&problem, &command.entity_variable, &options)
+      .map_err(|e| error(e.to_string()))?;
     // Replace state only after all data, numerical and inference checks succeed.
     self.estimation = Some(EstimationState::GaussianGee(Box::new(result.clone())));
     Ok(ExecutionResult::GaussianGee(Box::new(result)))

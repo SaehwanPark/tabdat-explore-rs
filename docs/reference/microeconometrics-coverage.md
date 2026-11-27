@@ -2655,6 +2655,18 @@ request500 but report72 per coefficient; unstructured bootstrap is commented
 out and its final matrix listing fails. Other GLS blocks, historical source
 precision/bootstrap parity and whole Chapter21/book coverage remain open.
 
+The separate [native independent `xtgee` workflow](../../examples/mma21p1panel/native_independent_gee.md)
+retains actual Gaussian identity-link GEE state on the same5,320 rows/532 people.
+Base-R4.6.2 QR/group-score checks cover the full working/raw-sandwich matrices,
+28 inference values, all5,320 source-ordered predictions and42,560 original
+source cells. The native raw sandwich has no finite correction; with the same
+sample and scores it is the P4 composition's `G/(G-1)` covariance multiplied by
+`(G-1)/G`. It does not claim exact Stata output parity. Unbalanced groups and
+singletons, parser/wire compatibility, named covariance reports, predictions
+and atomic rank/zero-scale failures have focused contracts. The period-
+standardized unstructured variant below remains a separate estimator and
+evidence item.
+
 ### MMA-PANEL period-standardized unstructured Gaussian GEE variant
 
 The bounded native [`xtgee corr(unstructured)` workflow](../../examples/mma21p1panel/unstructured_gee.md)

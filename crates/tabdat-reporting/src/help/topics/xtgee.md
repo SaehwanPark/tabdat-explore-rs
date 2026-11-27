@@ -1,22 +1,35 @@
 # xtgee
 
-`xtgee y xvars, family(gaussian) link(identity) corr(exchangeable) id(group)`
+`xtgee y xvars, family(gaussian) link(identity) corr(independent|exchangeable) id(group)`
 
-Fits a bounded, unweighted Gaussian identity-link population-averaged GEE with one
-exchangeable within-group working correlation. All four options are required;
-apart from the bounded Poisson/log case below, other families/links are not
-supported. Other correlation forms beyond exchangeable and the bounded Gaussian
-variant below, weights, offsets, factors and survey design are not supported.
-No time variable is needed for exchangeable. Complete finite outcome,
-predictor and group rows are used; singletons remain. Up to40,000 candidate
-rows,32 numeric slopes,10,000 groups and20,000,000 row-parameter-squared units
-are allowed. There must be more groups than parameters and at least one pair.
+Fits bounded, unweighted Gaussian identity-link population-averaged GEE models
+with independent or exchangeable within-group working correlation. All four
+options are required; apart from the bounded Poisson/log case below, other
+families/links are not supported. Unstructured Gaussian correlation has its
+separate time-keyed form below. Other correlations, weights, offsets, factors
+and survey design are not supported. No time variable is needed for independent
+or exchangeable correlation. Complete finite outcome, predictor and group rows
+are used; singletons remain. Up to40,000 candidate rows,32 numeric slopes,
+10,000 groups and20,000,000 row-parameter-squared units are allowed. There must
+be more groups than parameters.
+
+For independent correlation, `R=I` is fixed and no within-group pair moments
+are estimated. Coefficients equal OLS on the same joint-finite rows. The working
+scale is RSS/N and working covariance is `(RSS/N)(X'X)^(-1)`. The separately
+reported raw group-score sandwich is
+`(X'X)^(-1) sum_g (X_g' e_g)(X_g' e_g)' (X'X)^(-1)`; it has no G/(G-1) or
+HC1 multiplier. Normal95 coefficient inference and the asymptotic slope
+chi-square test are reported. Singleton groups are valid. The distinct native
+command requires an estimable design and group sandwich. Its uncorrected
+covariance differs from the Chapter21 independent SQL composition's G/(G-1)
+adjusted sandwich.
 
 Scale is residual sum of squares/N. Correlation is the sum of within-group
 ordered residual cross-products divided by scale times the number of ordered
-pairs. Admissible negative correlation is supported. Nonpositive scale,
-non-positive-definite working correlation, singular design or nonconvergence
-fails rather than being clipped or replaced by a random-effects model.
+pairs for exchangeable correlation. Admissible negative correlation is
+supported. Nonpositive scale, non-positive-definite working correlation,
+singular design or nonconvergence fails rather than being clipped or replaced
+by a random-effects model.
 
 Both the inverse-working-bread and **uncorrected** group-sandwich covariance
 are reported separately, with normal95 coefficient inference and chi-square
@@ -28,6 +41,11 @@ owned marginal mean model and current predictor values; mean and index coincide
 under the identity link. Residuals also require current y. Group IDs are not
 needed for prediction; no posterior group effects or prediction uncertainty are
 provided. A failed Gaussian GEE fit leaves the previous estimation state unchanged.
+
+Independent results identify `correlation_structure: independent`,
+`correlation: fixed_identity` and working covariance
+`rss_over_n_times_inverse_x_prime_x`. Named reports distinguish
+`working_gaussian_independent` from `unit_sandwich_uncorrected`.
 
 ## Gaussian identity-link: unstructured correlation
 

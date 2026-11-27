@@ -58,12 +58,27 @@ Stata 8 output parity. It does not change the chosen period-standardized
 unstructured estimator, whose formula and statistical validation status remain
 separate in the coverage ledger.
 
-## Reference and status
+## Result and evidence
 
-The existing [Chapter21 independent-working composition](../../examples/mma21p1panel/independent_gee.md),
-its Base-R reference/checker, pinned original MOM source, and the 2005 author
-program/log provide the sample and numerical gates. The composition's
-`G/(G-1)` sandwich is a distinct convention from the raw sandwich specified
-here; reference values for this native contract will be computed without that
-multiplier. Independent command/runtime, failure-state, prediction, named-report
-and public-capability evidence are still to be added.
+Implemented in the native command and documented in the
+[independent GEE evidence note](../../examples/mma21p1panel/native_independent_gee.md).
+The existing [Chapter21 independent-working composition](../../examples/mma21p1panel/independent_gee.md)
+remains separate: its P4 sandwich applies `G/(G-1)` while this command reports
+the raw grouped-score covariance, and the native command retains a GEE fit
+rather than pooled OLS.
+
+The pinned original MOM sample is checked against an independent Base-R 4.6.2
+QR/group-score calculation: all 8 working/raw-sandwich covariance cells, 28
+coefficient and inference values, 37,240 prediction values on 5,320 ordered
+rows, and exact identity/order of 42,560 original data values. The raw native
+`lnwg` sandwich SE is `0.0292408738783`; multiplying its covariance by
+`532/531` matches the author-log robust SE `0.0292684` at printed precision.
+The runtime fixture covers unequal group sizes and a singleton; focused
+statistical, parser/wire, reporting and runtime tests cover failure, state,
+prediction and named-report behavior. Existing exchangeable and unstructured
+contracts remain in the focused regression set.
+
+Exact Stata 8 output parity, independent Poisson GEE, weights, time-varying
+correlation, bootstrap, and a combined four-correlation report remain excluded.
+The period-standardized unstructured estimator and its unresolved historical
+differences remain unchanged.

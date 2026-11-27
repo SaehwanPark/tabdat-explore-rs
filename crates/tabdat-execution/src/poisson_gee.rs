@@ -10,6 +10,11 @@ impl Session {
     &mut self,
     command: &XtGeeCommand,
   ) -> Result<ExecutionResult, RuntimeError> {
+    if command.independent || command.time_variable.is_some() {
+      return Err(error(
+        "Poisson GEE supports only exchangeable correlation without a time variable",
+      ));
+    }
     self.estimation = None;
     let problem = self.prepare_gee_problem(command)?;
     let result =

@@ -3,7 +3,9 @@ use std::{
   fs,
   path::{Path, PathBuf},
 };
-use tabdat_stats::{EstimationProblem, EstimationSample, GaussianGeeOptions, fit_gaussian_gee};
+use tabdat_stats::{
+  EstimationProblem, EstimationSample, GaussianGeeCorrelation, GaussianGeeOptions, fit_gaussian_gee,
+};
 
 const PREDICTORS: [&str; 6] = ["lnhhexp", "age", "sex", "hhsize", "farm", "educ"];
 fn fixture(name: &str) -> PathBuf {
@@ -206,6 +208,123 @@ fn rejects_unbalanced_non_positive_definite_correlation() {
 }
 
 #[test]
+fn independent_working_fit_matches_unbalanced_qr_reference_with_singletons() {
+  let sizes = [1usize, 2, 4, 3, 5, 2];
+  let mut y = Vec::new();
+  let mut x = Vec::new();
+  let mut keys = Vec::new();
+  for (group, size) in sizes.into_iter().enumerate() {
+    for period in 1..=size {
+      let g = (group + 1) as f64;
+      let t = period as f64;
+      let predictor = (g - 3.0) * 0.3 + (t - 1.0) * 0.2 + (g * t).sin() * 0.13;
+      let response = 1.5 + 0.7 * predictor + g * 0.09 + t * 0.06 + (g * t * 1.31).sin() * 0.2;
+      x.push(vec![predictor]);
+      y.push(response);
+      keys.push((group + 1).to_string());
+    }
+  }
+  let n = y.len();
+  let sample = EstimationSample::new((0..n).collect(), n, 0, None, Some(keys)).unwrap();
+  let problem = EstimationProblem::new("y", vec!["x".into()], y, x)
+    .unwrap()
+    .with_intercept_name("_cons")
+    .with_sample(sample);
+  let fit = fit_gaussian_gee(
+    &problem,
+    "group",
+    &GaussianGeeOptions {
+      correlation: GaussianGeeCorrelation::Independent,
+      ..Default::default()
+    },
+  )
+  .unwrap();
+
+  assert_eq!(fit.correlation, GaussianGeeCorrelation::Independent);
+  assert_eq!((fit.observation_count, fit.group_count), (17, 6));
+  assert_eq!((fit.minimum_group_size, fit.maximum_group_size), (1, 5));
+  assert_eq!(fit.singleton_group_count, 1);
+  assert_eq!(fit.ordered_pair_count, 0);
+  assert_eq!(fit.iterations, 1);
+  assert_eq!(fit.rho, 0.0);
+  assert_eq!(fit.working.coefficients[0].name, "_cons");
+  close(
+    fit.working.coefficients[0].value,
+    1.8209418044045698,
+    "independent intercept",
+  );
+  close(
+    fit.working.coefficients[1].value,
+    1.0837522308843426,
+    "independent slope",
+  );
+  close(fit.phi, 0.017467069899617636, "independent RSS/N");
+  let working = [
+    [0.001_995_423_050_568_744, -0.0019045083803627058],
+    [-0.0019045083803627058, 0.0037472579695561887],
+  ];
+  let sandwich = [
+    [0.0020694827624338358, -0.001637363431776586],
+    [-0.001637363431776586, 0.0030820394378017054],
+  ];
+  for i in 0..2 {
+    for j in 0..2 {
+      close(
+        fit.working.covariance[i][j],
+        working[i][j],
+        "independent working covariance",
+      );
+      close(
+        fit.sandwich.covariance[i][j],
+        sandwich[i][j],
+        "independent raw group sandwich",
+      );
+    }
+  }
+  assert!(fit.max_abs_scaled_score <= 1e-10);
+  assert_eq!(fit.fitted_means.len(), n);
+}
+
+#[test]
+fn independent_fit_rejects_rank_and_zero_scale_without_finite_adjustment() {
+  let sizes = [1usize, 2, 4, 3, 5, 2];
+  let mut y = Vec::new();
+  let mut x = Vec::new();
+  let mut keys = Vec::new();
+  for (group, size) in sizes.into_iter().enumerate() {
+    for period in 1..=size {
+      let predictor = group as f64 + period as f64 * 0.1;
+      x.push(vec![predictor, predictor]);
+      y.push(1.0 + 0.5 * predictor);
+      keys.push((group + 1).to_string());
+    }
+  }
+  let n = y.len();
+  let problem = EstimationProblem::new("y", vec!["x".into(), "z".into()], y, x)
+    .unwrap()
+    .with_sample(EstimationSample::new((0..n).collect(), n, 0, None, Some(keys)).unwrap());
+  let options = GaussianGeeOptions {
+    correlation: GaussianGeeCorrelation::Independent,
+    ..Default::default()
+  };
+  assert!(fit_gaussian_gee(&problem, "group", &options).is_err());
+
+  let mut perfect = problem.clone();
+  perfect.design_matrix = perfect
+    .design_matrix
+    .iter()
+    .map(|row| vec![row[0]])
+    .collect();
+  perfect.predictor_names.truncate(1);
+  perfect.response = perfect
+    .design_matrix
+    .iter()
+    .map(|row| 1.0 + 0.5 * row[0])
+    .collect();
+  assert!(fit_gaussian_gee(&perfect, "group", &options).is_err());
+}
+
+#[test]
 fn ordering_scaling_and_explicit_failures() {
   let (p, _) = problem(&fixture("negative"));
   let fit = fit_gaussian_gee(&p, "commune", &Default::default()).unwrap();
@@ -241,13 +360,24 @@ fn ordering_scaling_and_explicit_failures() {
     row[1] = row[0];
   }
   assert!(fit_gaussian_gee(&bad, "commune", &Default::default()).is_err());
-  assert!(fit_gaussian_gee(&p, "commune", &GaussianGeeOptions { max_iterations: 1 }).is_err());
   assert!(
     fit_gaussian_gee(
       &p,
       "commune",
       &GaussianGeeOptions {
-        max_iterations: 101
+        max_iterations: 1,
+        ..Default::default()
+      }
+    )
+    .is_err()
+  );
+  assert!(
+    fit_gaussian_gee(
+      &p,
+      "commune",
+      &GaussianGeeOptions {
+        max_iterations: 101,
+        ..Default::default()
       }
     )
     .is_err()
